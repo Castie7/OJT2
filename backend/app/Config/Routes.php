@@ -23,6 +23,11 @@ $routes->group('research', function($routes) {
     
     // --- THIS WAS MISSING ---
     $routes->get('my-submissions', 'ResearchController::mySubmissions');
+    
+    // Inside $routes->group('research', ...)
+
+    $routes->get('rejected', 'ResearchController::rejectedList');
+    $routes->match(['post', 'options'], 'restore/(:num)', 'ResearchController::restore/$1');
     // ------------------------
     
     // Comments

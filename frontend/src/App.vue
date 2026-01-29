@@ -4,7 +4,7 @@ import LoginForm from './components/LoginForm.vue'
 import Dashboard from './components/Dashboard.vue'
 
 const currentPage = ref('dashboard') 
-const currentUser = ref(null) // This will now store { id, name, role }
+const currentUser = ref(null) 
 
 // --- HELPER: MANAGE COOKIES ---
 const setCookie = (name, value, days) => {
@@ -27,61 +27,53 @@ const deleteCookie = (name) => {
 // --- 1. CHECK SESSION ON REFRESH ---
 onMounted(async () => {
   const token = getCookie('auth_token');
-  
   if (token) {
     try {
-      // Ask backend to verify token and return User Role & ID
       const response = await fetch('http://localhost:8080/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: token })
       });
       const data = await response.json();
-      
       if (data.status === 'success') {
-        // Restore the full user object (id, name, role)
         currentUser.value = data.user;
-        console.log("Session restored. Role:", currentUser.value.role);
       } else {
-        // Token expired, clear it
         deleteCookie('auth_token');
       }
-    } catch (e) {
-      console.error("Session check failed", e);
-    }
+    } catch (e) { console.error("Session check failed", e); }
   }
 });
 
 // --- 2. LOGIN ACTION ---
 const onLoginSuccess = (data) => {
-  // 'data.user' is now an object: { id: 1, name: "Admin", role: "admin" }
   currentUser.value = data.user; 
   currentPage.value = 'dashboard';
-  
-  console.log("Login Success. Role:", currentUser.value.role);
-
-  // Save Token to Cookie (Valid for 7 days)
-  if (data.token) {
-    setCookie('auth_token', data.token, 7);
-  }
+  if (data.token) setCookie('auth_token', data.token, 7);
 }
 
-// --- 3. LOGOUT ACTION ---
-const onLogout = async () => {
-  const token = getCookie('auth_token');
-  
+// --- 3. LOGOUT LOGIC ---
+const handleLogout = async () => {
+  // 1. Get current token
+  const token = getCookie('auth_token'); // Reused helper for cleaner code
+
+  // 2. Notify Backend
   if (token) {
-    await fetch('http://localhost:8080/auth/logout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: token })
-    });
+    try {
+      await fetch('http://localhost:8080/auth/logout', { 
+        method: 'POST',
+        headers: { 'Authorization': token }
+      });
+    } catch (e) { console.error("Logout API failed", e); }
   }
 
-  // Clear Frontend State
+  // 3. DELETE COOKIE
+  deleteCookie('auth_token');
+
+  // 4. RESET STATE
   currentUser.value = null;
-  currentPage.value = 'dashboard';
-  deleteCookie('auth_token'); 
+  
+  // 5. FORCE REDIRECT
+  window.location.href = '/'; 
 }
 
 const goToLogin = () => { currentPage.value = 'login' }
@@ -98,6 +90,6 @@ const goToLogin = () => { currentPage.value = 'login' }
     v-else 
     :currentUser="currentUser" 
     @login-click="goToLogin"
-    @logout-click="onLogout" 
+    @logout-click="handleLogout" 
   />
 </template>

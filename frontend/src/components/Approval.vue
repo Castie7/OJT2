@@ -4,9 +4,10 @@ import { ref, onMounted, nextTick } from 'vue'
 const props = defineProps(['currentUser'])
 
 // State
-const pendingResearches = ref([])
+const activeTab = ref('pending') // 'pending' or 'rejected'
+const items = ref([]) // Renamed from pendingResearches since it holds both types
 const isLoading = ref(false)
-const selectedResearch = ref(null) // For PDF viewing
+const selectedResearch = ref(null)
 
 // Deadline Modal State
 const deadlineModal = ref({
@@ -29,34 +30,65 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString();
 }
 
+// Calculate Days Left until deletion (for Rejected items)
+const getDaysLeft = (rejectedDate) => {
+  if(!rejectedDate) return 30;
+  const rejected = new Date(rejectedDate);
+  const expiration = new Date(rejected);
+  expiration.setDate(rejected.getDate() + 30); // Add 30 days
+  
+  const today = new Date();
+  const diffTime = expiration - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  return diffDays > 0 ? diffDays : 0;
+}
+
 // --- FETCH DATA ---
-const fetchPending = async () => {
+const fetchData = async () => {
   isLoading.value = true
+  items.value = [] // Clear to prevent UI flickering
   try {
-    const response = await fetch('http://localhost:8080/research/pending', { headers: getHeaders() })
+    // Dynamic Endpoint based on Tab
+    const endpoint = activeTab.value === 'pending' 
+      ? 'http://localhost:8080/research/pending' 
+      : 'http://localhost:8080/research/rejected';
+
+    const response = await fetch(endpoint, { headers: getHeaders() })
     if (response.ok) {
-      pendingResearches.value = await response.json()
+      items.value = await response.json()
     }
   } catch (error) {
-    console.error("Error fetching pending:", error)
+    console.error("Error fetching data:", error)
   } finally {
     isLoading.value = false
   }
 }
 
-onMounted(() => { fetchPending() })
+onMounted(() => { fetchData() })
 
-// --- ACTIONS (Approve/Reject) ---
+// --- ACTIONS (Approve/Reject/Restore) ---
 const handleAction = async (id, action) => {
-  if (!confirm(`Are you sure you want to ${action} this research?`)) return;
+  // Customize confirmation message based on action
+  const msg = action === 'restore' 
+    ? 'Are you sure you want to RESTORE this item to Pending?' 
+    : `Are you sure you want to ${action} this research?`;
+
+  if (!confirm(msg)) return;
+
   try {
-    const endpoint = action === 'approve' ? 'approve' : 'reject';
+    // Map action to endpoint
+    let endpoint = '';
+    if(action === 'approve') endpoint = 'approve';
+    else if(action === 'reject') endpoint = 'reject';
+    else if(action === 'restore') endpoint = 'restore';
+
     await fetch(`http://localhost:8080/research/${endpoint}/${id}`, { 
       method: 'POST',
       headers: getHeaders()
     })
-    alert(`Research ${action}d successfully!`)
-    fetchPending()
+    alert(`Action ${action} successful!`)
+    fetchData() // Refresh list
   } catch (error) { alert("Action failed") }
 }
 
@@ -82,7 +114,7 @@ const saveNewDeadline = async () => {
     if (res.ok) {
       alert("Deadline Updated!");
       deadlineModal.value.show = false;
-      fetchPending();
+      fetchData();
     } else { alert("Failed to update."); }
   } catch (e) { alert("Server Error"); }
 }
@@ -135,9 +167,26 @@ const postComment = async () => {
 <template>
   <div class="bg-white p-6 rounded-lg shadow-lg min-h-[500px]">
     
-    <div class="mb-6 border-b pb-4">
-      <h2 class="text-xl font-bold text-gray-800">📋 Pending Approvals</h2>
-      <p class="text-sm text-gray-500">Review research submissions and manage deadlines.</p>
+    <div class="mb-6 border-b pb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div>
+        <h2 class="text-xl font-bold text-gray-800">📋 Approvals & Rejections</h2>
+        <p class="text-sm text-gray-500">Manage submissions and restore rejected items.</p>
+      </div>
+
+      <div class="flex bg-gray-100 p-1 rounded-lg">
+        <button 
+          @click="activeTab = 'pending'; fetchData()" 
+          :class="`px-4 py-2 text-sm font-bold rounded-md transition ${activeTab === 'pending' ? 'bg-white text-green-700 shadow' : 'text-gray-500 hover:text-gray-700'}`"
+        >
+          ⏳ Pending
+        </button>
+        <button 
+          @click="activeTab = 'rejected'; fetchData()" 
+          :class="`px-4 py-2 text-sm font-bold rounded-md transition ${activeTab === 'rejected' ? 'bg-white text-red-600 shadow' : 'text-gray-500 hover:text-gray-700'}`"
+        >
+          🗑️ Rejected Bin
+        </button>
+      </div>
     </div>
 
     <div v-if="isLoading" class="text-center py-10 text-gray-400">Loading...</div>
@@ -147,13 +196,15 @@ const postComment = async () => {
         <thead class="bg-gray-50">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Details</th>
-            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Deadline</th>
+            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+              {{ activeTab === 'pending' ? 'Deadline' : 'Auto-Delete In' }}
+            </th>
             <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Review</th>
             <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Actions</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="item in pendingResearches" :key="item.id" class="hover:bg-green-50 transition">
+          <tr v-for="item in items" :key="item.id" class="hover:bg-green-50 transition">
             <td class="px-6 py-4">
               <div class="font-bold text-gray-900">{{ item.title }}</div>
               <div class="text-sm text-gray-500">By: {{ item.author }}</div>
@@ -161,11 +212,16 @@ const postComment = async () => {
             </td>
 
             <td class="px-6 py-4">
-              <div class="flex items-center gap-2">
+              <div v-if="activeTab === 'pending'" class="flex items-center gap-2">
                 <span :class="`text-sm font-medium ${!item.deadline_date ? 'text-gray-400' : 'text-gray-700'}`">
                   {{ formatDate(item.deadline_date) }}
                 </span>
                 <button @click="openDeadlineModal(item)" class="text-gray-400 hover:text-green-600 transition" title="Extend Deadline">🕒</button>
+              </div>
+              <div v-else>
+                <span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200">
+                  ⚠️ {{ getDaysLeft(item.rejected_at) }} Days left
+                </span>
               </div>
             </td>
 
@@ -176,15 +232,20 @@ const postComment = async () => {
             </td>
 
             <td class="px-6 py-4 text-right space-x-2">
-              <button @click="handleAction(item.id, 'approve')" class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded font-bold hover:bg-green-200 transition">✅ Approve</button>
-              <button @click="handleAction(item.id, 'reject')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-bold hover:bg-red-200 transition">❌ Reject</button>
+              <template v-if="activeTab === 'pending'">
+                <button @click="handleAction(item.id, 'approve')" class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded font-bold hover:bg-green-200 transition">✅ Approve</button>
+                <button @click="handleAction(item.id, 'reject')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-bold hover:bg-red-200 transition">❌ Reject</button>
+              </template>
+              <template v-else>
+                 <button @click="handleAction(item.id, 'restore')" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200 transition">♻️ Restore to Pending</button>
+              </template>
             </td>
           </tr>
         </tbody>
       </table>
       
-      <div v-if="pendingResearches.length === 0" class="text-center py-10 text-gray-500">
-        No pending items to review.
+      <div v-if="items.length === 0" class="text-center py-10 text-gray-500">
+        {{ activeTab === 'pending' ? 'No pending items to review.' : 'The rejected bin is empty.' }}
       </div>
     </div>
 

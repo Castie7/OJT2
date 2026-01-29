@@ -89,23 +89,31 @@ class AuthController extends BaseController
     // ------------------------------------------------------------------
     // 3. LOGOUT (Destroy Token)
     // ------------------------------------------------------------------
+    // ... inside AuthController class ...
+
     public function logout()
     {
-        $this->handleCors();
+        // 1. Handle CORS
+        header('Access-Control-Allow-Origin: *');
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+        header("Access-Control-Allow-Methods: POST, OPTIONS");
+        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
 
-        $json = $this->request->getJSON();
-        $token = $json->token ?? '';
+        // 2. Get Token from Header
+        $request = service('request');
+        $token = $request->getHeaderLine('Authorization');
 
         if ($token) {
-            $model = new UserModel();
-            $user = $model->where('auth_token', $token)->first();
+            $userModel = new UserModel();
+            $user = $userModel->where('auth_token', $token)->first();
             
+            // 3. Invalidate Token in Database
             if ($user) {
-                $model->update($user['id'], ['auth_token' => null]);
+                $userModel->update($user['id'], ['auth_token' => null]);
             }
         }
-        
-        return $this->respond(['status' => 'success']);
+
+        return $this->respond(['status' => 'success', 'message' => 'Logged out successfully']);
     }
 
     // ------------------------------------------------------------------

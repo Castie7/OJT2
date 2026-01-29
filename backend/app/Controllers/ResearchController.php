@@ -254,6 +254,7 @@ class ResearchController extends BaseController
     }
 
     // 8. REJECT
+    // UPDATE: REJECT (Now saves the date)
     public function reject($id = null)
     {
         $this->handleCors();
@@ -261,7 +262,55 @@ class ResearchController extends BaseController
         if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
 
         $model = new ResearchModel();
-        $model->update($id, ['status' => 'rejected']);
+        // Set status to rejected AND save the current timestamp
+        $model->update($id, [
+            'status' => 'rejected',
+            'rejected_at' => date('Y-m-d H:i:s')
+        ]);
+        
+        return $this->respond(['status' => 'success']);
+    }
+
+    // NEW: GET REJECTED LIST (With Auto-Delete)
+    public function rejectedList()
+    {
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
+
+        $model = new ResearchModel();
+
+        // 1. AUTO-DELETE: Remove items rejected more than 30 days ago
+        $cutoffDate = date('Y-m-d H:i:s', strtotime('-30 days'));
+        
+        // This effectively deletes expired items before we even fetch the list
+        $model->where('status', 'rejected')
+              ->where('rejected_at <', $cutoffDate)
+              ->delete();
+
+        // 2. Fetch remaining rejected items
+        $data = $model->where('status', 'rejected')
+                      ->orderBy('rejected_at', 'DESC')
+                      ->findAll();
+
+        return $this->respond($data);
+    }
+
+    // NEW: RESTORE (Move back to Pending)
+    public function restore($id = null)
+    {
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
+
+        $model = new ResearchModel();
+        
+        // Set back to pending and clear the rejection date
+        $model->update($id, [
+            'status' => 'pending',
+            'rejected_at' => null 
+        ]);
+
         return $this->respond(['status' => 'success']);
     }
 

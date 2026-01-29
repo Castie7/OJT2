@@ -14,9 +14,11 @@ const selectedResearch = ref(null)
 // UI States
 const isLoading = ref(false)
 const toast = ref({ show: false, message: '', type: 'success' }) 
-
-// CONFIRM MODAL STATE
 const confirmModal = ref({ show: false, id: null, action: '', title: '', subtext: '' })
+
+// --- PAGINATION STATE ---
+const currentPage = ref(1)
+const itemsPerPage = 10
 
 // --- HELPER: SHOW TOAST ---
 const showToast = (message, type = 'success') => {
@@ -24,7 +26,6 @@ const showToast = (message, type = 'success') => {
   setTimeout(() => { toast.value.show = false }, 3000)
 }
 
-// --- HELPER: GET COOKIE ---
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -62,7 +63,9 @@ const fetchResearches = async () => {
   }
 }
 
-// Filter Logic
+// --- FILTER & PAGINATION LOGIC ---
+
+// 1. Filter the list first (Search)
 const filteredResearches = computed(() => {
   if (!searchQuery.value) return researches.value
   const query = searchQuery.value.toLowerCase()
@@ -72,10 +75,31 @@ const filteredResearches = computed(() => {
   )
 })
 
-watch(showArchived, () => {
-  fetchResearches()
-  searchQuery.value = ''
+// 2. Paginate the filtered list
+const paginatedResearches = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredResearches.value.slice(start, end)
 })
+
+// 3. Calculate Total Pages
+const totalPages = computed(() => {
+  return Math.ceil(filteredResearches.value.length / itemsPerPage)
+})
+
+// 4. Reset to Page 1 if search query or tab changes
+watch([searchQuery, showArchived], () => {
+  currentPage.value = 1
+  if(showArchived.value) fetchResearches()
+})
+
+// 5. Navigation Functions
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+const prevPage = () => {
+  if (currentPage.value > 1) currentPage.value--
+}
 
 onMounted(() => {
   fetchResearches()
@@ -129,11 +153,12 @@ const executeArchiveToggle = async () => {
     </div>
     
     <div class="w-full">
-      <div class="bg-white p-6 rounded-lg shadow-lg min-h-[500px] relative">
+      <div class="bg-white p-6 rounded-lg shadow-lg min-h-[500px] relative flex flex-col">
         
         <div class="flex flex-col xl:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
           <h2 class="text-xl font-bold text-gray-800 whitespace-nowrap">
             {{ showArchived ? '🗑️ Archived Researches' : '📚 Available Studies' }}
+            <span class="text-sm font-normal text-gray-500 ml-2">({{ filteredResearches.length }} items)</span>
           </h2>
           <div class="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
             <div class="relative w-full sm:w-64">
@@ -162,9 +187,9 @@ const executeArchiveToggle = async () => {
         </div>
 
         <Transition name="fade" mode="out-in">
-          <div v-if="!isLoading">
+          <div v-if="!isLoading" class="flex-1 flex flex-col">
             
-            <div v-if="viewMode === 'list'" class="overflow-x-auto">
+            <div v-if="viewMode === 'list'" class="overflow-x-auto flex-1">
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
@@ -174,15 +199,11 @@ const executeArchiveToggle = async () => {
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="item in filteredResearches" :key="item.id" class="hover:bg-green-50 transition">
+                  <tr v-for="item in paginatedResearches" :key="item.id" class="hover:bg-green-50 transition">
                     <td @click="selectedResearch = item" class="px-6 py-4 font-medium text-gray-900 cursor-pointer">{{ item.title }}</td>
                     <td @click="selectedResearch = item" class="px-6 py-4 text-gray-500 cursor-pointer">{{ item.author }}</td>
-                    
                     <td class="px-6 py-4 flex items-center gap-2">
-                       <button @click="selectedResearch = item" class="text-xs px-2 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50">
-                         View PDF
-                       </button>
-
+                       <button @click="selectedResearch = item" class="text-xs px-2 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50">View PDF</button>
                        <button 
                          v-if="currentUser && currentUser.role === 'admin'"
                          @click.stop="requestArchiveToggle(item)" 
@@ -196,9 +217,8 @@ const executeArchiveToggle = async () => {
               </table>
             </div>
 
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div v-for="item in filteredResearches" :key="item.id" class="group bg-gray-50 hover:bg-white border border-gray-200 hover:border-green-400 rounded-xl p-5 transition shadow hover:shadow-lg flex flex-col relative">
-                 
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 flex-1">
+              <div v-for="item in paginatedResearches" :key="item.id" class="group bg-gray-50 hover:bg-white border border-gray-200 hover:border-green-400 rounded-xl p-5 transition shadow hover:shadow-lg flex flex-col relative">
                  <button 
                   v-if="currentUser && currentUser.role === 'admin'"
                   @click.stop="requestArchiveToggle(item)" 
@@ -206,7 +226,6 @@ const executeArchiveToggle = async () => {
                  >
                   {{ showArchived ? 'Restore' : 'Archive' }}
                 </button>
-
                 <div @click="selectedResearch = item" class="cursor-pointer h-full flex flex-col">
                   <div class="h-32 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 group-hover:bg-green-50 group-hover:text-green-600 transition"><span class="text-4xl">📄</span></div>
                   <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1 group-hover:text-green-700">{{ item.title }}</h3>
@@ -221,6 +240,35 @@ const executeArchiveToggle = async () => {
               <span v-if="searchQuery">No results found for "{{ searchQuery }}".</span>
               <span v-else>{{ showArchived ? 'Archive is empty.' : 'No active researches found.' }}</span>
             </div>
+
+            <div v-if="filteredResearches.length > itemsPerPage" class="mt-6 flex justify-between items-center border-t pt-4">
+              <span class="text-sm text-gray-500">
+                Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredResearches.length) }} of {{ filteredResearches.length }} entries
+              </span>
+              
+              <div class="flex gap-2">
+                <button 
+                  @click="prevPage" 
+                  :disabled="currentPage === 1"
+                  class="px-4 py-2 text-sm font-bold rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Previous
+                </button>
+                
+                <span class="px-4 py-2 text-sm font-bold bg-green-50 text-green-700 rounded-lg border border-green-200">
+                  Page {{ currentPage }} of {{ totalPages }}
+                </span>
+
+                <button 
+                  @click="nextPage" 
+                  :disabled="currentPage === totalPages"
+                  class="px-4 py-2 text-sm font-bold rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+
           </div>
         </Transition>
       </div>
@@ -235,10 +283,6 @@ const executeArchiveToggle = async () => {
           </div>
           <div class="flex-1 overflow-y-auto bg-gray-100 p-4">
              <div v-if="selectedResearch.file_path" class="bg-white p-1 rounded shadow h-[600px]"><iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none rounded" title="PDF Viewer"></iframe></div>
-             <div v-else class="flex flex-col items-center justify-center h-64 bg-white rounded shadow text-gray-400"><span class="text-4xl mb-2">📄</span><p>No PDF file attached.</p></div>
-          </div>
-          <div class="bg-gray-50 p-4 border-t flex justify-between items-center shrink-0">
-             <button @click="selectedResearch = null" class="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2 rounded font-bold transition">Close</button>
           </div>
         </div>
       </div>

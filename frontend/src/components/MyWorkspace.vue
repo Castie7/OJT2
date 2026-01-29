@@ -16,7 +16,7 @@ const getHeaders = () => {
   return { 'Authorization': token };
 }
 
-// Get Today's date for "max" attributes
+// Get Today's date for "max" attributes (optional UI helper)
 const todayStr = new Date().toISOString().split('T')[0];
 
 // --- UPLOAD LOGIC ---
@@ -29,11 +29,10 @@ const handleUploadFile = (e) => {
     return
   }
 
-  // 2. CHECK FILE EXTENSION & TYPE (More Robust)
+  // 2. CHECK FILE EXTENSION (Robust Check)
   const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
   const fileExtension = file.name.split('.').pop().toLowerCase();
   
-  // Check if extension is valid
   if (!allowedExtensions.includes(fileExtension)) {
     alert("❌ Invalid File!\nPlease upload a PDF or an Image (JPG/PNG).")
     e.target.value = '' // Clear the input visually
@@ -48,33 +47,35 @@ const handleUploadFile = (e) => {
 const submitResearch = async () => {
   const form = uploadModal.value;
 
-  // 1. BASIC FIELDS CHECK
+  // 1. REQUIRED FIELDS CHECK
   if (!form.title.trim()) { alert("⚠️ Title is required."); return; }
   if (!form.author.trim()) { alert("⚠️ Author is required."); return; }
   if (!form.deadline_date) { alert("⚠️ Deadline Date is required."); return; }
-  if (!form.file) { alert("⚠️ File is missing.\nPlease select a PDF or Image."); return; }
+  // Check if file is actually selected in state
+  if (!form.file) { alert("⚠️ File is missing.\nPlease select a valid PDF or Image."); return; }
 
   // 2. STRICT DATE VALIDATION
   const start = form.start_date ? new Date(form.start_date) : null;
   const deadline = new Date(form.deadline_date);
   
-  // A. Check Year Range (e.g., prevent year 11111)
   const minYear = 2000;
   const maxYear = 2100;
 
+  // A. Check Deadline Year
   if (deadline.getFullYear() < minYear || deadline.getFullYear() > maxYear) {
-     alert(`⚠️ Invalid Date: Year must be between ${minYear} and ${maxYear}.`);
+     alert(`⚠️ Invalid Deadline Date.\nPlease enter a year between ${minYear} and ${maxYear}.`);
      return;
   }
 
+  // B. Check Start Date Logic (if provided)
   if (start) {
     if (start.getFullYear() < minYear || start.getFullYear() > maxYear) {
-        alert(`⚠️ Invalid Start Date: Year must be between ${minYear} and ${maxYear}.`);
+        alert(`⚠️ Invalid Start Date.\nPlease enter a year between ${minYear} and ${maxYear}.`);
         return;
     }
-    // B. Check Logical Order
+    // Check Logical Order
     if (deadline < start) {
-      alert("⚠️ Date Error: Deadline cannot be before Start Date.");
+      alert("⚠️ Date Error: Deadline cannot be before the Start Date.");
       return;
     }
   }
@@ -96,20 +97,21 @@ const submitResearch = async () => {
     })
     const result = await res.json()
     
-    // Handle specific backend validation errors
-    if (!res.ok) {
-        if (result.messages) {
-            const msg = typeof result.messages === 'object' 
-                ? Object.values(result.messages).join('\n') 
-                : result.messages;
-            alert("❌ Submission Failed:\n" + msg);
-        } else {
-            alert("❌ Error: " + (result.message || "Upload Failed"));
-        }
-    } else {
+    if (res.ok) {
       alert("✅ Success! Research Submitted.")
+      // Reset Form
       uploadModal.value = { show: false, title: '', author: '', abstract: '', start_date: '', deadline_date: '', file: null }
       if(submissionsRef.value) submissionsRef.value.fetchData()
+    } else { 
+      // Handle backend error messages
+      if (result.messages) {
+          const msg = typeof result.messages === 'object' 
+              ? Object.values(result.messages).join('\n') 
+              : result.messages;
+          alert("❌ Submission Failed:\n" + msg);
+      } else {
+          alert("❌ Error: " + (result.message || "Upload Failed"));
+      }
     }
   } catch (error) { 
     console.error(error)

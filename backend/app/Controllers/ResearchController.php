@@ -28,19 +28,19 @@ class ResearchController extends BaseController
         if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
     }
 
-    // 1. PUBLIC INDEX
+    // 1. PUBLIC INDEX (Library)
     public function index()
     {
         $this->handleCors();
         $model = new ResearchModel();
-        $data = $model->where('is_archived', 0)
-                      ->where('status', 'approved')
+        // Show only approved researches that are NOT archived
+        $data = $model->where('status', 'approved')
                       ->orderBy('created_at', 'DESC')
                       ->findAll();
         return $this->respond($data);
     }
 
-    // 2. MY SUBMISSIONS
+    // 2. MY SUBMISSIONS (Active Workspace)
     public function mySubmissions()
     {
         $this->handleCors();
@@ -48,14 +48,45 @@ class ResearchController extends BaseController
         if (!$user) return $this->failUnauthorized('Access Denied');
 
         $model = new ResearchModel();
+        // Show everything EXCEPT 'archived' status for this user
         $data = $model->where('uploaded_by', $user['id'])
-                      ->where('is_archived', 0) 
+                      ->where('status !=', 'archived') 
                       ->orderBy('created_at', 'DESC')
                       ->findAll();
         return $this->respond($data);
     }
 
-    // 3. PENDING (Admin)
+    // 3. MY ARCHIVED (User's Recycle Bin - 60 Days Auto-Delete)
+    // FETCH MY ARCHIVED (Fixed to show old items too)
+    public function myArchived()
+    {
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized();
+
+        $model = new ResearchModel();
+
+        // 1. AUTO-DELETE: Only remove items if they have a date AND are > 60 days old
+        $cutoffDate = date('Y-m-d H:i:s', strtotime('-60 days'));
+
+        $model->where('uploaded_by', $user['id'])
+              ->where('status', 'archived')
+              ->where('archived_at IS NOT NULL') // Only check expiration if date exists
+              ->where('archived_at <', $cutoffDate)
+              ->delete();
+
+        // 2. FETCH ALL ARCHIVED ITEMS
+        // We removed the "archived_at IS NOT NULL" check so old data appears
+        $data = $model->where('uploaded_by', $user['id'])
+                      ->where('status', 'archived')
+                      ->orderBy('archived_at', 'DESC')
+                      ->orderBy('updated_at', 'DESC') // Fallback sort for items without dates
+                      ->findAll();
+
+        return $this->respond($data);
+    }
+
+    // 4. PENDING LIST (Admin Only)
     public function pending()
     {
         $this->handleCors();
@@ -64,80 +95,77 @@ class ResearchController extends BaseController
 
         $model = new ResearchModel();
         $data = $model->where('status', 'pending')
-                      ->where('is_archived', 0)
                       ->orderBy('created_at', 'ASC')
                       ->findAll();
         return $this->respond($data);
     }
 
-    // 4. ARCHIVED (Secure)
-    public function archived()
+    // 5. REJECTED LIST (Admin Recycle Bin - 30 Days Auto-Delete)
+    public function rejectedList()
     {
         $this->handleCors();
         $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized('Access Denied');
+        if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
 
         $model = new ResearchModel();
-        $builder = $model->where('is_archived', 1);
-        if ($user['role'] !== 'admin') {
-            $builder->where('uploaded_by', $user['id']);
-        }
-        $data = $builder->orderBy('created_at', 'DESC')->findAll();
+
+        // A. AUTO-DELETE > 30 days
+        $cutoffDate = date('Y-m-d H:i:s', strtotime('-30 days'));
+        
+        $model->where('status', 'rejected')
+              ->where('rejected_at <', $cutoffDate)
+              ->delete();
+
+        // B. Fetch remaining
+        $data = $model->where('status', 'rejected')
+                      ->orderBy('rejected_at', 'DESC')
+                      ->findAll();
+
         return $this->respond($data);
     }
 
-    // 5. CREATE (SECURED)
+    // 6. CREATE (Submit New Research)
     public function create()
     {
         $this->handleCors();
         $user = $this->validateUser();
         if (!$user) return $this->failUnauthorized('Invalid Token');
 
-        // 1. DEFINE VALIDATION RULES
         $rules = [
             'title'         => 'required|min_length[3]',
             'author'        => 'required|min_length[2]',
             'start_date'    => 'required|valid_date[Y-m-d]',
             'deadline_date' => 'required|valid_date[Y-m-d]',
-            // pdf_file is handled separately via getFile()
         ];
 
         if (!$this->validate($rules)) {
             return $this->fail($this->validator->getErrors());
         }
 
-        // 2. LOGICAL CHECKS (PHP Side)
         $start = $this->request->getPost('start_date');
         $deadline = $this->request->getPost('deadline_date');
         
+        // Year & Logic Checks
         $startYear = date('Y', strtotime($start));
         $deadlineYear = date('Y', strtotime($deadline));
 
-        // A. Prevent crazy years (e.g., 11111 or 1900)
         if ($startYear < 2000 || $startYear > 2100 || $deadlineYear < 2000 || $deadlineYear > 2100) {
             return $this->fail("Invalid Year. Dates must be between 2000 and 2100.");
         }
-
-        // B. Ensure Deadline is AFTER Start
         if (strtotime($deadline) < strtotime($start)) {
             return $this->fail("Deadline cannot be before the Start Date.");
         }
 
         $model = new ResearchModel();
-        
         $file = $this->request->getFile('pdf_file');
         $fileName = null;
 
-        // 3. FILE VALIDATION
         if (!$file || !$file->isValid()) {
             return $this->fail("File is invalid or missing.");
         }
         
-        // Ensure strictly PDF or Image
         $mime = $file->getMimeType();
-        $allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-        
-        if(!in_array($mime, $allowedMimes)) {
+        if(!in_array($mime, ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'])) {
              return $this->fail("Only PDF, JPG, or PNG files are allowed.");
         }
 
@@ -161,8 +189,7 @@ class ResearchController extends BaseController
         return $this->respond(['status' => 'success']);
     }
 
-    // 6. UPDATE
-    // 6. UPDATE (SECURED)
+    // 7. UPDATE (Edit Research)
     public function update($id = null)
     {
         $this->handleCors();
@@ -171,11 +198,12 @@ class ResearchController extends BaseController
 
         $model = new ResearchModel();
         
-        // Optional: Verify ownership
-        // $item = $model->find($id);
-        // if($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin') return $this->failForbidden();
+        // Verify ownership
+        $item = $model->find($id);
+        if(!$item || ($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin')) {
+             return $this->failForbidden();
+        }
 
-        // 1. VALIDATION RULES
         $rules = [
             'title'         => 'required|min_length[3]',
             'author'        => 'required|min_length[2]',
@@ -183,30 +211,14 @@ class ResearchController extends BaseController
             'deadline_date' => 'required|valid_date[Y-m-d]',
         ];
 
-        if (!$this->validate($rules)) {
-            return $this->fail($this->validator->getErrors());
-        }
+        if (!$this->validate($rules)) return $this->fail($this->validator->getErrors());
 
-        // 2. LOGICAL CHECKS (Dates)
         $start = $this->request->getPost('start_date');
         $deadline = $this->request->getPost('deadline_date');
         
-        // Year Range Check
-        $minYear = 2000; $maxYear = 2100;
-        
-        if ($deadline) {
-            $dYear = date('Y', strtotime($deadline));
-            if ($dYear < $minYear || $dYear > $maxYear) return $this->fail("Deadline year must be between $minYear and $maxYear");
-        }
-        
-        if ($start) {
-            $sYear = date('Y', strtotime($start));
-            if ($sYear < $minYear || $sYear > $maxYear) return $this->fail("Start date year must be between $minYear and $maxYear");
-            
-            // Logic Check
-            if ($deadline && strtotime($deadline) < strtotime($start)) {
-                return $this->fail("Deadline cannot be before the Start Date.");
-            }
+        // Date Logic Checks (Same as Create)
+        if ($deadline && strtotime($deadline) < strtotime($start)) {
+            return $this->fail("Deadline cannot be before Start Date.");
         }
 
         $data = [
@@ -217,17 +229,8 @@ class ResearchController extends BaseController
             'deadline_date' => $deadline,
         ];
 
-        // 3. FILE VALIDATION (Only if new file is sent)
         $file = $this->request->getFile('pdf_file');
         if ($file && $file->isValid()) {
-            
-            $mime = $file->getMimeType();
-            $allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-        
-            if(!in_array($mime, $allowedMimes)) {
-                 return $this->fail("Only PDF, JPG, or PNG files are allowed.");
-            }
-
             if (!$file->hasMoved()) {
                 $newName = $file->getRandomName();
                 $file->move('public/uploads', $newName);
@@ -241,7 +244,7 @@ class ResearchController extends BaseController
         return $this->fail('Failed to update');
     }
 
-    // 7. APPROVE
+    // 8. ACTION: APPROVE
     public function approve($id = null)
     {
         $this->handleCors();
@@ -249,12 +252,15 @@ class ResearchController extends BaseController
         if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
 
         $model = new ResearchModel();
-        $model->update($id, ['status' => 'approved']);
+        $model->update($id, [
+            'status' => 'approved',
+            'approved_at' => date('Y-m-d H:i:s') 
+        ]);
+        
         return $this->respond(['status' => 'success']);
     }
 
-    // 8. REJECT
-    // UPDATE: REJECT (Now saves the date)
+    // 9. ACTION: REJECT
     public function reject($id = null)
     {
         $this->handleCors();
@@ -262,7 +268,6 @@ class ResearchController extends BaseController
         if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
 
         $model = new ResearchModel();
-        // Set status to rejected AND save the current timestamp
         $model->update($id, [
             'status' => 'rejected',
             'rejected_at' => date('Y-m-d H:i:s')
@@ -271,51 +276,8 @@ class ResearchController extends BaseController
         return $this->respond(['status' => 'success']);
     }
 
-    // NEW: GET REJECTED LIST (With Auto-Delete)
-    public function rejectedList()
-    {
-        $this->handleCors();
-        $user = $this->validateUser();
-        if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
-
-        $model = new ResearchModel();
-
-        // 1. AUTO-DELETE: Remove items rejected more than 30 days ago
-        $cutoffDate = date('Y-m-d H:i:s', strtotime('-30 days'));
-        
-        // This effectively deletes expired items before we even fetch the list
-        $model->where('status', 'rejected')
-              ->where('rejected_at <', $cutoffDate)
-              ->delete();
-
-        // 2. Fetch remaining rejected items
-        $data = $model->where('status', 'rejected')
-                      ->orderBy('rejected_at', 'DESC')
-                      ->findAll();
-
-        return $this->respond($data);
-    }
-
-    // NEW: RESTORE (Move back to Pending)
-    public function restore($id = null)
-    {
-        $this->handleCors();
-        $user = $this->validateUser();
-        if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
-
-        $model = new ResearchModel();
-        
-        // Set back to pending and clear the rejection date
-        $model->update($id, [
-            'status' => 'pending',
-            'rejected_at' => null 
-        ]);
-
-        return $this->respond(['status' => 'success']);
-    }
-
-    // 9. TOGGLE ARCHIVE
-    public function toggleArchive($id = null)
+    // 10. ACTION: ARCHIVE (Move to User Recycle Bin)
+    public function archive($id = null)
     {
         $this->handleCors();
         $user = $this->validateUser();
@@ -324,16 +286,60 @@ class ResearchController extends BaseController
         $model = new ResearchModel();
         $item = $model->find($id);
         
-        if ($user['role'] !== 'admin' && $item['uploaded_by'] != $user['id']) {
-            return $this->failForbidden();
+        // Ownership Check
+        if ($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin') {
+            return $this->failForbidden("Cannot archive others' work");
         }
 
-        $newStatus = $item['is_archived'] == 0 ? 1 : 0;
-        $model->update($id, ['is_archived' => $newStatus]);
+        $model->update($id, [
+            'status' => 'archived',
+            'archived_at' => date('Y-m-d H:i:s') 
+        ]);
+
         return $this->respond(['status' => 'success']);
     }
 
-    // 10. GET COMMENTS
+    // 11. ACTION: RESTORE (From Archive or Reject -> Pending)
+    public function restore($id = null)
+    {
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized();
+
+        $model = new ResearchModel();
+        $item = $model->find($id);
+
+        // Allow restore if Admin OR Owner
+        if ($user['role'] !== 'admin' && $item['uploaded_by'] != $user['id']) {
+             return $this->failForbidden();
+        }
+        
+        $model->update($id, [
+            'status' => 'pending',
+            'rejected_at' => null,
+            'archived_at' => null
+        ]);
+
+        return $this->respond(['status' => 'success']);
+    }
+
+    // 12. EXTEND DEADLINE
+    public function extendDeadline($id = null)
+    {
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
+
+        $newDate = $this->request->getPost('new_deadline');
+        if (!$newDate) return $this->fail('Date is required.');
+
+        $model = new ResearchModel();
+        $model->update($id, ['deadline_date' => $newDate]);
+        
+        return $this->respond(['status' => 'success']);
+    }
+
+    // 13. COMMENTS
     public function getComments($id = null)
     {
         $this->handleCors();
@@ -342,7 +348,6 @@ class ResearchController extends BaseController
         return $this->respond($data);
     }
 
-    // 11. ADD COMMENT
     public function addComment()
     {
         $this->handleCors();
@@ -363,45 +368,4 @@ class ResearchController extends BaseController
         return $this->respondCreated(['status' => 'success']);
     }
 
-    // 12. GET MY ARCHIVED
-    public function myArchived()
-    {
-        $this->handleCors();
-        $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized('Access Denied');
-
-        $model = new ResearchModel();
-        $data = $model->where('uploaded_by', $user['id'])
-                      ->where('is_archived', 1) 
-                      ->orderBy('created_at', 'DESC')
-                      ->findAll();
-        return $this->respond($data);
-    }
-
-    // 13. EXTEND DEADLINE
-    public function extendDeadline($id = null)
-    {
-        // Force CORS First
-        header('Access-Control-Allow-Origin: *');
-        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
-
-        $user = $this->validateUser();
-        if (!$user || $user['role'] !== 'admin') return $this->failForbidden('Access Denied');
-
-        $newDate = $this->request->getPost('new_deadline');
-        if (!$newDate) return $this->fail('Date is required.');
-
-        $model = new ResearchModel();
-        if (!$model->db->fieldExists('deadline_date', 'researches')) {
-            return $this->failServerError("Database Error: Column 'deadline_date' is missing.");
-        }
-
-        if ($model->update($id, ['deadline_date' => $newDate])) {
-            return $this->respond(['status' => 'success']);
-        }
-        return $this->fail('Database update failed.');
-    }
-
-} // <--- THIS FINAL BRACKET IS CRITICAL. ALL FUNCTIONS MUST BE ABOVE THIS. 
+}

@@ -5,46 +5,46 @@ use CodeIgniter\Router\RouteCollection;
 /** @var RouteCollection $routes */
 $routes->get('/', 'Home::index');
 
-// Auth Routes
+// --- AUTH ROUTES ---
 $routes->match(['post', 'options'], 'auth/login', 'AuthController::login');
 $routes->match(['post', 'options'], 'auth/verify', 'AuthController::verify');
 $routes->match(['post', 'options'], 'auth/logout', 'AuthController::logout');
 
-// Research Routes
+// --- RESEARCH ROUTES ---
 $routes->group('research', function($routes) {
-    // Get Lists
-    $routes->get('/', 'ResearchController::index');
-    $routes->get('pending', 'ResearchController::pending');
-    $routes->get('archived', 'ResearchController::archived');
-    // Add this new line:
-    $routes->get('my-archived', 'ResearchController::myArchived');
-    // Inside $routes->group('research', ...)
-    $routes->match(['post', 'options'], 'extend-deadline/(:num)', 'ResearchController::extendDeadline/$1');
     
-    // --- THIS WAS MISSING ---
-    $routes->get('my-submissions', 'ResearchController::mySubmissions');
-    
-    // Inside $routes->group('research', ...)
+    // 1. PUBLIC LISTS
+    $routes->get('/', 'ResearchController::index'); // Public Library
+    $routes->get('archived', 'ResearchController::archived'); // Public Archive (if admins want)
 
-    $routes->get('rejected', 'ResearchController::rejectedList');
-    $routes->match(['post', 'options'], 'restore/(:num)', 'ResearchController::restore/$1');
-    // ------------------------
+    // 2. MY WORKSPACE (User Specific)
+    $routes->get('my-submissions', 'ResearchController::mySubmissions');
+    $routes->get('my-archived', 'ResearchController::myArchived'); // <--- Fixed missing route
+
+    // 3. ADMIN LISTS
+    $routes->get('pending', 'ResearchController::pending');
     
-    // Comments
+    // FIXED TYPO: ResearchControlaler -> ResearchController
+    $routes->get('rejected', 'ResearchController::rejectedList'); 
+
+    // 4. COMMENTS
     $routes->get('comments/(:num)', 'ResearchController::getComments/$1');
     $routes->match(['post', 'options'], 'comment', 'ResearchController::addComment');
 
-    // Actions
+    // 5. ACTIONS (Create/Update)
     $routes->match(['post', 'options'], 'create', 'ResearchController::create');
     $routes->match(['post', 'options'], 'update/(:num)', 'ResearchController::update/$1');
+    
+    // 6. ACTIONS (Workflow)
     $routes->match(['post', 'options'], 'approve/(:num)', 'ResearchController::approve/$1');
     $routes->match(['post', 'options'], 'reject/(:num)', 'ResearchController::reject/$1');
-    // Note: The controller method is called 'toggleArchive', but your route pointed to 'archive'.
-    // I updated this to match the controller method name 'toggleArchive' to be safe, 
-    // OR ensure your controller has a method literally named 'archive'.
-    // Based on previous code, it was 'toggleArchive'.
-    $routes->match(['post', 'options'], 'archive/(:num)', 'ResearchController::toggleArchive/$1'); 
+    $routes->match(['post', 'options'], 'extend-deadline/(:num)', 'ResearchController::extendDeadline/$1');
+
+    // 7. ARCHIVE / RESTORE
+    // We standardized the controller method to 'archive' in the previous step
+    $routes->match(['post', 'options'], 'archive/(:num)', 'ResearchController::archive/$1'); 
+    $routes->match(['post', 'options'], 'restore/(:num)', 'ResearchController::restore/$1');
 });
 
-// Catch-all for OPTIONS requests (CORS)
+// Catch-all for OPTIONS requests (CORS Pre-flight)
 $routes->options('(:any)', 'Home::index');

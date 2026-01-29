@@ -27,6 +27,7 @@ const updateStats = (count) => { stats.value[0].value = count }
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center gap-3">
+            <img src="/logo.png" alt="BSU Logo" class="h-15 w-auto object-contain hover:scale-105 transition-transform duration-300" />
             <span class="font-bold text-xl tracking-wide">BSU RootCrops</span>
           </div>
           <div class="hidden md:flex ml-10 space-x-4">

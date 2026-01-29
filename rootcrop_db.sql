@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 29, 2026 at 03:36 AM
+-- Generation Time: Jan 29, 2026 at 03:58 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -57,8 +57,10 @@ INSERT INTO `researches` (`id`, `title`, `author`, `abstract`, `created_at`, `fi
 (9, 'aaaaaaaaaaaaaaaaaa', 'asdsssssssss', 'asdsssssssss', '2026-01-28 17:01:31', '1769590958_d521b0e18faa385ace8d.pdf', 'Super Admin', 1, 0, NULL, 'approved'),
 (10, 'Testing', 'Ni Syak', 'Well', '2026-01-29 09:03:33', '1769648613_29d0059c809502ffd950.pdf', 'Super Admin', 1, 0, NULL, 'approved'),
 (11, 'aaaa', 'aaa', 'aaaaaaa', '2026-01-29 09:15:40', '1769649340_40cfd2df09e8eecba214.pdf', 'Super Admin', 0, 0, NULL, 'rejected'),
-(12, 'Juan Only', 'Juan Only', 'asdf', '2026-01-29 09:54:54', '1769651694_9dae4ade6cd00f5373f2.pdf', '4', 0, 0, NULL, 'pending'),
-(13, 'Juan Only', 'Juannnnnn', 'wells', '2026-01-29 10:04:11', '1769652251_1f429d95e61f453e0d55.pdf', '4', 1, 0, NULL, 'pending');
+(12, 'Juan Only', 'Juan Only', 'asdf', '2026-01-29 09:54:54', '1769651694_9dae4ade6cd00f5373f2.pdf', '4', 0, 0, NULL, 'approved'),
+(13, 'Juan Only', 'Juannnnnn', 'wells', '2026-01-29 10:04:11', '1769652251_1f429d95e61f453e0d55.pdf', '4', 1, 0, NULL, 'pending'),
+(14, 'was', 'sa', 'sa', '2026-01-29 10:46:16', NULL, '3', 0, 0, NULL, 'pending'),
+(15, 'Research 1', 'Well Welll', 'well', '2026-01-29 10:47:01', '1769654821_fdc71c00cb08ba34a124.pdf', '3', 0, 0, NULL, 'pending');
 
 -- --------------------------------------------------------
 
@@ -108,8 +110,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `email`, `password`, `created_at`, `auth_token`, `role`) VALUES
-(3, 'Super Admin', 'admin@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-28 11:20:35', NULL, 'admin'),
-(4, 'Juan Researcher', 'researcher@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-29 09:42:12', '00685e67c71ae9f547e9d1a8d0ec0efa610a4a7d6c30dca72285bd2fdaaf1c3d', 'user');
+(3, 'Super Admin', 'admin@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-28 11:20:35', 'ba33c87a38086f4f047c1f05f4e57a0a3d69bbe714aafacfcfe2fa06946a224b', 'admin'),
+(4, 'Juan Researcher', 'researcher@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-29 09:42:12', NULL, 'user');
 
 --
 -- Indexes for dumped tables
@@ -142,7 +144,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `researches`
 --
 ALTER TABLE `researches`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `research_comments`

@@ -7,10 +7,13 @@ const props = defineProps(['currentUser', 'isArchived'])
 const myItems = ref([])
 const isLoading = ref(false)
 
-// Edit & Comment States
+// UI States
 const editingItem = ref(null)
 const editPdfFile = ref(null)
 const isSaving = ref(false)
+const selectedResearch = ref(null) // For PDF Viewer
+
+// Modals
 const commentModal = ref({ show: false, researchId: null, title: '', list: [], newComment: '' })
 const confirmModal = ref({ show: false, id: null, action: '', title: '', subtext: '' })
 const chatContainer = ref(null)
@@ -25,7 +28,6 @@ const getHeaders = () => {
 const fetchData = async () => {
   isLoading.value = true
   try {
-    // Point to the new strict endpoint we just created
     const endpoint = props.isArchived 
       ? 'http://localhost:8080/research/my-archived' 
       : 'http://localhost:8080/research/my-submissions';
@@ -152,10 +154,32 @@ const saveEdit = async () => {
             </td>
 
             <td class="px-6 py-4 text-right flex justify-end gap-2">
-              <button v-if="!isArchived && item.status !== 'approved'" @click="openEdit(item)" class="text-xs px-3 py-1 rounded font-bold border text-yellow-700 border-yellow-400 hover:bg-yellow-100 transition">✏️ Edit</button>
-              <button @click="requestArchive(item)" :class="`text-xs px-3 py-1 rounded font-bold border transition ${isArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">
-                {{ isArchived ? '♻️ Restore' : '📦 Archive' }}
+              
+              <button 
+                v-if="item.status === 'approved' && !isArchived" 
+                @click="selectedResearch = item"
+                class="text-xs px-3 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 transition"
+              >
+                View PDF
               </button>
+
+              <template v-else>
+                <button 
+                    v-if="!isArchived" 
+                    @click="openEdit(item)" 
+                    class="text-xs px-3 py-1 rounded font-bold border text-yellow-700 border-yellow-400 hover:bg-yellow-100 transition"
+                >
+                    ✏️ Edit
+                </button>
+                
+                <button 
+                    @click="requestArchive(item)" 
+                    :class="`text-xs px-3 py-1 rounded font-bold border transition ${isArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`"
+                >
+                    {{ isArchived ? '♻️ Restore' : '📦 Archive' }}
+                </button>
+              </template>
+
             </td>
           </tr>
         </tbody>
@@ -192,6 +216,19 @@ const saveEdit = async () => {
       </div>
     </div>
 
+    <div v-if="selectedResearch" class="modal-overlay">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+          <div class="bg-green-800 text-white p-4 flex justify-between items-center shrink-0">
+            <div><h2 class="text-xl font-bold leading-tight">{{ selectedResearch.title }}</h2><p class="text-green-200 text-sm">Author: {{ selectedResearch.author }}</p></div>
+            <button @click="selectedResearch = null" class="text-white hover:text-gray-300 text-3xl font-bold leading-none">&times;</button>
+          </div>
+          <div class="flex-1 overflow-y-auto bg-gray-100 p-4">
+             <div v-if="selectedResearch.file_path" class="bg-white p-1 rounded shadow h-[600px]"><iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none rounded" title="PDF Viewer"></iframe></div>
+             <div v-else class="flex flex-col items-center justify-center h-64 bg-white rounded shadow text-gray-400"><span class="text-4xl mb-2">📄</span><p>No PDF file attached.</p></div>
+          </div>
+        </div>
+    </div>
+
     <div v-if="editingItem" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
       <div class="bg-white rounded-lg w-full max-w-lg p-6 shadow-2xl">
         <h2 class="font-bold text-lg mb-4">Edit Research</h2>
@@ -213,15 +250,12 @@ const saveEdit = async () => {
     <Transition name="pop">
       <div v-if="confirmModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center">
-          
           <div class="mb-4 flex justify-center">
             <div v-if="confirmModal.action === 'Archive'" class="text-6xl animate-wiggle">🗑️</div>
             <div v-else class="text-6xl animate-spin-slow">♻️</div>
           </div>
-
           <h3 class="text-xl font-bold text-gray-900 mb-2">{{ confirmModal.title }}</h3>
           <p class="text-gray-500 text-sm mb-6">{{ confirmModal.subtext }}</p>
-
           <div class="flex gap-3 justify-center">
             <button @click="confirmModal.show = false" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">Cancel</button>
             <button @click="executeArchive" :class="`px-5 py-2.5 rounded-xl font-bold text-white shadow-lg transform active:scale-95 transition ${confirmModal.action === 'Archive' ? 'bg-red-500 hover:bg-red-600 shadow-red-200' : 'bg-green-600 hover:bg-green-700 shadow-green-200'}`">Yes, {{ confirmModal.action }}</button>
@@ -233,7 +267,7 @@ const saveEdit = async () => {
 </template>
 
 <style scoped>
-/* --- MODAL & CHAT STYLES --- */
+/* Modal & Chat */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;}
 .modal-content { background: white; width: 600px; padding: 20px; border-radius: 8px; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 .modal-header { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; margin-bottom: 15px; align-items: center; }
@@ -248,20 +282,13 @@ const saveEdit = async () => {
 .comment-input textarea { width: 100%; height: 50px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: none; outline: none; }
 .btn-send { background: #007bff; color: white; padding: 0 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
-/* --- ANIMATIONS (Pop, Wiggle, Spin) --- */
+/* Animations */
 .pop-enter-active { animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .pop-leave-active { transition: opacity 0.2s ease; }
 .pop-leave-to { opacity: 0; }
-
 @keyframes pop-in { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-
-@keyframes wiggle { 
-  0%, 100% { transform: rotate(0deg); } 
-  25% { transform: rotate(-10deg); } 
-  75% { transform: rotate(10deg); } 
-}
+@keyframes wiggle { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
 .animate-wiggle { animation: wiggle 1s ease-in-out infinite; }
-
 .animate-spin-slow { animation: spin 3s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>

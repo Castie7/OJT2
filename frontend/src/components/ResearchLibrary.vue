@@ -31,7 +31,7 @@ const showToast = (message, type = 'success') => {
   setTimeout(() => { toast.value.show = false }, 3000)
 }
 
-// --- HELPER: GET COOKIE (More Robust) ---
+// --- HELPER: GET COOKIE ---
 const getCookie = (name) => {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -47,7 +47,6 @@ const fetchResearches = async () => {
       ? 'http://localhost:8080/research/archived' 
       : 'http://localhost:8080/research'
 
-    // We must send token if viewing archives (since it's protected)
     const token = getCookie('auth_token');
     const headers = token ? { 'Authorization': token } : {};
 
@@ -61,7 +60,6 @@ const fetchResearches = async () => {
         emit('update-stats', data.length)
       }
     } else {
-       // If unauthorized (e.g. token expired), default to empty or handle error
        if(showArchived.value) showToast("Access Denied to Archives", "error");
     }
   } catch (error) {
@@ -88,10 +86,6 @@ watch(showArchived, () => {
 
 onMounted(() => {
   fetchResearches()
-  // Debug: Check if Admin is detected
-  if(props.currentUser) {
-      console.log("Current User Role:", props.currentUser.role);
-  }
 })
 
 // --- UPLOAD LOGIC ---
@@ -110,7 +104,6 @@ const submitResearch = async () => {
   if (pdfFile.value) formData.append('pdf_file', pdfFile.value)
 
   try {
-    // Need token for upload too
     const token = getCookie('auth_token');
     const response = await fetch('http://localhost:8080/research/create', { 
         method: 'POST', 
@@ -140,12 +133,8 @@ const requestArchiveToggle = (item) => {
 
 const executeArchiveToggle = async () => {
   if (!confirmModal.value.id) return;
-  
   const token = getCookie('auth_token');
-  if(!token) {
-      showToast("Authentication Error: Please login again.", "error");
-      return;
-  }
+  if(!token) { showToast("Authentication Error", "error"); return; }
 
   try {
     const response = await fetch(`http://localhost:8080/research/archive/${confirmModal.value.id}`, { 
@@ -158,7 +147,7 @@ const executeArchiveToggle = async () => {
         showToast(`Item ${confirmModal.value.action}d successfully!`, "success")
         confirmModal.value.show = false
     } else {
-        showToast("Failed: Access Denied or Server Error", "error");
+        showToast("Failed: Access Denied", "error");
     }
   } catch (error) { showToast("Error updating status", "error") }
 }
@@ -173,7 +162,10 @@ const executeArchiveToggle = async () => {
     </Transition>
 
     <div class="flex justify-between items-center mb-6">
-       <h1 class="text-3xl font-bold text-gray-900">Research Library</h1>
+       <div class="flex items-center gap-4">
+         <img src="/logo.png" alt="BSU Logo" class="h-12 w-auto object-contain hover:scale-105 transition-transform duration-300" />
+         <h1 class="text-3xl font-bold text-gray-900">Research Library</h1>
+       </div>
     </div>
     
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -230,21 +222,31 @@ const executeArchiveToggle = async () => {
 
           <Transition name="fade" mode="out-in">
             <div v-if="!isLoading">
+              
               <div v-if="viewMode === 'list'" class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                   <thead class="bg-gray-50">
                     <tr>
                       <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Title</th>
                       <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Author</th>
-                      <th v-if="currentUser && currentUser.role === 'admin'" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
+                      <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
                     <tr v-for="item in filteredResearches" :key="item.id" class="hover:bg-green-50 transition">
                       <td @click="selectedResearch = item" class="px-6 py-4 font-medium text-gray-900 cursor-pointer">{{ item.title }}</td>
                       <td @click="selectedResearch = item" class="px-6 py-4 text-gray-500 cursor-pointer">{{ item.author }}</td>
-                      <td v-if="currentUser && currentUser.role === 'admin'" class="px-6 py-4">
-                         <button @click.stop="requestArchiveToggle(item)" :class="`text-xs px-2 py-1 rounded font-bold border ${showArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">
+                      
+                      <td class="px-6 py-4 flex items-center gap-2">
+                         <button @click="selectedResearch = item" class="text-xs px-2 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50">
+                           View PDF
+                         </button>
+
+                         <button 
+                           v-if="currentUser && currentUser.role === 'admin'"
+                           @click.stop="requestArchiveToggle(item)" 
+                           :class="`text-xs px-2 py-1 rounded font-bold border ${showArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`"
+                         >
                           {{ showArchived ? 'Restore' : 'Archive' }}
                         </button>
                       </td>
@@ -255,13 +257,20 @@ const executeArchiveToggle = async () => {
 
               <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div v-for="item in filteredResearches" :key="item.id" class="group bg-gray-50 hover:bg-white border border-gray-200 hover:border-green-400 rounded-xl p-4 transition shadow hover:shadow-lg flex flex-col relative">
-                   <button v-if="currentUser && currentUser.role === 'admin'" @click.stop="requestArchiveToggle(item)" :class="`absolute top-2 right-2 text-xs px-2 py-1 rounded font-bold border z-10 ${showArchived ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600 hover:bg-red-100'}`">
+                   
+                   <button 
+                    v-if="currentUser && currentUser.role === 'admin'"
+                    @click.stop="requestArchiveToggle(item)" 
+                    :class="`absolute top-2 right-2 text-xs px-2 py-1 rounded font-bold border z-10 ${showArchived ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600 hover:bg-red-100'}`"
+                   >
                     {{ showArchived ? 'Restore' : 'Archive' }}
                   </button>
+
                   <div @click="selectedResearch = item" class="cursor-pointer">
                     <div class="h-32 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 group-hover:bg-green-50 group-hover:text-green-600 transition"><span class="text-4xl">📄</span></div>
                     <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1 group-hover:text-green-700">{{ item.title }}</h3>
                     <p class="text-sm text-gray-500 mb-2">By {{ item.author }}</p>
+                    <div class="mt-2 text-blue-600 text-xs font-bold hover:underline">Read PDF →</div>
                   </div>
                 </div>
               </div>

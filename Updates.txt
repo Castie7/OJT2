@@ -28,3 +28,7 @@ Ver 1.7
 - Added a researcher account for users
 - Added My Submitted Research for the Researcher and Admin
 - Fixed Bugs
+
+Ver 1.8
+- Fixed Bugs
+- 

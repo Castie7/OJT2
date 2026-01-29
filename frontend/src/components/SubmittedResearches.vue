@@ -13,31 +13,29 @@ const editPdfFile = ref(null)
 const isSaving = ref(false)
 const selectedResearch = ref(null)
 
-// Comments State
+// Modals
 const commentModal = ref({ show: false, researchId: null, title: '', list: [], newComment: '' })
-const isSendingComment = ref(false) // <--- PREVENT SPAM STATE
+const isSendingComment = ref(false)
 const chatContainer = ref(null)
-
-// Confirm Modal
 const confirmModal = ref({ show: false, id: null, action: '', title: '', subtext: '' })
 
-// --- HELPER: DEADLINE CHECKER ---
+// --- HELPERS ---
+const getHeaders = () => {
+  const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1];
+  return { 'Authorization': token };
+}
+
+// Deadline Helper
 const getDeadlineStatus = (deadline) => {
   if (!deadline) return null;
   const today = new Date();
   const due = new Date(deadline);
   const diffTime = due - today;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-
   if (diffDays < 0) return { text: `Overdue by ${Math.abs(diffDays)} days`, color: 'text-red-600 bg-red-100' };
   if (diffDays === 0) return { text: 'Due Today!', color: 'text-red-600 font-bold bg-red-100' };
   if (diffDays <= 7) return { text: `${diffDays} days left`, color: 'text-yellow-700 bg-yellow-100' };
   return { text: due.toLocaleDateString(), color: 'text-gray-500' };
-}
-
-const getHeaders = () => {
-  const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1];
-  return { 'Authorization': token };
 }
 
 // --- FETCH DATA ---
@@ -47,7 +45,6 @@ const fetchData = async () => {
     const endpoint = props.isArchived 
       ? 'http://localhost:8080/research/my-archived' 
       : 'http://localhost:8080/research/my-submissions';
-
     const response = await fetch(endpoint, { headers: getHeaders() })
     if (response.ok) myItems.value = await response.json()
   } catch (error) { console.error("Error fetching items:", error) } 
@@ -64,15 +61,15 @@ const requestArchive = (item) => {
   confirmModal.value = {
     show: true, id: item.id, action: action,
     title: action === 'Archive' ? 'Move to Trash?' : 'Restore File?',
-    subtext: action === 'Archive' ? `Remove "${item.title}"?` : `Restore "${item.title}" to active list?`
+    subtext: action === 'Archive' ? `Remove "${item.title}"?` : `Restore "${item.title}"?`
   }
 }
+
 const executeArchive = async () => {
   if (!confirmModal.value.id) return;
   try {
     await fetch(`http://localhost:8080/research/archive/${confirmModal.value.id}`, { method: 'POST', headers: getHeaders() })
-    confirmModal.value.show = false
-    fetchData() 
+    confirmModal.value.show = false; fetchData() 
   } catch (e) { alert("Error updating status") }
 }
 
@@ -83,21 +80,14 @@ const openComments = async (item) => {
     const res = await fetch(`http://localhost:8080/research/comments/${item.id}`, { headers: getHeaders() })
     if(res.ok) { 
         commentModal.value.list = await res.json(); 
-        scrollToBottom();
+        nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight });
     }
   } catch (e) { console.error("Error loading comments") }
 }
 
-const scrollToBottom = () => {
-  nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight });
-}
-
 const postComment = async () => {
-  // SPAM CHECK: If sending or empty, stop.
   if (isSendingComment.value || !commentModal.value.newComment.trim()) return
-
-  isSendingComment.value = true // LOCK BUTTON
-
+  isSendingComment.value = true
   try {
     await fetch('http://localhost:8080/research/comment', {
       method: 'POST',
@@ -110,39 +100,85 @@ const postComment = async () => {
         comment: commentModal.value.newComment
       })
     })
-    
-    // Refresh Comments
     const refreshRes = await fetch(`http://localhost:8080/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
     commentModal.value.list = await refreshRes.json()
     commentModal.value.newComment = '' 
-    scrollToBottom()
-
-  } catch (e) { 
-    alert("Failed: " + e.message); 
-  } finally {
-    isSendingComment.value = false // UNLOCK BUTTON
-  }
+    nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight });
+  } catch (e) { alert("Failed: " + e.message); }
+  finally { isSendingComment.value = false }
 }
 
-// --- EDIT LOGIC ---
+// --- EDIT LOGIC (SECURED) ---
 const openEdit = (item) => { editingItem.value = { ...item }; editPdfFile.value = null }
-const handleFile = (e) => { editPdfFile.value = e.target.files[0] }
+
+const handleEditFile = (e) => { 
+  const file = e.target.files[0]
+  if (!file) { editPdfFile.value = null; return; }
+
+  // 1. EXTENSION CHECK
+  const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+  const fileExtension = file.name.split('.').pop().toLowerCase();
+  
+  if (!allowedExtensions.includes(fileExtension)) {
+    alert("❌ Invalid File!\nPlease upload a PDF or an Image (JPG/PNG).")
+    e.target.value = ''
+    editPdfFile.value = null
+    return
+  }
+  editPdfFile.value = file 
+}
+
 const saveEdit = async () => {
+  const item = editingItem.value;
+
+  // 1. VALIDATION
+  if (!item.title.trim()) { alert("⚠️ Title is required."); return; }
+  if (!item.author.trim()) { alert("⚠️ Author is required."); return; }
+  if (!item.deadline_date) { alert("⚠️ Deadline is required."); return; }
+
+  // 2. DATE CHECK
+  const start = item.start_date ? new Date(item.start_date) : null;
+  const deadline = new Date(item.deadline_date);
+  const minYear = 2000; const maxYear = 2100;
+
+  if (deadline.getFullYear() < minYear || deadline.getFullYear() > maxYear) {
+     alert(`⚠️ Invalid Date: Year must be between ${minYear} and ${maxYear}.`); return;
+  }
+  if (start && (start.getFullYear() < minYear || start.getFullYear() > maxYear)) {
+     alert(`⚠️ Invalid Start Date: Year must be between ${minYear} and ${maxYear}.`); return;
+  }
+  if (start && deadline < start) {
+    alert("⚠️ Date Error: Deadline cannot be before Start Date."); return;
+  }
+
   isSaving.value = true
   const formData = new FormData()
-  formData.append('title', editingItem.value.title)
-  formData.append('author', editingItem.value.author)
-  formData.append('abstract', editingItem.value.abstract)
-  formData.append('start_date', editingItem.value.start_date || '')
-  formData.append('deadline_date', editingItem.value.deadline_date || '')
+  formData.append('title', item.title)
+  formData.append('author', item.author)
+  formData.append('abstract', item.abstract || '')
+  formData.append('start_date', item.start_date || '')
+  formData.append('deadline_date', item.deadline_date)
 
   if (editPdfFile.value) formData.append('pdf_file', editPdfFile.value)
 
   try {
-    const res = await fetch(`http://localhost:8080/research/update/${editingItem.value.id}`, {
+    const res = await fetch(`http://localhost:8080/research/update/${item.id}`, {
       method: 'POST', headers: getHeaders(), body: formData 
     })
-    if (res.ok) { alert("Updated!"); editingItem.value = null; fetchData() }
+    const result = await res.json()
+
+    if (res.ok) { 
+        alert("✅ Updated Successfully!"); 
+        editingItem.value = null; 
+        fetchData(); 
+    } else {
+        if (result.messages) {
+            const msg = typeof result.messages === 'object' ? Object.values(result.messages).join('\n') : result.messages;
+            alert("❌ Update Failed:\n" + msg);
+        } else {
+            alert("❌ Error: " + (result.message || "Update Failed"));
+        }
+    }
   } catch (e) { alert("Server Error") } finally { isSaving.value = false }
 }
 </script>
@@ -165,7 +201,6 @@ const saveEdit = async () => {
         <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="item in myItems" :key="item.id" class="hover:bg-green-50 transition">
             <td class="px-6 py-4 font-medium text-gray-900">{{ item.title }}</td>
-            
             <td class="px-6 py-4">
               <div v-if="item.deadline_date">
                  <span :class="`px-2 py-1 text-xs rounded font-bold ${getDeadlineStatus(item.deadline_date).color}`">
@@ -175,20 +210,15 @@ const saveEdit = async () => {
               </div>
               <span v-else class="text-gray-400 text-xs">No Deadline</span>
             </td>
-
             <td class="px-6 py-4">
               <span v-if="isArchived" class="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">Archived</span>
               <span v-else-if="item.status === 'pending'" class="px-2 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">⏳ Pending Review</span>
               <span v-else-if="item.status === 'approved'" class="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700 border border-green-200">✅ Published</span>
               <span v-else-if="item.status === 'rejected'" class="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700 border border-red-200">❌ Rejected</span>
             </td>
-
             <td class="px-6 py-4">
-              <button @click="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1 transition-colors">
-                💬 Comments
-              </button>
+              <button @click="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1 transition-colors">💬 Comments</button>
             </td>
-
             <td class="px-6 py-4 text-right flex justify-end gap-2">
               <button v-if="item.status === 'approved' && !isArchived" @click="selectedResearch = item" class="text-xs px-3 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 transition">View PDF</button>
               <template v-else>
@@ -201,7 +231,6 @@ const saveEdit = async () => {
           </tr>
         </tbody>
       </table>
-      
       <div v-if="myItems.length === 0" class="text-center py-10 border border-dashed border-gray-300 rounded mt-4 text-gray-500">
         {{ isArchived ? 'No archived items.' : 'No submissions found.' }}
       </div>
@@ -216,14 +245,9 @@ const saveEdit = async () => {
         <div class="modal-body">
           <div class="comments-section">
             <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Revision History</h4>
-            
             <div class="comments-list" ref="chatContainer">
               <TransitionGroup name="chat">
-                <div 
-                  v-for="c in commentModal.list" 
-                  :key="c.id" 
-                  :class="['comment-bubble', c.role === 'admin' ? 'admin-msg' : 'user-msg']"
-                >
+                <div v-for="c in commentModal.list" :key="c.id" :class="['comment-bubble', c.role === 'admin' ? 'admin-msg' : 'user-msg']">
                   <strong>{{ c.user_name }} ({{ c.role }}):</strong>
                   <p>{{ c.comment }}</p>
                   <small>{{ new Date(c.created_at).toLocaleString() }}</small>
@@ -231,20 +255,9 @@ const saveEdit = async () => {
               </TransitionGroup>
               <p v-if="commentModal.list.length === 0" class="no-comments">No comments yet.</p>
             </div>
-            
             <div class="comment-input">
-              <textarea 
-                v-model="commentModal.newComment" 
-                placeholder="Write a reply..."
-                @keydown.enter.prevent="postComment"
-              ></textarea>
-              <button 
-                @click="postComment" 
-                :disabled="isSendingComment" 
-                :class="`btn btn-send ${isSendingComment ? 'opacity-50 cursor-not-allowed' : ''}`"
-              >
-                {{ isSendingComment ? 'Sending...' : 'Send' }}
-              </button>
+              <textarea v-model="commentModal.newComment" placeholder="Write a reply..." @keydown.enter.prevent="postComment"></textarea>
+              <button @click="postComment" :disabled="isSendingComment" :class="`btn btn-send ${isSendingComment ? 'opacity-50' : ''}`">{{ isSendingComment ? 'Sending...' : 'Send' }}</button>
             </div>
           </div>
         </div>
@@ -267,20 +280,42 @@ const saveEdit = async () => {
       <div class="bg-white rounded-lg w-full max-w-lg p-6 shadow-2xl">
         <h2 class="font-bold text-lg mb-4">Edit Research</h2>
         <div class="space-y-4">
-            <input v-model="editingItem.title" class="w-full border p-2 rounded" />
-            <input v-model="editingItem.author" class="w-full border p-2 rounded" />
+            <div>
+               <label class="block text-xs font-bold text-gray-500 mb-1">Title <span class="text-red-500">*</span></label>
+               <input v-model="editingItem.title" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" />
+            </div>
+            <div>
+               <label class="block text-xs font-bold text-gray-500 mb-1">Author <span class="text-red-500">*</span></label>
+               <input v-model="editingItem.author" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" />
+            </div>
             
             <div class="grid grid-cols-2 gap-4">
-              <div><label class="block text-xs font-bold text-gray-500 mb-1">Started</label><input v-model="editingItem.start_date" type="date" class="w-full border p-2 rounded" /></div>
-              <div><label class="block text-xs font-bold text-gray-500 mb-1">Deadline</label><input v-model="editingItem.deadline_date" type="date" class="w-full border p-2 rounded" /></div>
+              <div>
+                  <label class="block text-xs font-bold text-gray-500 mb-1">Started</label>
+                  <input v-model="editingItem.start_date" type="date" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" />
+              </div>
+              <div>
+                  <label class="block text-xs font-bold text-gray-500 mb-1">Deadline <span class="text-red-500">*</span></label>
+                  <input v-model="editingItem.deadline_date" type="date" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" />
+              </div>
             </div>
 
-            <textarea v-model="editingItem.abstract" class="w-full border p-2 rounded" rows="3"></textarea>
-            <input type="file" @change="handleFile" class="w-full text-sm" accept="application/pdf" />
+            <textarea v-model="editingItem.abstract" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" rows="3" placeholder="Abstract"></textarea>
+            
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">Replace File (Optional)</label>
+                <input 
+                  type="file" 
+                  @change="handleEditFile" 
+                  class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 hover:file:scale-105 file:transition-all file:duration-200 file:cursor-pointer" 
+                  accept=".pdf, .jpg, .jpeg, .png" 
+                />
+            </div>
         </div>
+        
         <div class="flex justify-end gap-2 mt-4">
-            <button @click="editingItem = null" class="text-gray-500 font-bold px-4">Cancel</button>
-            <button @click="saveEdit" :disabled="isSaving" class="bg-yellow-500 text-green-900 px-6 py-2 rounded font-bold">
+            <button @click="editingItem = null" class="text-gray-500 font-bold px-4 hover:bg-gray-100 rounded transition">Cancel</button>
+            <button @click="saveEdit" :disabled="isSaving" class="bg-yellow-500 text-green-900 px-6 py-2 rounded font-bold shadow hover:shadow-lg transform active:scale-95 transition">
                 {{ isSaving ? 'Saving...' : 'Save Changes' }}
             </button>
         </div>
@@ -322,20 +357,10 @@ const saveEdit = async () => {
 .comment-input textarea { width: 100%; height: 50px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: none; outline: none; }
 .btn-send { background: #007bff; color: white; padding: 0 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: opacity 0.3s; }
 
-/* --- ANIMATIONS --- */
+/* Animations */
+.chat-enter-active, .chat-leave-active { transition: all 0.4s ease; }
+.chat-enter-from, .chat-leave-to { opacity: 0; transform: translateY(20px); }
 
-/* Chat Messages Slide In */
-.chat-enter-active,
-.chat-leave-active {
-  transition: all 0.4s ease;
-}
-.chat-enter-from,
-.chat-leave-to {
-  opacity: 0;
-  transform: translateY(20px); /* Slides up */
-}
-
-/* Modal Pop & Icons */
 .pop-enter-active { animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .pop-leave-active { transition: opacity 0.2s ease; }
 .pop-leave-to { opacity: 0; }

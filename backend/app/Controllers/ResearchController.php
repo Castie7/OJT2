@@ -162,6 +162,7 @@ class ResearchController extends BaseController
     }
 
     // 6. UPDATE
+    // 6. UPDATE (SECURED)
     public function update($id = null)
     {
         $this->handleCors();
@@ -169,19 +170,69 @@ class ResearchController extends BaseController
         if (!$user) return $this->failUnauthorized();
 
         $model = new ResearchModel();
+        
+        // Optional: Verify ownership
+        // $item = $model->find($id);
+        // if($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin') return $this->failForbidden();
+
+        // 1. VALIDATION RULES
+        $rules = [
+            'title'         => 'required|min_length[3]',
+            'author'        => 'required|min_length[2]',
+            'start_date'    => 'permit_empty|valid_date[Y-m-d]',
+            'deadline_date' => 'required|valid_date[Y-m-d]',
+        ];
+
+        if (!$this->validate($rules)) {
+            return $this->fail($this->validator->getErrors());
+        }
+
+        // 2. LOGICAL CHECKS (Dates)
+        $start = $this->request->getPost('start_date');
+        $deadline = $this->request->getPost('deadline_date');
+        
+        // Year Range Check
+        $minYear = 2000; $maxYear = 2100;
+        
+        if ($deadline) {
+            $dYear = date('Y', strtotime($deadline));
+            if ($dYear < $minYear || $dYear > $maxYear) return $this->fail("Deadline year must be between $minYear and $maxYear");
+        }
+        
+        if ($start) {
+            $sYear = date('Y', strtotime($start));
+            if ($sYear < $minYear || $sYear > $maxYear) return $this->fail("Start date year must be between $minYear and $maxYear");
+            
+            // Logic Check
+            if ($deadline && strtotime($deadline) < strtotime($start)) {
+                return $this->fail("Deadline cannot be before the Start Date.");
+            }
+        }
+
         $data = [
             'title'       => $this->request->getPost('title'),
             'author'      => $this->request->getPost('author'),
             'abstract'    => $this->request->getPost('abstract'),
-            'start_date'  => $this->request->getPost('start_date'),
-            'deadline_date' => $this->request->getPost('deadline_date'),
+            'start_date'  => $start,
+            'deadline_date' => $deadline,
         ];
 
+        // 3. FILE VALIDATION (Only if new file is sent)
         $file = $this->request->getFile('pdf_file');
-        if ($file && $file->isValid() && !$file->hasMoved()) {
-            $newName = $file->getRandomName();
-            $file->move('public/uploads', $newName);
-            $data['file_path'] = $newName; 
+        if ($file && $file->isValid()) {
+            
+            $mime = $file->getMimeType();
+            $allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+        
+            if(!in_array($mime, $allowedMimes)) {
+                 return $this->fail("Only PDF, JPG, or PNG files are allowed.");
+            }
+
+            if (!$file->hasMoved()) {
+                $newName = $file->getRandomName();
+                $file->move('public/uploads', $newName);
+                $data['file_path'] = $newName; 
+            }
         }
 
         if ($model->update($id, $data)) {

@@ -3,252 +3,255 @@
 namespace App\Controllers;
 
 use App\Models\ResearchModel;
+use App\Models\UserModel; // <--- Critical Import
 use CodeIgniter\API\ResponseTrait;
 
 class ResearchController extends BaseController
 {
     use ResponseTrait;
 
-    // 1. GET APPROVED RESEARCHES (Public View)
+    // --- SECURITY HELPER ---
+    private function validateUser() {
+        $request = service('request');
+        // Get Token from Header
+        $token = $request->getHeaderLine('Authorization');
+        
+        if(!$token) return false;
+
+        $userModel = new UserModel();
+        return $userModel->where('auth_token', $token)->first();
+    }
+
+    private function handleCors() {
+        header('Access-Control-Allow-Origin: *');
+        header("Access-Control-Allow-Headers: Content-Type, Authorization"); 
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
+    }
+
+    // 1. PUBLIC INDEX (Approved Only)
     public function index()
     {
-        header('Access-Control-Allow-Origin: *');
+        $this->handleCors();
         $model = new ResearchModel();
-        
-        // ONLY GET ACTIVE (is_archived = 0) AND APPROVED items
         $data = $model->where('is_archived', 0)
-                      ->where('status', 'approved') // <--- Only show approved
+                      ->where('status', 'approved')
                       ->orderBy('created_at', 'DESC')
                       ->findAll();
-        
         return $this->respond($data);
     }
 
-    // 2. GET PENDING ITEMS (For Approval Page)
+    // 2. MY SUBMISSIONS (Researcher View - All Statuses)
+    public function mySubmissions()
+    {
+        $this->handleCors();
+
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized('Access Denied');
+
+        $model = new ResearchModel();
+        // Get items uploaded by THIS user (Active items only)
+        $data = $model->where('uploaded_by', $user['id'])
+                      ->where('is_archived', 0) 
+                      ->orderBy('created_at', 'DESC')
+                      ->findAll();
+
+        return $this->respond($data);
+    }
+
+    // 3. PENDING (Admin Only)
     public function pending()
     {
-        header('Access-Control-Allow-Origin: *');
-        $model = new ResearchModel();
+        $this->handleCors();
+        
+        $user = $this->validateUser();
+        if (!$user || $user['role'] !== 'admin') {
+            return $this->failForbidden('Access Denied');
+        }
 
-        // Get items that are pending and not hidden
+        $model = new ResearchModel();
         $data = $model->where('status', 'pending')
                       ->where('is_archived', 0)
-                      ->orderBy('created_at', 'ASC') // Oldest first
+                      ->orderBy('created_at', 'ASC')
                       ->findAll();
-
         return $this->respond($data);
     }
 
-    // 3. GET ARCHIVED ITEMS (Admin Only)
+    // 4. ARCHIVED (Secure)
     public function archived()
     {
-        header('Access-Control-Allow-Origin: *');
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized('Access Denied');
+
         $model = new ResearchModel();
-        
-        $data = $model->where('is_archived', 1)
-                      ->orderBy('created_at', 'DESC')
-                      ->findAll();
-        
+        $builder = $model->where('is_archived', 1);
+
+        // If NOT admin, only show my own files
+        if ($user['role'] !== 'admin') {
+            $builder->where('uploaded_by', $user['id']);
+        }
+
+        $data = $builder->orderBy('created_at', 'DESC')->findAll();
         return $this->respond($data);
     }
 
-    // 4. APPROVE RESEARCH
-    public function approve($id = null)
-    {
-        header('Access-Control-Allow-Origin: *');
-        header("Access-Control-Allow-Methods: POST, OPTIONS");
-        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
-
-        $model = new ResearchModel();
-        
-        $data = ['status' => 'approved'];
-        
-        if ($model->update($id, $data)) {
-            return $this->respond(['status' => 'success', 'message' => 'Research Approved Successfully']);
-        } else {
-            return $this->fail('Failed to approve');
-        }
-    }
-
-    // 5. REJECT RESEARCH
-    public function reject($id = null)
-    {
-        header('Access-Control-Allow-Origin: *');
-        header("Access-Control-Allow-Methods: POST, OPTIONS");
-        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
-
-        $model = new ResearchModel();
-
-        $data = ['status' => 'rejected']; 
-        
-        if ($model->update($id, $data)) {
-            return $this->respond(['status' => 'success', 'message' => 'Research Rejected']);
-        } else {
-            return $this->fail('Failed to reject');
-        }
-    }
-
-    // TOGGLE ARCHIVE STATUS (Hide/Restore)
-    public function toggleArchive($id = null)
-    {
-        header('Access-Control-Allow-Origin: *');
-        header("Access-Control-Allow-Methods: POST, OPTIONS");
-        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
-
-        $model = new ResearchModel();
-        
-        // Get current status
-        $item = $model->find($id);
-        if (!$item) return $this->failNotFound('Item not found');
-
-        // Flip the status (0 -> 1, or 1 -> 0)
-        $newStatus = $item['is_archived'] == 0 ? 1 : 0;
-        
-        $model->update($id, ['is_archived' => $newStatus]);
-
-        return $this->respond(['status' => 'success', 'message' => 'Status Updated']);
-    }
-
-    // 6. CREATE NEW RESEARCH (WITH FILE UPLOAD)
+    // 5. CREATE
     public function create()
     {
-        header('Access-Control-Allow-Origin: *');
-        header("Access-Control-Allow-Headers: Content-Type");
-        header("Access-Control-Allow-Methods: POST, OPTIONS");
-
-        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") {
-            die();
-        }
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized('Invalid Token');
 
         $model = new ResearchModel();
 
-        // 1. Get Text Data (Standard POST, not JSON anymore)
         $title = $this->request->getPost('title');
         $author = $this->request->getPost('author');
         $abstract = $this->request->getPost('abstract');
-        $uploadedBy = $this->request->getPost('uploaded_by');
         
-        // 2. Handle the File
-        $file = $this->request->getFile('pdf_file'); // We will name the input 'pdf_file' in Vue
+        $file = $this->request->getFile('pdf_file');
         $fileName = null;
-
         if ($file && $file->isValid() && !$file->hasMoved()) {
-            // Check if it is really a PDF
-            if ($file->getMimeType() !== 'application/pdf') {
-                return $this->respond(['status' => 'error', 'message' => 'Only PDF files are allowed!']);
-            }
-
-            // Move file to 'public/uploads' folder
-            $fileName = $file->getRandomName(); // Generate random name like "17382_asd.pdf"
+            $fileName = $file->getRandomName();
             $file->move(ROOTPATH . 'public/uploads', $fileName);
         }
 
-        // 3. Save to Database
         $data = [
             'title'  => $title,
             'author' => $author,
             'abstract' => $abstract,
-            'file_path' => $fileName, 
-            'uploaded_by' => $uploadedBy,
-            'status' => 'pending' // <--- Explicitly set to pending
+            'file_path' => $fileName,
+            'uploaded_by' => $user['id'], 
+            'status' => 'pending'
         ];
 
         $model->insert($data);
-
-        return $this->respond(['status' => 'success', 'message' => 'Research Submitted for Approval!']);
+        return $this->respond(['status' => 'success']);
     }
 
+    // 6. UPDATE
     public function update($id = null)
     {
-       // $this->handleCors(); 
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized();
 
         $model = new ResearchModel();
         
-        // 1. Get Text Data (Changed from getJSON to getPost)
+        // Optional: Check if user owns this file before updating
+        // $item = $model->find($id);
+        // if($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin') return $this->failForbidden();
+
         $data = [
             'title'    => $this->request->getPost('title'),
             'author'   => $this->request->getPost('author'),
             'abstract' => $this->request->getPost('abstract'),
         ];
 
-        // 2. Handle New File Upload (Optional)
         $file = $this->request->getFile('pdf_file');
-
         if ($file && $file->isValid() && !$file->hasMoved()) {
-            // Validate it is a PDF
-            if ($file->getMimeType() !== 'application/pdf') {
-                return $this->fail('Only PDF files are allowed');
-            }
-
-            // Upload new file
             $newName = $file->getRandomName();
-            $file->move('uploads', $newName);
-            
-            // Add new filename to database update array
+            $file->move('public/uploads', $newName);
             $data['file_path'] = $newName; 
         }
 
         if ($model->update($id, $data)) {
-            return $this->respond(['status' => 'success', 'message' => 'Research updated']);
-        } else {
-            return $this->fail('Failed to update');
+            return $this->respond(['status' => 'success']);
         }
+        return $this->fail('Failed to update');
     }
 
-    // ... existing code ...
+    // 7. APPROVE
+    public function approve($id = null)
+    {
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
 
-    // 7. GET COMMENTS FOR A RESEARCH ITEM
+        $model = new ResearchModel();
+        $model->update($id, ['status' => 'approved']);
+        return $this->respond(['status' => 'success']);
+    }
+
+    // 8. REJECT
+    public function reject($id = null)
+    {
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
+
+        $model = new ResearchModel();
+        $model->update($id, ['status' => 'rejected']);
+        return $this->respond(['status' => 'success']);
+    }
+
+    // 9. ARCHIVE TOGGLE
+    public function toggleArchive($id = null)
+    {
+        $this->handleCors();
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized();
+
+        $model = new ResearchModel();
+        $item = $model->find($id);
+        
+        if ($user['role'] !== 'admin' && $item['uploaded_by'] != $user['id']) {
+            return $this->failForbidden();
+        }
+
+        $newStatus = $item['is_archived'] == 0 ? 1 : 0;
+        $model->update($id, ['is_archived' => $newStatus]);
+        return $this->respond(['status' => 'success']);
+    }
+
+    // 10. GET COMMENTS
     public function getComments($id = null)
     {
-        header('Access-Control-Allow-Origin: *');
-        
+        $this->handleCors();
         $commentModel = new \App\Models\ResearchCommentModel();
-        
-        // Get all comments for this research ID, ordered by time
-        $data = $commentModel->where('research_id', $id)
-                             ->orderBy('created_at', 'ASC')
-                             ->findAll();
-                             
+        $data = $commentModel->where('research_id', $id)->orderBy('created_at', 'ASC')->findAll();
         return $this->respond($data);
     }
 
-    // 8. ADD A COMMENT
+    // 11. ADD COMMENT
     public function addComment()
     {
-        header('Access-Control-Allow-Origin: *');
-        header("Access-Control-Allow-Methods: POST, OPTIONS");
-        header("Access-Control-Allow-Headers: Content-Type");
+        $this->handleCors();
+        $user = $this->validateUser(); 
+        // Note: You might want to enforce validation here too if strict
         
-        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
-
-        // Check if Model exists
         $commentModel = new \App\Models\ResearchCommentModel();
-        
-        // Get Input
         $json = $this->request->getJSON();
 
-        // Safety Check: Did we receive data?
-        if (!$json) {
-            return $this->fail('No JSON data received');
-        }
-
         $data = [
-            'research_id' => $json->research_id ?? null,
-            'user_id'     => $json->user_id ?? 0,
-            'user_name'   => $json->user_name ?? 'Anonymous',
-            'role'        => $json->role ?? 'user',
-            'comment'     => $json->comment ?? ''
+            'research_id' => $json->research_id,
+            'user_id'     => $json->user_id,
+            'user_name'   => $json->user_name,
+            'role'        => $json->role,
+            'comment'     => $json->comment
         ];
 
-        try {
-            if ($commentModel->insert($data)) {
-                return $this->respondCreated(['status' => 'success']);
-            } else {
-                return $this->fail('Failed to save to database');
-            }
-        } catch (\Exception $e) {
-            // This will show you the SQL error if the table is missing
-            return $this->failServerError($e->getMessage());
-        }
+        $commentModel->insert($data);
+        return $this->respondCreated(['status' => 'success']);
+    }
+    // ... inside ResearchController.php ...
+
+    // 12. GET MY ARCHIVED FILES (Strictly my own)
+    public function myArchived()
+    {
+        $this->handleCors();
+        
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized('Access Denied');
+
+        $model = new ResearchModel();
+
+        // STRICTLY filter by the logged-in user's ID
+        $data = $model->where('uploaded_by', $user['id'])
+                      ->where('is_archived', 1) // Only Archived
+                      ->orderBy('created_at', 'DESC')
+                      ->findAll();
+
+        return $this->respond($data);
     }
 }

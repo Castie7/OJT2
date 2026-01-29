@@ -10,11 +10,11 @@ class AuthController extends BaseController
     use ResponseTrait;
 
     // ------------------------------------------------------------------
-    // 1. LOGIN (Generate Token)
+    // 1. LOGIN (Generate Token & Return Role)
     // ------------------------------------------------------------------
     public function login()
     {
-        $this->handleCors(); // <--- 1. Check CORS first. If it's OPTIONS, script dies here.
+        $this->handleCors();
 
         try {
             $json = $this->request->getJSON();
@@ -32,11 +32,18 @@ class AuthController extends BaseController
 
                 // Save Token to Database
                 $model->update($user['id'], ['auth_token' => $token]);
+                
+                // PREPARE USER DATA (Include ID and Role)
+                $userData = [
+                    'id'   => $user['id'],
+                    'name' => $user['name'],
+                    'role' => $user['role'] // <--- CRITICAL FOR PERMISSIONS
+                ];
 
                 return $this->respond([
-                    'status' => 'success',
-                    'user' => $user['name'],
-                    'token' => $token, 
+                    'status'  => 'success',
+                    'user'    => $userData, // We send the whole object now
+                    'token'   => $token, 
                     'message' => 'Login Successful!'
                 ]);
             } else {
@@ -48,11 +55,11 @@ class AuthController extends BaseController
     }
 
     // ------------------------------------------------------------------
-    // 2. VERIFY SESSION (Check Token)
+    // 2. VERIFY SESSION (Restore ID and Role)
     // ------------------------------------------------------------------
     public function verify()
     {
-        $this->handleCors(); // <--- CORS Check
+        $this->handleCors();
 
         $json = $this->request->getJSON();
         $token = $json->token ?? '';
@@ -63,9 +70,16 @@ class AuthController extends BaseController
         $user = $model->where('auth_token', $token)->first();
 
         if ($user) {
+            // Restore full user context so refresh doesn't lose admin status
+            $userData = [
+                'id'   => $user['id'],
+                'name' => $user['name'],
+                'role' => $user['role']
+            ];
+
             return $this->respond([
                 'status' => 'success',
-                'user' => $user['name']
+                'user'   => $userData
             ]);
         } else {
             return $this->failUnauthorized('Invalid or expired token');
@@ -77,7 +91,7 @@ class AuthController extends BaseController
     // ------------------------------------------------------------------
     public function logout()
     {
-        $this->handleCors(); // <--- CORS Check
+        $this->handleCors();
 
         $json = $this->request->getJSON();
         $token = $json->token ?? '';
@@ -98,20 +112,14 @@ class AuthController extends BaseController
     // Helper: BRUTE FORCE CORS HANDLE
     // ------------------------------------------------------------------
     private function handleCors() {
-        // 1. Allow access from anywhere
         header('Access-Control-Allow-Origin: *');
-        
-        // 2. Allow specific headers (Authorization is crucial for your tokens)
         header("Access-Control-Allow-Headers: Content-Type, Authorization, X-API-KEY, X-Requested-With");
-        
-        // 3. Allow methods
         header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
         
-        // 4. THE FIX: If it's an OPTIONS request, STOP EVERYTHING and say "OK"
         $method = $_SERVER['REQUEST_METHOD'];
         if ($method == "OPTIONS") {
             header("HTTP/1.1 200 OK");
-            exit(); // <--- This prevents the framework from loading more logic and crashing
+            exit(); 
         }
     }
 }

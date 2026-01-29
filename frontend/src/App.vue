@@ -4,7 +4,7 @@ import LoginForm from './components/LoginForm.vue'
 import Dashboard from './components/Dashboard.vue'
 
 const currentPage = ref('dashboard') 
-const currentUser = ref(null)
+const currentUser = ref(null) // This will now store { id, name, role }
 
 // --- HELPER: MANAGE COOKIES ---
 const setCookie = (name, value, days) => {
@@ -29,8 +29,8 @@ onMounted(async () => {
   const token = getCookie('auth_token');
   
   if (token) {
-    // We found a cookie! Ask backend if it's still valid.
     try {
+      // Ask backend to verify token and return User Role & ID
       const response = await fetch('http://localhost:8080/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,11 +39,11 @@ onMounted(async () => {
       const data = await response.json();
       
       if (data.status === 'success') {
-        // Token is valid, restore session
+        // Restore the full user object (id, name, role)
         currentUser.value = data.user;
-        console.log("Session restored via Cookie");
+        console.log("Session restored. Role:", currentUser.value.role);
       } else {
-        // Token expired or fake, clear it
+        // Token expired, clear it
         deleteCookie('auth_token');
       }
     } catch (e) {
@@ -54,9 +54,12 @@ onMounted(async () => {
 
 // --- 2. LOGIN ACTION ---
 const onLoginSuccess = (data) => {
-  currentUser.value = data.user; // Set Name
+  // 'data.user' is now an object: { id: 1, name: "Admin", role: "admin" }
+  currentUser.value = data.user; 
   currentPage.value = 'dashboard';
   
+  console.log("Login Success. Role:", currentUser.value.role);
+
   // Save Token to Cookie (Valid for 7 days)
   if (data.token) {
     setCookie('auth_token', data.token, 7);
@@ -67,7 +70,6 @@ const onLoginSuccess = (data) => {
 const onLogout = async () => {
   const token = getCookie('auth_token');
   
-  // Tell backend to destroy token
   if (token) {
     await fetch('http://localhost:8080/auth/logout', {
       method: 'POST',
@@ -79,7 +81,7 @@ const onLogout = async () => {
   // Clear Frontend State
   currentUser.value = null;
   currentPage.value = 'dashboard';
-  deleteCookie('auth_token'); // Delete cookie
+  deleteCookie('auth_token'); 
 }
 
 const goToLogin = () => { currentPage.value = 'login' }
@@ -99,4 +101,3 @@ const goToLogin = () => { currentPage.value = 'login' }
     @logout-click="onLogout" 
   />
 </template>
-

@@ -31,6 +31,14 @@ const showToast = (message, type = 'success') => {
   setTimeout(() => { toast.value.show = false }, 3000)
 }
 
+// --- HELPER: GET COOKIE (More Robust) ---
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
 // --- FETCH DATA ---
 const fetchResearches = async () => {
   isLoading.value = true
@@ -39,7 +47,12 @@ const fetchResearches = async () => {
       ? 'http://localhost:8080/research/archived' 
       : 'http://localhost:8080/research'
 
-    const response = await fetch(endpoint)
+    // We must send token if viewing archives (since it's protected)
+    const token = getCookie('auth_token');
+    const headers = token ? { 'Authorization': token } : {};
+
+    const response = await fetch(endpoint, { headers })
+    
     if (response.ok) {
       const data = await response.json()
       researches.value = data
@@ -47,6 +60,9 @@ const fetchResearches = async () => {
       if (!showArchived.value) {
         emit('update-stats', data.length)
       }
+    } else {
+       // If unauthorized (e.g. token expired), default to empty or handle error
+       if(showArchived.value) showToast("Access Denied to Archives", "error");
     }
   } catch (error) {
     showToast("Failed to load data.", "error")
@@ -72,6 +88,10 @@ watch(showArchived, () => {
 
 onMounted(() => {
   fetchResearches()
+  // Debug: Check if Admin is detected
+  if(props.currentUser) {
+      console.log("Current User Role:", props.currentUser.role);
+  }
 })
 
 // --- UPLOAD LOGIC ---
@@ -85,11 +105,18 @@ const submitResearch = async () => {
   formData.append('title', title.value)
   formData.append('author', author.value)
   formData.append('abstract', abstract.value)
-  formData.append('uploaded_by', props.currentUser)
+  const userId = props.currentUser.id || props.currentUser
+  formData.append('uploaded_by', userId)
   if (pdfFile.value) formData.append('pdf_file', pdfFile.value)
 
   try {
-    const response = await fetch('http://localhost:8080/research/create', { method: 'POST', body: formData })
+    // Need token for upload too
+    const token = getCookie('auth_token');
+    const response = await fetch('http://localhost:8080/research/create', { 
+        method: 'POST', 
+        headers: { 'Authorization': token },
+        body: formData 
+    })
     const result = await response.json()
     if (result.status === 'success') {
       showToast("Uploaded Successfully!", "success")
@@ -113,11 +140,26 @@ const requestArchiveToggle = (item) => {
 
 const executeArchiveToggle = async () => {
   if (!confirmModal.value.id) return;
+  
+  const token = getCookie('auth_token');
+  if(!token) {
+      showToast("Authentication Error: Please login again.", "error");
+      return;
+  }
+
   try {
-    await fetch(`http://localhost:8080/research/archive/${confirmModal.value.id}`, { method: 'POST' })
-    fetchResearches() 
-    showToast(`Item ${confirmModal.value.action}d successfully!`, "success")
-    confirmModal.value.show = false
+    const response = await fetch(`http://localhost:8080/research/archive/${confirmModal.value.id}`, { 
+      method: 'POST',
+      headers: { 'Authorization': token } 
+    })
+    
+    if(response.ok) {
+        fetchResearches() 
+        showToast(`Item ${confirmModal.value.action}d successfully!`, "success")
+        confirmModal.value.show = false
+    } else {
+        showToast("Failed: Access Denied or Server Error", "error");
+    }
   } catch (error) { showToast("Error updating status", "error") }
 }
 </script>
@@ -125,7 +167,7 @@ const executeArchiveToggle = async () => {
 <template>
   <div>
     <Transition name="slide-fade">
-      <div v-if="toast.show" :class="`fixed bottom-5 right-5 z-50 px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 text-white font-bold transition-all ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`">
+      <div v-if="toast.show" :class="`fixed bottom-5 right-5 z-[100] px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 text-white font-bold transition-all ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`">
         <span>{{ toast.type === 'error' ? '⚠️' : '✅' }}</span><span>{{ toast.message }}</span>
       </div>
     </Transition>
@@ -166,8 +208,12 @@ const executeArchiveToggle = async () => {
                 <input v-model="searchQuery" type="text" placeholder="Search title or author..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"/>
               </div>
               <div class="flex gap-2">
-                <button v-if="currentUser" @click="showArchived = !showArchived" :class="`px-4 py-2 text-sm font-bold rounded-md border transition whitespace-nowrap ${showArchived ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'}`">
-                  {{ showArchived ? 'Active' : 'Archive' }}
+                <button 
+                  v-if="currentUser && currentUser.role === 'admin'" 
+                  @click="showArchived = !showArchived" 
+                  :class="`px-4 py-2 text-sm font-bold rounded-md border transition whitespace-nowrap ${showArchived ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'}`"
+                >
+                  {{ showArchived ? 'View Active' : 'View Archive' }}
                 </button>
                 <div class="flex bg-gray-100 p-1 rounded-lg shrink-0">
                   <button @click="viewMode = 'list'" :class="`px-3 py-1 text-sm font-medium rounded-md transition ${viewMode === 'list' ? 'bg-white text-green-700 shadow' : 'text-gray-500 hover:text-gray-700'}`">📃</button>
@@ -190,14 +236,14 @@ const executeArchiveToggle = async () => {
                     <tr>
                       <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Title</th>
                       <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Author</th>
-                      <th v-if="currentUser" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
+                      <th v-if="currentUser && currentUser.role === 'admin'" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
                     <tr v-for="item in filteredResearches" :key="item.id" class="hover:bg-green-50 transition">
                       <td @click="selectedResearch = item" class="px-6 py-4 font-medium text-gray-900 cursor-pointer">{{ item.title }}</td>
                       <td @click="selectedResearch = item" class="px-6 py-4 text-gray-500 cursor-pointer">{{ item.author }}</td>
-                      <td v-if="currentUser" class="px-6 py-4">
+                      <td v-if="currentUser && currentUser.role === 'admin'" class="px-6 py-4">
                          <button @click.stop="requestArchiveToggle(item)" :class="`text-xs px-2 py-1 rounded font-bold border ${showArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">
                           {{ showArchived ? 'Restore' : 'Archive' }}
                         </button>
@@ -209,7 +255,7 @@ const executeArchiveToggle = async () => {
 
               <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div v-for="item in filteredResearches" :key="item.id" class="group bg-gray-50 hover:bg-white border border-gray-200 hover:border-green-400 rounded-xl p-4 transition shadow hover:shadow-lg flex flex-col relative">
-                   <button v-if="currentUser" @click.stop="requestArchiveToggle(item)" :class="`absolute top-2 right-2 text-xs px-2 py-1 rounded font-bold border z-10 ${showArchived ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600 hover:bg-red-100'}`">
+                   <button v-if="currentUser && currentUser.role === 'admin'" @click.stop="requestArchiveToggle(item)" :class="`absolute top-2 right-2 text-xs px-2 py-1 rounded font-bold border z-10 ${showArchived ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600 hover:bg-red-100'}`">
                     {{ showArchived ? 'Restore' : 'Archive' }}
                   </button>
                   <div @click="selectedResearch = item" class="cursor-pointer">
@@ -249,7 +295,7 @@ const executeArchiveToggle = async () => {
     </Transition>
 
     <Transition name="pop">
-      <div v-if="confirmModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+      <div v-if="confirmModal.show" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center">
           <div class="mb-4 flex justify-center">
             <div v-if="confirmModal.action === 'Archive'" class="text-6xl animate-wiggle">🗑️</div>
@@ -268,7 +314,7 @@ const executeArchiveToggle = async () => {
 </template>
 
 <style scoped>
-/* Animations shared with MyWorkspace */
+/* Animations */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 .slide-fade-enter-active { transition: all 0.3s ease-out; }

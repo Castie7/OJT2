@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 29, 2026 at 02:28 AM
+-- Generation Time: Jan 29, 2026 at 03:36 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -53,10 +53,12 @@ INSERT INTO `researches` (`id`, `title`, `author`, `abstract`, `created_at`, `fi
 (5, 'asdffffff', 'asdffff', 'asdffff', '2026-01-28 15:19:49', '1769584815_25ecc2d593570c132cdd.pdf', 'Super Admin', 1, 1, NULL, 'pending'),
 (6, 'asdww', 'awww', 'wwww', '2026-01-28 15:55:16', '1769586916_81d3b1cf049180b3caae.pdf', 'Super Admin', 1, 1, NULL, 'pending'),
 (7, 'aaa', 'aaa', 'aaa', '2026-01-28 16:21:34', NULL, 'Super Admin', 1, 1, NULL, 'pending'),
-(8, 'asd', 'asda', 'sd', '2026-01-28 16:56:33', NULL, 'Super Admin', 0, 0, NULL, 'approved'),
-(9, 'aaaaaaaaaaaaaaaaaa', 'asdsssssssss', 'asdsssssssss', '2026-01-28 17:01:31', '1769590958_d521b0e18faa385ace8d.pdf', 'Super Admin', 0, 0, NULL, 'approved'),
-(10, 'Testing', 'Ni Syak', 'Well', '2026-01-29 09:03:33', '1769648613_29d0059c809502ffd950.pdf', 'Super Admin', 0, 0, NULL, 'approved'),
-(11, 'aaaa', 'aaa', 'aaaaaaa', '2026-01-29 09:15:40', '1769649340_40cfd2df09e8eecba214.pdf', 'Super Admin', 0, 0, NULL, 'rejected');
+(8, 'asd', 'asda', 'sd', '2026-01-28 16:56:33', NULL, 'Super Admin', 1, 0, NULL, 'approved'),
+(9, 'aaaaaaaaaaaaaaaaaa', 'asdsssssssss', 'asdsssssssss', '2026-01-28 17:01:31', '1769590958_d521b0e18faa385ace8d.pdf', 'Super Admin', 1, 0, NULL, 'approved'),
+(10, 'Testing', 'Ni Syak', 'Well', '2026-01-29 09:03:33', '1769648613_29d0059c809502ffd950.pdf', 'Super Admin', 1, 0, NULL, 'approved'),
+(11, 'aaaa', 'aaa', 'aaaaaaa', '2026-01-29 09:15:40', '1769649340_40cfd2df09e8eecba214.pdf', 'Super Admin', 0, 0, NULL, 'rejected'),
+(12, 'Juan Only', 'Juan Only', 'asdf', '2026-01-29 09:54:54', '1769651694_9dae4ade6cd00f5373f2.pdf', '4', 0, 0, NULL, 'pending'),
+(13, 'Juan Only', 'Juannnnnn', 'wells', '2026-01-29 10:04:11', '1769652251_1f429d95e61f453e0d55.pdf', '4', 1, 0, NULL, 'pending');
 
 -- --------------------------------------------------------
 
@@ -80,7 +82,10 @@ CREATE TABLE `research_comments` (
 
 INSERT INTO `research_comments` (`id`, `research_id`, `user_id`, `user_name`, `role`, `comment`, `created_at`) VALUES
 (1, 10, 0, 'Admin', 'admin', 'well', '2026-01-29 09:14:08'),
-(2, 10, 0, 'Admin', 'admin', 'af', '2026-01-29 09:14:45');
+(2, 10, 0, 'Admin', 'admin', 'af', '2026-01-29 09:14:45'),
+(3, 12, 3, 'Super Admin', 'admin', 'what if', '2026-01-29 10:11:31'),
+(4, 12, 4, 'Juan Researcher', 'user', 'what iffff', '2026-01-29 10:12:30'),
+(5, 12, 4, 'Juan Researcher', 'user', 'Sir What iff', '2026-01-29 10:17:19');
 
 -- --------------------------------------------------------
 
@@ -94,15 +99,17 @@ CREATE TABLE `users` (
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
-  `auth_token` varchar(64) DEFAULT NULL
+  `auth_token` varchar(64) DEFAULT NULL,
+  `role` enum('admin','user') DEFAULT 'user'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `name`, `email`, `password`, `created_at`, `auth_token`) VALUES
-(3, 'Super Admin', 'admin@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-28 11:20:35', 'cc82f57c4be4110df971f70f88d5466029d080f70590192f5ddc4f1038f72b58');
+INSERT INTO `users` (`id`, `name`, `email`, `password`, `created_at`, `auth_token`, `role`) VALUES
+(3, 'Super Admin', 'admin@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-28 11:20:35', NULL, 'admin'),
+(4, 'Juan Researcher', 'researcher@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-29 09:42:12', '00685e67c71ae9f547e9d1a8d0ec0efa610a4a7d6c30dca72285bd2fdaaf1c3d', 'user');
 
 --
 -- Indexes for dumped tables
@@ -135,19 +142,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `researches`
 --
 ALTER TABLE `researches`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `research_comments`
 --
 ALTER TABLE `research_comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

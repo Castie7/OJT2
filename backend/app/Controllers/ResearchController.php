@@ -3,7 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\ResearchModel;
-use App\Models\UserModel; // <--- Critical Import
+use App\Models\UserModel;
 use CodeIgniter\API\ResponseTrait;
 
 class ResearchController extends BaseController
@@ -13,7 +13,6 @@ class ResearchController extends BaseController
     // --- SECURITY HELPER ---
     private function validateUser() {
         $request = service('request');
-        // Get Token from Header
         $token = $request->getHeaderLine('Authorization');
         
         if(!$token) return false;
@@ -24,12 +23,12 @@ class ResearchController extends BaseController
 
     private function handleCors() {
         header('Access-Control-Allow-Origin: *');
-        header("Access-Control-Allow-Headers: Content-Type, Authorization"); 
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With"); 
         header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
         if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
     }
 
-    // 1. PUBLIC INDEX (Approved Only)
+    // 1. PUBLIC INDEX
     public function index()
     {
         $this->handleCors();
@@ -41,33 +40,27 @@ class ResearchController extends BaseController
         return $this->respond($data);
     }
 
-    // 2. MY SUBMISSIONS (Researcher View - All Statuses)
+    // 2. MY SUBMISSIONS
     public function mySubmissions()
     {
         $this->handleCors();
-
         $user = $this->validateUser();
         if (!$user) return $this->failUnauthorized('Access Denied');
 
         $model = new ResearchModel();
-        // Get items uploaded by THIS user (Active items only)
         $data = $model->where('uploaded_by', $user['id'])
                       ->where('is_archived', 0) 
                       ->orderBy('created_at', 'DESC')
                       ->findAll();
-
         return $this->respond($data);
     }
 
-    // 3. PENDING (Admin Only)
+    // 3. PENDING (Admin)
     public function pending()
     {
         $this->handleCors();
-        
         $user = $this->validateUser();
-        if (!$user || $user['role'] !== 'admin') {
-            return $this->failForbidden('Access Denied');
-        }
+        if (!$user || $user['role'] !== 'admin') return $this->failForbidden('Access Denied');
 
         $model = new ResearchModel();
         $data = $model->where('status', 'pending')
@@ -86,43 +79,82 @@ class ResearchController extends BaseController
 
         $model = new ResearchModel();
         $builder = $model->where('is_archived', 1);
-
-        // If NOT admin, only show my own files
         if ($user['role'] !== 'admin') {
             $builder->where('uploaded_by', $user['id']);
         }
-
         $data = $builder->orderBy('created_at', 'DESC')->findAll();
         return $this->respond($data);
     }
 
-    // 5. CREATE
+    // 5. CREATE (SECURED)
     public function create()
     {
         $this->handleCors();
         $user = $this->validateUser();
         if (!$user) return $this->failUnauthorized('Invalid Token');
 
-        $model = new ResearchModel();
+        // 1. DEFINE VALIDATION RULES
+        $rules = [
+            'title'         => 'required|min_length[3]',
+            'author'        => 'required|min_length[2]',
+            'start_date'    => 'required|valid_date[Y-m-d]',
+            'deadline_date' => 'required|valid_date[Y-m-d]',
+            // pdf_file is handled separately via getFile()
+        ];
 
-        $title = $this->request->getPost('title');
-        $author = $this->request->getPost('author');
-        $abstract = $this->request->getPost('abstract');
+        if (!$this->validate($rules)) {
+            return $this->fail($this->validator->getErrors());
+        }
+
+        // 2. LOGICAL CHECKS (PHP Side)
+        $start = $this->request->getPost('start_date');
+        $deadline = $this->request->getPost('deadline_date');
+        
+        $startYear = date('Y', strtotime($start));
+        $deadlineYear = date('Y', strtotime($deadline));
+
+        // A. Prevent crazy years (e.g., 11111 or 1900)
+        if ($startYear < 2000 || $startYear > 2100 || $deadlineYear < 2000 || $deadlineYear > 2100) {
+            return $this->fail("Invalid Year. Dates must be between 2000 and 2100.");
+        }
+
+        // B. Ensure Deadline is AFTER Start
+        if (strtotime($deadline) < strtotime($start)) {
+            return $this->fail("Deadline cannot be before the Start Date.");
+        }
+
+        $model = new ResearchModel();
         
         $file = $this->request->getFile('pdf_file');
         $fileName = null;
-        if ($file && $file->isValid() && !$file->hasMoved()) {
+
+        // 3. FILE VALIDATION
+        if (!$file || !$file->isValid()) {
+            return $this->fail("File is invalid or missing.");
+        }
+        
+        // Ensure strictly PDF or Image
+        $mime = $file->getMimeType();
+        $allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+        
+        if(!in_array($mime, $allowedMimes)) {
+             return $this->fail("Only PDF, JPG, or PNG files are allowed.");
+        }
+
+        if (!$file->hasMoved()) {
             $fileName = $file->getRandomName();
             $file->move(ROOTPATH . 'public/uploads', $fileName);
         }
 
         $data = [
-            'title'  => $title,
-            'author' => $author,
-            'abstract' => $abstract,
-            'file_path' => $fileName,
+            'title'       => $this->request->getPost('title'),
+            'author'      => $this->request->getPost('author'),
+            'abstract'    => $this->request->getPost('abstract'),
+            'start_date'  => $start,
+            'deadline_date' => $deadline,
+            'file_path'   => $fileName,
             'uploaded_by' => $user['id'], 
-            'status' => 'pending'
+            'status'      => 'pending'
         ];
 
         $model->insert($data);
@@ -137,15 +169,12 @@ class ResearchController extends BaseController
         if (!$user) return $this->failUnauthorized();
 
         $model = new ResearchModel();
-        
-        // Optional: Check if user owns this file before updating
-        // $item = $model->find($id);
-        // if($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin') return $this->failForbidden();
-
         $data = [
-            'title'    => $this->request->getPost('title'),
-            'author'   => $this->request->getPost('author'),
-            'abstract' => $this->request->getPost('abstract'),
+            'title'       => $this->request->getPost('title'),
+            'author'      => $this->request->getPost('author'),
+            'abstract'    => $this->request->getPost('abstract'),
+            'start_date'  => $this->request->getPost('start_date'),
+            'deadline_date' => $this->request->getPost('deadline_date'),
         ];
 
         $file = $this->request->getFile('pdf_file');
@@ -185,7 +214,7 @@ class ResearchController extends BaseController
         return $this->respond(['status' => 'success']);
     }
 
-    // 9. ARCHIVE TOGGLE
+    // 9. TOGGLE ARCHIVE
     public function toggleArchive($id = null)
     {
         $this->handleCors();
@@ -218,7 +247,6 @@ class ResearchController extends BaseController
     {
         $this->handleCors();
         $user = $this->validateUser(); 
-        // Note: You might want to enforce validation here too if strict
         
         $commentModel = new \App\Models\ResearchCommentModel();
         $json = $this->request->getJSON();
@@ -234,24 +262,46 @@ class ResearchController extends BaseController
         $commentModel->insert($data);
         return $this->respondCreated(['status' => 'success']);
     }
-    // ... inside ResearchController.php ...
 
-    // 12. GET MY ARCHIVED FILES (Strictly my own)
+    // 12. GET MY ARCHIVED
     public function myArchived()
     {
         $this->handleCors();
-        
         $user = $this->validateUser();
         if (!$user) return $this->failUnauthorized('Access Denied');
 
         $model = new ResearchModel();
-
-        // STRICTLY filter by the logged-in user's ID
         $data = $model->where('uploaded_by', $user['id'])
-                      ->where('is_archived', 1) // Only Archived
+                      ->where('is_archived', 1) 
                       ->orderBy('created_at', 'DESC')
                       ->findAll();
-
         return $this->respond($data);
     }
-}
+
+    // 13. EXTEND DEADLINE
+    public function extendDeadline($id = null)
+    {
+        // Force CORS First
+        header('Access-Control-Allow-Origin: *');
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
+
+        $user = $this->validateUser();
+        if (!$user || $user['role'] !== 'admin') return $this->failForbidden('Access Denied');
+
+        $newDate = $this->request->getPost('new_deadline');
+        if (!$newDate) return $this->fail('Date is required.');
+
+        $model = new ResearchModel();
+        if (!$model->db->fieldExists('deadline_date', 'researches')) {
+            return $this->failServerError("Database Error: Column 'deadline_date' is missing.");
+        }
+
+        if ($model->update($id, ['deadline_date' => $newDate])) {
+            return $this->respond(['status' => 'success']);
+        }
+        return $this->fail('Database update failed.');
+    }
+
+} // <--- THIS FINAL BRACKET IS CRITICAL. ALL FUNCTIONS MUST BE ABOVE THIS. 

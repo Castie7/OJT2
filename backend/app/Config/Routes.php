@@ -18,11 +18,13 @@ $routes->group('research', function($routes) {
     $routes->get('archived', 'ResearchController::archived');
     // Add this new line:
     $routes->get('my-archived', 'ResearchController::myArchived');
+    // Inside $routes->group('research', ...)
+    $routes->match(['post', 'options'], 'extend-deadline/(:num)', 'ResearchController::extendDeadline/$1');
     
     // --- THIS WAS MISSING ---
     $routes->get('my-submissions', 'ResearchController::mySubmissions');
     // ------------------------
-
+    
     // Comments
     $routes->get('comments/(:num)', 'ResearchController::getComments/$1');
     $routes->match(['post', 'options'], 'comment', 'ResearchController::addComment');

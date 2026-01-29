@@ -11,15 +11,8 @@ const showArchived = ref(false)
 const viewMode = ref('list')
 const selectedResearch = ref(null)
 
-// Form States
-const title = ref('')
-const author = ref('')
-const abstract = ref('')
-const pdfFile = ref(null)
-
 // UI States
 const isLoading = ref(false)
-const isUploading = ref(false)
 const toast = ref({ show: false, message: '', type: 'success' }) 
 
 // CONFIRM MODAL STATE
@@ -88,39 +81,6 @@ onMounted(() => {
   fetchResearches()
 })
 
-// --- UPLOAD LOGIC ---
-const handleFileUpload = (event) => { pdfFile.value = event.target.files[0] }
-
-const submitResearch = async () => {
-  if (!title.value || !author.value) { showToast("Please fill in fields.", "error"); return; }
-  isUploading.value = true
-  
-  const formData = new FormData()
-  formData.append('title', title.value)
-  formData.append('author', author.value)
-  formData.append('abstract', abstract.value)
-  const userId = props.currentUser.id || props.currentUser
-  formData.append('uploaded_by', userId)
-  if (pdfFile.value) formData.append('pdf_file', pdfFile.value)
-
-  try {
-    const token = getCookie('auth_token');
-    const response = await fetch('http://localhost:8080/research/create', { 
-        method: 'POST', 
-        headers: { 'Authorization': token },
-        body: formData 
-    })
-    const result = await response.json()
-    if (result.status === 'success') {
-      showToast("Uploaded Successfully!", "success")
-      title.value = ''; author.value = ''; abstract.value = ''; pdfFile.value = null;
-      document.getElementById('fileInput').value = '' 
-      fetchResearches()
-    } else { showToast("Error: " + result.message, "error") }
-  } catch (error) { showToast("Server Error.", "error") } 
-  finally { isUploading.value = false }
-}
-
 // --- ARCHIVE LOGIC ---
 const requestArchiveToggle = (item) => {
   const action = showArchived.value ? 'Restore' : 'Archive';
@@ -168,120 +128,101 @@ const executeArchiveToggle = async () => {
        </div>
     </div>
     
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      
-      <div v-if="currentUser" class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg h-fit border-t-4 border-green-600">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">📤 Upload New Research</h2>
-        <form @submit.prevent="submitResearch" class="space-y-4">
-          <div><label class="block text-sm font-bold text-gray-700">Research Title</label><input v-model="title" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 transition-all" required /></div>
-          <div><label class="block text-sm font-bold text-gray-700">Author(s)</label><input v-model="author" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 transition-all" required /></div>
-          <div><label class="block text-sm font-bold text-gray-700">Abstract</label><textarea v-model="abstract" rows="4" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 transition-all"></textarea></div>
-          <div>
-            <label class="block text-sm font-bold text-gray-700 mb-1">Upload PDF</label>
-            <input id="fileInput" type="file" accept="application/pdf" @change="handleFileUpload" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 hover:file:scale-105 file:transition-all file:duration-200 file:cursor-pointer" />
-          </div>
-          <button type="submit" :disabled="isUploading" :class="`w-full font-bold py-2 rounded transition-all transform hover:scale-[1.02] active:scale-95 flex justify-center items-center gap-2 ${isUploading ? 'bg-gray-400 cursor-not-allowed text-gray-100' : 'bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg'}`">
-            <span v-if="isUploading" class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
-            {{ isUploading ? 'Uploading...' : 'Submit Research' }}
-          </button>
-        </form>
-      </div>
-
-      <div :class="currentUser ? 'lg:col-span-2' : 'lg:col-span-3'">
-        <div class="bg-white p-6 rounded-lg shadow-lg min-h-[500px] relative">
-          
-          <div class="flex flex-col xl:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
-            <h2 class="text-xl font-bold text-gray-800 whitespace-nowrap">
-              {{ showArchived ? '🗑️ Archived Researches' : '📚 Available Studies' }}
-            </h2>
-            <div class="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
-              <div class="relative w-full sm:w-64">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
-                <input v-model="searchQuery" type="text" placeholder="Search title or author..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"/>
-              </div>
-              <div class="flex gap-2">
-                <button 
-                  v-if="currentUser && currentUser.role === 'admin'" 
-                  @click="showArchived = !showArchived" 
-                  :class="`px-4 py-2 text-sm font-bold rounded-md border transition whitespace-nowrap ${showArchived ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'}`"
-                >
-                  {{ showArchived ? 'View Active' : 'View Archive' }}
-                </button>
-                <div class="flex bg-gray-100 p-1 rounded-lg shrink-0">
-                  <button @click="viewMode = 'list'" :class="`px-3 py-1 text-sm font-medium rounded-md transition ${viewMode === 'list' ? 'bg-white text-green-700 shadow' : 'text-gray-500 hover:text-gray-700'}`">📃</button>
-                  <button @click="viewMode = 'grid'" :class="`px-3 py-1 text-sm font-medium rounded-md transition ${viewMode === 'grid' ? 'bg-white text-green-700 shadow' : 'text-gray-500 hover:text-gray-700'}`">🔲</button>
-                </div>
+    <div class="w-full">
+      <div class="bg-white p-6 rounded-lg shadow-lg min-h-[500px] relative">
+        
+        <div class="flex flex-col xl:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
+          <h2 class="text-xl font-bold text-gray-800 whitespace-nowrap">
+            {{ showArchived ? '🗑️ Archived Researches' : '📚 Available Studies' }}
+          </h2>
+          <div class="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+            <div class="relative w-full sm:w-64">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
+              <input v-model="searchQuery" type="text" placeholder="Search title or author..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"/>
+            </div>
+            <div class="flex gap-2">
+              <button 
+                v-if="currentUser && currentUser.role === 'admin'" 
+                @click="showArchived = !showArchived" 
+                :class="`px-4 py-2 text-sm font-bold rounded-md border transition whitespace-nowrap ${showArchived ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'}`"
+              >
+                {{ showArchived ? 'View Active' : 'View Archive' }}
+              </button>
+              <div class="flex bg-gray-100 p-1 rounded-lg shrink-0">
+                <button @click="viewMode = 'list'" :class="`px-3 py-1 text-sm font-medium rounded-md transition ${viewMode === 'list' ? 'bg-white text-green-700 shadow' : 'text-gray-500 hover:text-gray-700'}`">📃</button>
+                <button @click="viewMode = 'grid'" :class="`px-3 py-1 text-sm font-medium rounded-md transition ${viewMode === 'grid' ? 'bg-white text-green-700 shadow' : 'text-gray-500 hover:text-gray-700'}`">🔲</button>
               </div>
             </div>
           </div>
-
-          <div v-if="isLoading" class="flex flex-col items-center justify-center py-20 text-gray-400">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-3"></div>
-            <p>Loading researches...</p>
-          </div>
-
-          <Transition name="fade" mode="out-in">
-            <div v-if="!isLoading">
-              
-              <div v-if="viewMode === 'list'" class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Title</th>
-                      <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Author</th>
-                      <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="item in filteredResearches" :key="item.id" class="hover:bg-green-50 transition">
-                      <td @click="selectedResearch = item" class="px-6 py-4 font-medium text-gray-900 cursor-pointer">{{ item.title }}</td>
-                      <td @click="selectedResearch = item" class="px-6 py-4 text-gray-500 cursor-pointer">{{ item.author }}</td>
-                      
-                      <td class="px-6 py-4 flex items-center gap-2">
-                         <button @click="selectedResearch = item" class="text-xs px-2 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50">
-                           View PDF
-                         </button>
-
-                         <button 
-                           v-if="currentUser && currentUser.role === 'admin'"
-                           @click.stop="requestArchiveToggle(item)" 
-                           :class="`text-xs px-2 py-1 rounded font-bold border ${showArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`"
-                         >
-                          {{ showArchived ? 'Restore' : 'Archive' }}
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div v-for="item in filteredResearches" :key="item.id" class="group bg-gray-50 hover:bg-white border border-gray-200 hover:border-green-400 rounded-xl p-4 transition shadow hover:shadow-lg flex flex-col relative">
-                   
-                   <button 
-                    v-if="currentUser && currentUser.role === 'admin'"
-                    @click.stop="requestArchiveToggle(item)" 
-                    :class="`absolute top-2 right-2 text-xs px-2 py-1 rounded font-bold border z-10 ${showArchived ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600 hover:bg-red-100'}`"
-                   >
-                    {{ showArchived ? 'Restore' : 'Archive' }}
-                  </button>
-
-                  <div @click="selectedResearch = item" class="cursor-pointer">
-                    <div class="h-32 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 group-hover:bg-green-50 group-hover:text-green-600 transition"><span class="text-4xl">📄</span></div>
-                    <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1 group-hover:text-green-700">{{ item.title }}</h3>
-                    <p class="text-sm text-gray-500 mb-2">By {{ item.author }}</p>
-                    <div class="mt-2 text-blue-600 text-xs font-bold hover:underline">Read PDF →</div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="filteredResearches.length === 0" class="text-center py-8 text-gray-500">
-                <span v-if="searchQuery">No results found for "{{ searchQuery }}".</span>
-                <span v-else>{{ showArchived ? 'Archive is empty.' : 'No active researches found.' }}</span>
-              </div>
-            </div>
-          </Transition>
         </div>
+
+        <div v-if="isLoading" class="flex flex-col items-center justify-center py-20 text-gray-400">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-3"></div>
+          <p>Loading researches...</p>
+        </div>
+
+        <Transition name="fade" mode="out-in">
+          <div v-if="!isLoading">
+            
+            <div v-if="viewMode === 'list'" class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Title</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Author</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="item in filteredResearches" :key="item.id" class="hover:bg-green-50 transition">
+                    <td @click="selectedResearch = item" class="px-6 py-4 font-medium text-gray-900 cursor-pointer">{{ item.title }}</td>
+                    <td @click="selectedResearch = item" class="px-6 py-4 text-gray-500 cursor-pointer">{{ item.author }}</td>
+                    
+                    <td class="px-6 py-4 flex items-center gap-2">
+                       <button @click="selectedResearch = item" class="text-xs px-2 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50">
+                         View PDF
+                       </button>
+
+                       <button 
+                         v-if="currentUser && currentUser.role === 'admin'"
+                         @click.stop="requestArchiveToggle(item)" 
+                         :class="`text-xs px-2 py-1 rounded font-bold border ${showArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`"
+                       >
+                        {{ showArchived ? 'Restore' : 'Archive' }}
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div v-for="item in filteredResearches" :key="item.id" class="group bg-gray-50 hover:bg-white border border-gray-200 hover:border-green-400 rounded-xl p-5 transition shadow hover:shadow-lg flex flex-col relative">
+                 
+                 <button 
+                  v-if="currentUser && currentUser.role === 'admin'"
+                  @click.stop="requestArchiveToggle(item)" 
+                  :class="`absolute top-2 right-2 text-xs px-2 py-1 rounded font-bold border z-10 ${showArchived ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600 hover:bg-red-100'}`"
+                 >
+                  {{ showArchived ? 'Restore' : 'Archive' }}
+                </button>
+
+                <div @click="selectedResearch = item" class="cursor-pointer h-full flex flex-col">
+                  <div class="h-32 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 group-hover:bg-green-50 group-hover:text-green-600 transition"><span class="text-4xl">📄</span></div>
+                  <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1 group-hover:text-green-700">{{ item.title }}</h3>
+                  <p class="text-sm text-gray-500 mb-2">By {{ item.author }}</p>
+                  <p class="text-sm text-gray-400 line-clamp-2">{{ item.abstract }}</p>
+                  <div class="mt-auto pt-4 text-blue-600 text-xs font-bold hover:underline">Read PDF →</div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="filteredResearches.length === 0" class="text-center py-12 text-gray-500">
+              <span v-if="searchQuery">No results found for "{{ searchQuery }}".</span>
+              <span v-else>{{ showArchived ? 'Archive is empty.' : 'No active researches found.' }}</span>
+            </div>
+          </div>
+        </Transition>
       </div>
     </div>
 

@@ -1,20 +1,16 @@
 <template>
   <div class="approval-container">
-    <h2>Pending Research Approvals</h2>
+    <h2>Pending Reviews</h2>
 
-    <div v-if="loading" class="loading">Loading pending items...</div>
-
-    <div v-else-if="pendingItems.length === 0" class="empty-state">
-      <p>No pending research items found.</p>
-    </div>
-
+    <div v-if="loading" class="loading">Loading...</div>
+    <div v-else-if="pendingItems.length === 0" class="empty-state">No pending items.</div>
+    
     <div v-else class="table-responsive">
       <table class="table">
         <thead>
           <tr>
             <th>Title</th>
             <th>Author</th>
-            <th>Abstract</th>
             <th>File</th>
             <th>Actions</th>
           </tr>
@@ -23,41 +19,50 @@
           <tr v-for="item in pendingItems" :key="item.id">
             <td>{{ item.title }}</td>
             <td>{{ item.author }}</td>
-            <td class="abstract-cell" :title="item.abstract">
-              {{ item.abstract.length > 50 ? item.abstract.substring(0, 50) + '...' : item.abstract }}
+            <td>
+              <a v-if="item.file_path" :href="getFileUrl(item.file_path)" target="_blank" class="btn-link">View PDF</a>
             </td>
             <td>
-              <a 
-                v-if="item.file_path" 
-                :href="getFileUrl(item.file_path)" 
-                target="_blank" 
-                class="btn-link"
-              >
-                View PDF
-              </a>
-              <span v-else class="text-muted">No File</span>
-            </td>
-            <td class="actions-cell">
-              <button 
-                @click="approveResearch(item.id)" 
-                class="btn btn-approve"
-                :disabled="processing === item.id"
-              >
-                {{ processing === item.id ? '...' : 'Approve' }}
-              </button>
-              
-              <button 
-                @click="rejectResearch(item.id)" 
-                class="btn btn-reject"
-                :disabled="processing === item.id"
-              >
-                Reject
-              </button>
+              <button @click="openReviewModal(item)" class="btn btn-review">Review & Comment</button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <div v-if="showModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Review: {{ selectedItem.title }}</h3>
+          <button @click="closeModal" class="close-btn">×</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="comments-section">
+            <h4>Revision Notes / Comments</h4>
+            <div class="comments-list">
+              <div v-for="c in comments" :key="c.id" :class="['comment-bubble', c.role === 'admin' ? 'admin-msg' : 'user-msg']">
+                <strong>{{ c.user_name }} ({{ c.role }}):</strong>
+                <p>{{ c.comment }}</p>
+                <small>{{ formatDate(c.created_at) }}</small>
+              </div>
+              <p v-if="comments.length === 0" class="no-comments">No comments yet.</p>
+            </div>
+            
+            <div class="comment-input">
+              <textarea v-model="newComment" placeholder="Write a revision note..."></textarea>
+              <button @click="postComment" class="btn btn-send">Send Note</button>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button @click="approveResearch(selectedItem.id)" class="btn btn-approve">Approve</button>
+            <button @click="rejectResearch(selectedItem.id)" class="btn btn-reject">Reject</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -65,147 +70,108 @@
 import axios from 'axios';
 
 export default {
-  name: 'Approval',
+  props: ['currentUser'], // Need this to identify who is commenting
   data() {
     return {
       pendingItems: [],
       loading: true,
-      processing: null, // Stores the ID of the item currently being processed
-      baseUrl: 'http://localhost:8080', // Change this to your CodeIgniter URL
+      baseUrl: 'http://localhost:8080',
+      
+      // Modal State
+      showModal: false,
+      selectedItem: null,
+      comments: [],
+      newComment: ''
     };
   },
   mounted() {
     this.fetchPending();
   },
   methods: {
-    // Helper to get full file URL
-    getFileUrl(filename) {
-      return `${this.baseUrl}/uploads/${filename}`;
-    },
+    getFileUrl(filename) { return `${this.baseUrl}/uploads/${filename}`; },
+    formatDate(date) { return new Date(date).toLocaleString(); },
 
-    // Fetch Data
     async fetchPending() {
       try {
-        const response = await axios.get(`${this.baseUrl}/research/pending`);
-        this.pendingItems = response.data;
-      } catch (error) {
-        console.error("Error fetching pending items:", error);
-        alert("Failed to load pending items.");
-      } finally {
-        this.loading = false;
-      }
+        const res = await axios.get(`${this.baseUrl}/research/pending`);
+        this.pendingItems = res.data;
+      } catch (e) { console.error(e); } finally { this.loading = false; }
     },
 
-    // Approve Action
+    // OPEN MODAL
+    async openReviewModal(item) {
+      this.selectedItem = item;
+      this.showModal = true;
+      this.comments = [];
+      // Fetch comments for this item
+      try {
+        const res = await axios.get(`${this.baseUrl}/research/comments/${item.id}`);
+        this.comments = res.data;
+      } catch (e) { console.error("Error loading comments", e); }
+    },
+
+    closeModal() {
+      this.showModal = false;
+      this.selectedItem = null;
+      this.newComment = '';
+    },
+
+    // POST COMMENT
+    async postComment() {
+      if (!this.newComment.trim()) return;
+
+      try {
+        await axios.post(`${this.baseUrl}/research/comment`, {
+          research_id: this.selectedItem.id,
+          user_id: this.currentUser.id, // ID from props
+          user_name: 'Admin', // Hardcoded as Admin here, or use currentUser.name
+          role: 'admin',
+          comment: this.newComment
+        });
+        
+        // Refresh comments
+        this.newComment = '';
+        const res = await axios.get(`${this.baseUrl}/research/comments/${this.selectedItem.id}`);
+        this.comments = res.data;
+      } catch (e) { alert("Failed to post comment"); }
+    },
+
     async approveResearch(id) {
-      if (!confirm("Are you sure you want to approve this research? It will become public.")) return;
-
-      this.processing = id;
-      try {
-        const response = await axios.post(`${this.baseUrl}/research/approve/${id}`);
-        if (response.data.status === 'success') {
-          // Remove item from list locally
-          this.pendingItems = this.pendingItems.filter(item => item.id !== id);
-          alert("Research Approved Successfully!");
-        }
-      } catch (error) {
-        console.error("Error approving:", error);
-        alert("Failed to approve research.");
-      } finally {
-        this.processing = null;
-      }
+      if(!confirm("Approve this research?")) return;
+      await axios.post(`${this.baseUrl}/research/approve/${id}`);
+      this.fetchPending();
+      this.closeModal();
     },
 
-    // Reject Action
     async rejectResearch(id) {
-      if (!confirm("Are you sure you want to reject this research?")) return;
-
-      this.processing = id;
-      try {
-        const response = await axios.post(`${this.baseUrl}/research/reject/${id}`);
-        if (response.data.status === 'success') {
-          // Remove item from list locally
-          this.pendingItems = this.pendingItems.filter(item => item.id !== id);
-          alert("Research Rejected.");
-        }
-      } catch (error) {
-        console.error("Error rejecting:", error);
-        alert("Failed to reject research.");
-      } finally {
-        this.processing = null;
-      }
+      if(!confirm("Reject this research?")) return;
+      await axios.post(`${this.baseUrl}/research/reject/${id}`);
+      this.fetchPending();
+      this.closeModal();
     }
   }
 };
 </script>
 
 <style scoped>
-.approval-container {
-  padding: 20px;
-  max-width: 1000px;
-  margin: 0 auto;
-}
+/* Basic Table Styles */
+.approval-container { padding: 20px; max-width: 1000px; margin: 0 auto; }
+.table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+.table th, .table td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
+.btn { padding: 8px 12px; cursor: pointer; border-radius: 4px; border: none; color: white; margin-right: 5px;}
+.btn-review { background: #17a2b8; }
+.btn-approve { background: #28a745; }
+.btn-reject { background: #dc3545; }
+.btn-send { background: #007bff; margin-top: 5px; }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.table th, .table td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
-}
-
-.table th {
-  background-color: #f8f9fa;
-  font-weight: bold;
-}
-
-.abstract-cell {
-  max-width: 250px;
-  color: #555;
-}
-
-.btn {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-right: 5px;
-  font-size: 0.9em;
-  transition: background 0.3s;
-}
-
-.btn-approve {
-  background-color: #28a745;
-  color: white;
-}
-.btn-approve:hover { background-color: #218838; }
-
-.btn-reject {
-  background-color: #dc3545;
-  color: white;
-}
-.btn-reject:hover { background-color: #c82333; }
-
-.btn-link {
-  color: #007bff;
-  text-decoration: none;
-}
-.btn-link:hover { text-decoration: underline; }
-
-.loading, .empty-state {
-  text-align: center;
-  margin-top: 40px;
-  color: #666;
-  font-size: 1.2em;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* Modal Styles */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;}
+.modal-content { background: white; width: 600px; padding: 20px; border-radius: 8px; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column;}
+.modal-header { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; margin-bottom: 15px; }
+.comments-list { background: #f9f9f9; padding: 10px; height: 200px; overflow-y: auto; border: 1px solid #ddd; margin-bottom: 10px; }
+.comment-bubble { padding: 8px; margin-bottom: 8px; border-radius: 6px; font-size: 0.9em; }
+.admin-msg { background: #e2e6ea; text-align: right; border-left: 4px solid #17a2b8; }
+.user-msg { background: #fff3cd; border-left: 4px solid #ffc107; }
+.comment-input textarea { width: 100%; height: 60px; padding: 5px; }
+.modal-actions { margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; text-align: right; }
 </style>

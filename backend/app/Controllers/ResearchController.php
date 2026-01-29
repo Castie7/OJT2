@@ -194,4 +194,61 @@ class ResearchController extends BaseController
             return $this->fail('Failed to update');
         }
     }
+
+    // ... existing code ...
+
+    // 7. GET COMMENTS FOR A RESEARCH ITEM
+    public function getComments($id = null)
+    {
+        header('Access-Control-Allow-Origin: *');
+        
+        $commentModel = new \App\Models\ResearchCommentModel();
+        
+        // Get all comments for this research ID, ordered by time
+        $data = $commentModel->where('research_id', $id)
+                             ->orderBy('created_at', 'ASC')
+                             ->findAll();
+                             
+        return $this->respond($data);
+    }
+
+    // 8. ADD A COMMENT
+    public function addComment()
+    {
+        header('Access-Control-Allow-Origin: *');
+        header("Access-Control-Allow-Methods: POST, OPTIONS");
+        header("Access-Control-Allow-Headers: Content-Type");
+        
+        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
+
+        // Check if Model exists
+        $commentModel = new \App\Models\ResearchCommentModel();
+        
+        // Get Input
+        $json = $this->request->getJSON();
+
+        // Safety Check: Did we receive data?
+        if (!$json) {
+            return $this->fail('No JSON data received');
+        }
+
+        $data = [
+            'research_id' => $json->research_id ?? null,
+            'user_id'     => $json->user_id ?? 0,
+            'user_name'   => $json->user_name ?? 'Anonymous',
+            'role'        => $json->role ?? 'user',
+            'comment'     => $json->comment ?? ''
+        ];
+
+        try {
+            if ($commentModel->insert($data)) {
+                return $this->respondCreated(['status' => 'success']);
+            } else {
+                return $this->fail('Failed to save to database');
+            }
+        } catch (\Exception $e) {
+            // This will show you the SQL error if the table is missing
+            return $this->failServerError($e->getMessage());
+        }
+    }
 }

@@ -23,5 +23,7 @@ Ver 1.6
 - Fixing the bug for 1.5 ( cant upload and edit )
 - Added Approval tab for admin ( Reject or Accept )
 
-
+Ver 1.7
+- Added comments for the revisions
+- 
 - 

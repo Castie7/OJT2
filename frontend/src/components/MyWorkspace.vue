@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 
 const props = defineProps(['currentUser'])
 
@@ -7,21 +7,24 @@ const props = defineProps(['currentUser'])
 const myResearches = ref([])
 const isLoading = ref(false)
 const viewMode = ref('list')
-const selectedResearch = ref(null) 
-const showArchived = ref(false)    
+const showArchived = ref(false)
 
 // Edit States
-const editingResearch = ref(null)  
-const isSaving = ref(false)        
+const editingResearch = ref(null)
+const isSaving = ref(false)
 const editPdfFile = ref(null)
 
-// 1. NEW: CONFIRMATION MODAL STATE
+// Refs for UI
+const chatContainer = ref(null) // <--- NEW: Reference for auto-scrolling
+
+// Archive Confirmation Modal State
 const confirmModal = ref({
-  show: false,
-  id: null,
-  action: '', // 'Archive' or 'Restore'
-  title: '',
-  subtext: ''
+  show: false, id: null, action: '', title: '', subtext: ''
+})
+
+// Comments / Revision State
+const commentModal = ref({
+  show: false, researchId: null, title: '', list: [], newComment: ''
 })
 
 // --- FETCH DATA ---
@@ -35,7 +38,9 @@ const fetchMyData = async () => {
     const response = await fetch(endpoint)
     if (response.ok) {
       const allData = await response.json()
-      myResearches.value = allData.filter(item => item.uploaded_by === props.currentUser)
+      // robust check: handle if currentUser is an object or just an ID
+      const currentUserId = props.currentUser.id || props.currentUser
+      myResearches.value = allData.filter(item => item.uploaded_by == currentUserId)
     }
   } catch (error) {
     console.error("Error fetching workspace:", error)
@@ -47,35 +52,27 @@ const fetchMyData = async () => {
 watch(showArchived, () => { fetchMyData() })
 onMounted(() => { fetchMyData() })
 
-// --- 2. UPDATED: ARCHIVE LOGIC (Step 1: Open Modal) ---
+// --- ARCHIVE LOGIC ---
 const requestArchiveToggle = (item) => {
   const action = showArchived.value ? 'Restore' : 'Archive';
-  
-  // Set the modal data
   confirmModal.value = {
     show: true,
     id: item.id,
     action: action,
     title: action === 'Archive' ? 'Move to Trash?' : 'Restore Research?',
     subtext: action === 'Archive' 
-      ? `Are you sure you want to remove "${item.title}"? You can restore it later.` 
-      : `This will make "${item.title}" visible to everyone again.`
+      ? `Are you sure you want to remove "${item.title}"?` 
+      : `This will make "${item.title}" visible again.`
   }
 }
 
-// --- 3. NEW: ARCHIVE LOGIC (Step 2: Execute Action) ---
 const executeArchiveToggle = async () => {
   if (!confirmModal.value.id) return;
-
   try {
     await fetch(`http://localhost:8080/research/archive/${confirmModal.value.id}`, { method: 'POST' })
-    
-    // Close modal & Refresh
     confirmModal.value.show = false
     fetchMyData() 
-  } catch (error) {
-    alert("Error updating item status")
-  }
+  } catch (error) { alert("Error updating item status") }
 }
 
 // --- EDIT LOGIC ---
@@ -93,36 +90,98 @@ const saveChanges = async () => {
     alert("Title and Author are required.")
     return
   }
-
   isSaving.value = true
   
   const formData = new FormData()
   formData.append('title', editingResearch.value.title)
   formData.append('author', editingResearch.value.author)
   formData.append('abstract', editingResearch.value.abstract)
-
-  if (editPdfFile.value) {
-    formData.append('pdf_file', editPdfFile.value)
-  }
+  if (editPdfFile.value) formData.append('pdf_file', editPdfFile.value)
 
   try {
     const response = await fetch(`http://localhost:8080/research/update/${editingResearch.value.id}`, {
-      method: 'POST',
-      body: formData 
+      method: 'POST', body: formData 
     })
-
     const result = await response.json()
     if (result.status === 'success') {
       alert("Updated Successfully!")
       editingResearch.value = null 
       fetchMyData() 
-    } else {
-      alert("Error: " + result.message)
+    } else { alert("Error: " + result.message) }
+  } catch (error) { alert("Server Error") } finally { isSaving.value = false }
+}
+
+// --- COMMENTS LOGIC ---
+
+// 1. Open Modal & Fetch Comments
+const openComments = async (item) => {
+  commentModal.value.researchId = item.id
+  commentModal.value.title = item.title
+  commentModal.value.show = true
+  commentModal.value.newComment = ''
+  commentModal.value.list = [] 
+  
+  try {
+    const res = await fetch(`http://localhost:8080/research/comments/${item.id}`)
+    if(res.ok) {
+      commentModal.value.list = await res.json()
+      scrollToBottom()
     }
-  } catch (error) {
-    alert("Server Error")
-  } finally {
-    isSaving.value = false
+  } catch (e) { console.error("Error loading comments") }
+}
+
+// Helper to scroll chat to bottom
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+    }
+  })
+}
+
+// 2. Post a New Comment (IMPROVED ERROR HANDLING)
+const postComment = async () => {
+  if (!commentModal.value.newComment.trim()) return
+
+  // Determine ID and Name safely
+  const userId = props.currentUser.id || props.currentUser;
+  // If props.currentUser is just an ID string, fallback to 'Author'
+  const userName = props.currentUser.name || 'Author';
+
+  const payload = {
+    research_id: commentModal.value.researchId,
+    user_id: userId,
+    user_name: userName,
+    role: 'user', 
+    comment: commentModal.value.newComment
+  }
+
+  try {
+    const res = await fetch('http://localhost:8080/research/comment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    
+    // 1. Get the JSON response first
+    const data = await res.json();
+
+    // 2. Check for server errors (400, 403, 500)
+    if (!res.ok) {
+      // Throw the actual message from the server
+      throw new Error(data.messages?.error || data.message || "Unknown Server Error");
+    }
+
+    // 3. Success
+    // Refresh the list
+    const refreshRes = await fetch(`http://localhost:8080/research/comments/${commentModal.value.researchId}`)
+    commentModal.value.list = await refreshRes.json()
+    commentModal.value.newComment = '' 
+    scrollToBottom()
+
+  } catch (e) { 
+    console.error(e);
+    alert("Failed: " + e.message); // <--- Alerts the REAL error now
   }
 }
 </script>
@@ -190,7 +249,12 @@ const saveChanges = async () => {
           <h3 class="font-bold text-gray-900">{{ item.title }}</h3>
           <div class="mt-4 flex gap-2">
             <button v-if="!showArchived" @click.stop="openEditModal(item)" class="flex-1 py-2 rounded font-bold border text-yellow-700 border-yellow-400 hover:bg-yellow-100 text-xs transition">✏️ Edit</button>
-            
+            <button 
+                @click="openComments(item)" 
+                class="ml-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                💬 Revisions
+              </button>
             <button @click.stop="requestArchiveToggle(item)" :class="`flex-1 py-2 rounded font-bold border text-xs transition ${showArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">
               {{ showArchived ? '♻️ Restore' : '📦 Archive' }}
             </button>
@@ -281,7 +345,48 @@ const saveChanges = async () => {
 
       </div>
     </Transition>
+    <div v-if="commentModal.show" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg w-full max-w-lg p-6 flex flex-col max-h-[80vh]">
+        
+        <div class="flex justify-between items-center mb-4 border-b pb-2">
+          <h3 class="text-lg font-bold">Revisions: {{ commentModal.title }}</h3>
+          <button @click="commentModal.show = false" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
 
+        <div 
+          ref="chatContainer" 
+          class="flex-1 overflow-y-auto bg-gray-50 p-4 rounded mb-4 border border-gray-200 space-y-3"
+        >
+          <div 
+            v-for="msg in commentModal.list" 
+            :key="msg.id" 
+            :class="['p-3 rounded-lg text-sm max-w-[85%]', msg.role === 'admin' ? 'bg-red-100 ml-auto border-l-4 border-red-500' : 'bg-green-100 border-l-4 border-green-500']"
+          >
+            <div class="font-bold text-xs mb-1">{{ msg.user_name }} ({{ msg.role }})</div>
+            <p>{{ msg.comment }}</p>
+            <div class="text-[10px] text-gray-500 text-right mt-1">{{ new Date(msg.created_at).toLocaleString() }}</div>
+          </div>
+          
+          <p v-if="commentModal.list.length === 0" class="text-center text-gray-400 italic mt-10">No comments yet.</p>
+        </div>
+
+        <div class="flex gap-2">
+          <textarea 
+            v-model="commentModal.newComment" 
+            placeholder="Reply to admin..." 
+            class="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-green-500 outline-none"
+            rows="2"
+          ></textarea>
+          <button 
+            @click="postComment" 
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+          >
+            Send
+          </button>
+        </div>
+
+      </div>
+    </div>
   </div>
 </template>
 

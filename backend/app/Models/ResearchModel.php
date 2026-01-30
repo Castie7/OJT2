@@ -15,7 +15,8 @@ class ResearchModel extends Model
     // UPDATE THIS ARRAY TO INCLUDE ALL NEW COLUMNS
     protected $allowedFields = [
         'title', 
-        'author', 
+        'author',
+        'crop_variation', 
         'abstract', 
         'start_date', 
         'deadline_date', 

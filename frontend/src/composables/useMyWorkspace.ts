@@ -5,6 +5,7 @@ export interface UploadModalState {
   show: boolean
   title: string
   author: string
+  crop_variation: string
   abstract: string
   start_date: string
   deadline_date: string
@@ -26,6 +27,7 @@ export function useMyWorkspace(currentUser: User | null) {
     show: false,
     title: '',
     author: '',
+    crop_variation: '',
     abstract: '',
     start_date: '',
     deadline_date: '',
@@ -104,6 +106,7 @@ export function useMyWorkspace(currentUser: User | null) {
     const formData = new FormData()
     formData.append('title', form.title)
     formData.append('author', form.author)
+    formData.append('crop_variation', form.crop_variation)
     formData.append('abstract', form.abstract)
     formData.append('start_date', form.start_date)
     formData.append('deadline_date', form.deadline_date)
@@ -123,7 +126,7 @@ export function useMyWorkspace(currentUser: User | null) {
         alert("✅ Success! Research Submitted.")
         // Reset Form
         uploadModal.value = { 
-          show: false, title: '', author: '', abstract: '', 
+          show: false, title: '', author: '', crop_variation: '', abstract: '', 
           start_date: '', deadline_date: '', file: null 
         }
         // Trigger Refresh in Component

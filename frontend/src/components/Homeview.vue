@@ -3,8 +3,8 @@ import { useHomeView, type User, type Stat } from '../composables/useHomeView'
 
 // Define Props
 defineProps<{
-  currentUser: User | null
-  stats: Stat[]
+  currentUser: User | null // id, name, role
+  stats: Stat[] //title, value, color
 }>()
 
 // 1. ADD THE NEW EMIT HERE
@@ -31,17 +31,17 @@ const {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         <div 
-            v-for="stat in stats" 
-            :key="stat.title" 
-            @click="stat.action ? emit('stat-click', stat.action) : null"
-            :class="[
-              'bg-white p-6 rounded-lg shadow border-l-4 border-green-500 transition-transform duration-200',
-              stat.action ? 'cursor-pointer hover:scale-105 hover:shadow-lg' : '' 
-            ]"
+          v-for="stat in stats" 
+          :key="stat.title" 
+          @click="stat.action ? emit('stat-click', stat.action) : null"
+          :class="[
+            'bg-white p-6 rounded-lg shadow border-l-4 border-green-500 transition-transform duration-200',
+            stat.action ? 'cursor-pointer hover:scale-105 hover:shadow-lg' : '' 
+          ]"
         >
           <div class="flex justify-between items-start">
             <div>
-              <h3 class="text-gray-500 text-sm uppercase font-semibold">{{ stat.title }}</h3>
+              <h3 class="text-gray-500 text-sm uppercase font-semibold" >{{ stat.title }}</h3>
               <p :class="`text-4xl font-bold mt-2 ${stat.color}`">{{ stat.value }}</p>
             </div>
             
@@ -51,8 +51,9 @@ const {
           <div v-if="stat.action" class="mt-2 text-xs text-gray-400 font-medium">
             Click to manage
           </div>
-        </div>
 
+        </div>
+        <!-- <pre class="text-xs bg-white p-2">{{ JSON.stringify(stats, null, 2) }}</pre> -->
       </div>
     </div>
 

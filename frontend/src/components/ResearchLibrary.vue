@@ -76,6 +76,7 @@ const {
                   <tr>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Title</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Author</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Crop Variation</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Published</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
                   </tr>
@@ -84,6 +85,9 @@ const {
                   <tr v-for="item in paginatedResearches" :key="item.id" class="hover:bg-green-50 transition">
                     <td @click="selectedResearch = item" class="px-6 py-4 font-medium text-gray-900 cursor-pointer">{{ item.title }}</td>
                     <td @click="selectedResearch = item" class="px-6 py-4 text-gray-500 cursor-pointer">{{ item.author }}</td>
+                    <p class="text-xs font-semibold text-amber-600 mb-2 italic">
+                      {{ item.crop_variation || 'Standard Variety' }}
+                    </p>
                     <td class="px-6 py-4 text-gray-500 text-sm">
                        <span v-if="item.approved_at" class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">
                          {{ formatSimpleDate(item.approved_at) }}
@@ -172,7 +176,10 @@ const {
       <div v-if="selectedResearch" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm">
         <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden" @click.stop>
           <div class="bg-green-800 text-white p-4 flex justify-between items-center shrink-0">
-            <div><h2 class="text-xl font-bold leading-tight">{{ selectedResearch.title }}</h2><p class="text-green-200 text-sm">Author: {{ selectedResearch.author }}</p></div>
+            <div><h2 class="text-xl font-bold leading-tight">{{ selectedResearch.title }}</h2>
+              <p class="text-green-200 text-sm">Author: {{ selectedResearch.author }}</p>
+              <p class="text-amber-300 text-sm font-bold">Crop: {{ selectedResearch.crop_variation }}</p>
+            </div>
             <button @click="selectedResearch = null" class="text-white hover:text-gray-300 text-3xl font-bold leading-none">&times;</button>
           </div>
           <div class="flex-1 overflow-y-auto bg-gray-100 p-4">

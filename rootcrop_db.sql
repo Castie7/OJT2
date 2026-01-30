@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 29, 2026 at 09:29 AM
+-- Generation Time: Jan 30, 2026 at 04:33 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -70,13 +70,18 @@ INSERT INTO `researches` (`id`, `title`, `author`, `abstract`, `created_at`, `fi
 (17, 'Title', 'Author', 'asd', '2026-01-29 03:44:39', '1769658279_f16e7f7cb6b149f30c41.png', '3', 0, 0, '2026-01-29 05:47:37', 'approved', '2026-01-29', '2026-01-28', NULL, '2026-01-29 05:47:37', NULL),
 (18, 'asd', 'asd', 'qww', '2026-01-29 03:53:45', '1769658825_16445d98b484fdf69672.pdf', '3', 0, 0, '2026-01-29 07:39:16', 'approved', '1111-11-11', '2026-12-12', NULL, '2026-01-29 07:39:16', NULL),
 (19, '1aaaaa', 'shrek', 'we', '2026-01-29 07:01:06', '1769670066_17acee231a0ba30e770a.pdf', '3', 0, 0, '2026-01-29 07:01:15', 'approved', '2026-01-29', '2026-02-07', NULL, '2026-01-29 07:01:15', NULL),
-(20, 'more', 'more', 'asdf', '2026-01-29 07:01:56', '1769670116_13c5f42eefb5bea2dc7e.pdf', '3', 0, 0, '2026-01-29 07:02:52', 'approved', '2026-01-29', '2026-02-07', NULL, '2026-01-29 07:02:52', NULL),
+(20, 'more', 'more', 'asdf', '2026-01-29 07:01:56', '1769670116_13c5f42eefb5bea2dc7e.pdf', '3', 0, 0, '2026-01-30 00:45:20', 'archived', '2026-01-29', '2026-02-07', NULL, '2026-01-29 07:02:52', '2026-01-30 00:45:20'),
 (21, 'asdfgg', 'asdgasd', 'asdff', '2026-01-29 07:02:17', '1769670137_810b6486307d8b187650.pdf', '3', 0, 0, '2026-01-29 07:02:55', 'approved', '2026-01-29', '2026-02-07', NULL, '2026-01-29 07:02:55', NULL),
 (22, 'last', 'nigga', 'asd', '2026-01-29 07:02:46', '1769670166_84b4b455631c1180b595.pdf', '3', 0, 0, '2026-01-29 07:02:59', 'approved', '2026-01-29', '2026-02-13', NULL, '2026-01-29 07:02:59', NULL),
 (23, 'Testing AProval', 'lets see', 'asd', '2026-01-29 07:42:15', '1769672535_64db70a1c697dc5ca806.pdf', '3', 0, 0, '2026-01-29 07:42:29', 'approved', '2025-12-03', '2026-01-29', NULL, '2026-01-29 07:42:29', NULL),
 (24, 'Last', 'Well DOne', 'speed', '2026-01-29 07:51:26', '1769673086_7f25e26c11dfcedb0d49.pdf', '3', 0, 0, '2026-01-29 07:51:31', 'approved', '2026-01-29', '2026-01-29', NULL, NULL, NULL),
-(25, 'Research 12', 'Well Done', 'a', '2026-01-29 07:57:48', '1769673468_fb462e66f2184b1537b4.pdf', '4', 1, 0, '2026-01-29 08:28:47', 'pending', '2026-01-29', '2026-01-30', NULL, NULL, NULL),
-(26, 'asd', 'asd', 'asd', '2026-01-29 08:10:44', '1769674244_17a97f3db3d28f2da36b.pdf', '4', 1, 0, '2026-01-29 08:28:49', 'pending', '2026-01-21', '2026-01-29', NULL, NULL, NULL);
+(25, 'Research 12', 'Well Done', 'a', '2026-01-29 07:57:48', '1769673468_fb462e66f2184b1537b4.pdf', '4', 1, 0, '2026-01-30 01:49:14', 'archived', '2026-01-29', '2026-01-30', '2026-01-30 01:40:32', NULL, '2026-01-30 01:49:14'),
+(26, 'asd', 'asd', 'asd', '2026-01-29 08:10:44', '1769674244_17a97f3db3d28f2da36b.pdf', '4', 1, 0, '2026-01-30 01:49:08', 'archived', '2026-01-21', '2026-01-29', '2026-01-30 00:50:15', NULL, '2026-01-30 01:49:08'),
+(27, 'dsasa', 'fsa', 'dgfhfdjvn', '2026-01-30 01:41:53', '1769737313_fcca34f79accb080a4a6.jpg', '3', 0, 0, '2026-01-30 01:47:34', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:47:34', NULL),
+(28, 'Joebama', 'Joeschmo', 'asd', '2026-01-30 01:43:10', '1769737390_2e5b223303d15c8b242d.jpg', '3', 0, 0, '2026-01-30 01:44:27', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:44:27', NULL),
+(29, 'joe', 'joeschmo', 'joeschmo', '2026-01-30 01:49:45', '1769737785_c5da404afce05be758fe.jpg', '4', 0, 0, '2026-01-30 01:51:01', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:51:01', NULL),
+(30, 'Research 5', 'Karlo', 'Weena', '2026-01-30 01:59:26', '1769738365_5621fe2cff5c99341d2e.jpg', '3', 0, 0, '2026-01-30 03:05:28', 'approved', '2025-05-12', '2026-01-30', NULL, '2026-01-30 03:05:28', NULL),
+(31, 'Do not Restore', 'TO check if deleted', 'Do not restore', '2026-01-30 03:09:19', '1769742559_11a551345ca4d4630fe4.jpg', '3', 0, 0, '2026-01-30 03:09:29', 'rejected', '2025-12-12', '2026-01-01', '2026-01-30 03:09:29', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -113,7 +118,14 @@ INSERT INTO `research_comments` (`id`, `research_id`, `user_id`, `user_name`, `r
 (12, 12, 4, 'Juan Researcher', 'user', 'test', '2026-01-29 11:33:34'),
 (13, 12, 4, 'Juan Researcher', 'user', 'tes', '2026-01-29 11:33:38'),
 (14, 15, 3, 'Super Admin', 'user', 'yes', '2026-01-29 11:34:30'),
-(15, 15, 3, 'Super Admin', 'admin', 'test', '2026-01-29 11:37:46');
+(15, 15, 3, 'Super Admin', 'admin', 'test', '2026-01-29 11:37:46'),
+(16, 14, 3, 'Super Admin', 'user', 'sd', '2026-01-30 09:39:43'),
+(17, 14, 3, 'Super Admin', 'user', 'ds', '2026-01-30 09:39:47'),
+(18, 14, 3, 'Super Admin', 'user', 'ddd', '2026-01-30 09:39:51'),
+(19, 25, 3, 'Super Admin', 'admin', 'g', '2026-01-30 09:40:05'),
+(20, 28, 3, 'Super Admin', 'user', 'jasfbk', '2026-01-30 09:45:21'),
+(21, 30, 3, 'Super Admin', 'user', 'boi', '2026-01-30 10:54:14'),
+(22, 30, 3, 'Super Admin', 'user', 'ivan is gae', '2026-01-30 11:10:03');
 
 -- --------------------------------------------------------
 
@@ -137,7 +149,7 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `name`, `email`, `password`, `created_at`, `auth_token`, `role`) VALUES
 (3, 'Super Admin', 'admin@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-28 11:20:35', NULL, 'admin'),
-(4, 'Juan Researcher', 'researcher@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-29 09:42:12', NULL, 'user');
+(4, 'Juan Researcher', 'researcher@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-29 09:42:12', '8d961965917ba104a26c59ab935ed23e2f76f524e45feeef262b9c5ee937dd2b', 'user');
 
 --
 -- Indexes for dumped tables
@@ -170,13 +182,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `researches`
 --
 ALTER TABLE `researches`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- AUTO_INCREMENT for table `research_comments`
 --
 ALTER TABLE `research_comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `users`

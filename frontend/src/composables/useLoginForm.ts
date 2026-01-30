@@ -1,6 +1,10 @@
 import { ref } from 'vue'
 
-export function useLoginForm(emit: (event: 'login-success' | 'back', payload?: any) => void) {
+// Change only the type definition here:
+export function useLoginForm(emit: {
+  (e: 'login-success', data: any): void;
+  (e: 'back'): void;
+}) {
   
   // --- STATE ---
   const email = ref('')
@@ -30,8 +34,8 @@ export function useLoginForm(emit: (event: 'login-success' | 'back', payload?: a
         isSuccess.value = true
         message.value = "Login Successful!"
         
-        // Delay to show success animation before redirecting
         setTimeout(() => {
+          // This call remains valid
           emit('login-success', data)
         }, 1000)
       } else {

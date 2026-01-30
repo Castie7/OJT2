@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import HomeView from '../components/HomeView.vue'
+import HomeView from '../components/Homeview.vue'
 import ResearchLibrary from '../components/ResearchLibrary.vue'
 import MyWorkspace from '../components/MyWorkspace.vue'
 import Approval from '../components/Approval.vue'

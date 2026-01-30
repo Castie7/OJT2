@@ -36,3 +36,7 @@ Ver 1.8
 Ver 2.0
 - Separated CSS, TS and Vue for Optimization
 - Separated the GitHub link for backup ( This Link )
+
+Ver 2.1
+- Added Settings for the account to change password
+- 

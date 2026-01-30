@@ -44,7 +44,8 @@ class AuthController extends BaseController
                     'status'  => 'success',
                     'user'    => $userData, // We send the whole object now
                     'token'   => $token, 
-                    'message' => 'Login Successful!'
+                    'message' => 'Login Successful!',
+                    'user' => $user
                 ]);
             } else {
                 return $this->failUnauthorized('Invalid email or password');
@@ -114,6 +115,77 @@ class AuthController extends BaseController
         }
 
         return $this->respond(['status' => 'success', 'message' => 'Logged out successfully']);
+    }
+
+    // POST /auth/update-profile
+    public function updateProfile()
+    {
+        // 1. CORS & Preflight (Standard Setup)
+        header("Access-Control-Allow-Origin: *");
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+
+        if ($this->request->getMethod() === 'options') {
+            return $this->response->setStatusCode(200);
+        }
+
+        // 2. Validate Request
+        $json = $this->request->getJSON();
+        if (!$json || !isset($json->user_id)) {
+            return $this->failUnauthorized('Invalid request');
+        }
+
+        $model = new \App\Models\UserModel();
+        $user = $model->find($json->user_id);
+
+        if (!$user) {
+            return $this->failNotFound('User not found');
+        }
+
+        // 3. Prepare Data (Partial Update Logic)
+        $dataToUpdate = [];
+
+        // Only update Name if it was sent and is not empty
+        if (isset($json->name) && !empty(trim($json->name))) {
+            $dataToUpdate['name'] = trim($json->name);
+        }
+
+        // Only update Email if it was sent and is not empty
+        if (isset($json->email) && !empty(trim($json->email))) {
+            $dataToUpdate['email'] = trim($json->email);
+        }
+
+        // 4. Password Change Logic (Independent)
+        if (!empty($json->new_password)) {
+            if (empty($json->current_password)) {
+                return $this->fail('To change password, you must enter your Current Password.');
+            }
+            // Verify OLD password
+            if (!password_verify($json->current_password, $user['password'])) {
+                return $this->fail('Incorrect Current Password.');
+            }
+            // Set NEW password
+            $dataToUpdate['password'] = password_hash($json->new_password, PASSWORD_DEFAULT);
+        }
+
+        // 5. Check if there is anything to update
+        if (empty($dataToUpdate)) {
+            return $this->fail('No changes were provided.');
+        }
+
+        // 6. Execute Update
+        if ($model->update($json->user_id, $dataToUpdate)) {
+            $updatedUser = $model->find($json->user_id);
+            unset($updatedUser['password']); // Hide hash
+            
+            return $this->respond([
+                'status' => 'success',
+                'message' => 'Account updated successfully',
+                'user' => $updatedUser
+            ]);
+        }
+
+        return $this->fail('Database update failed');
     }
 
     // ------------------------------------------------------------------

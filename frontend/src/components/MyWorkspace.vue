@@ -76,6 +76,21 @@ const handleSubmit = () => {
                 <input v-model="uploadModal.author" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" placeholder="Enter author" />
               </div>
               
+              <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">Crop Variation <span class="text-red-500">*</span></label>
+                <select 
+                  v-model="uploadModal.crop_variation" 
+                  class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition bg-white"
+                >
+                  <option value="" disabled>Select a variation</option>
+                  <option value="Arabica">Arabica</option>
+                  <option value="Robusta">Robusta</option>
+                  <option value="Liberica">Liberica</option>
+                  <option value="Excelsa">Excelsa</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-xs font-bold text-gray-500 mb-1">Date Started</label>

@@ -197,6 +197,7 @@ class ResearchController extends BaseController
         $data = [
             'title'       => $this->request->getPost('title'),
             'author'      => $this->request->getPost('author'),
+            'crop_variation' => $this->request->getPost('crop_variation'),
             'abstract'    => $this->request->getPost('abstract'),
             'start_date'  => $start,
             'deadline_date' => $deadline,

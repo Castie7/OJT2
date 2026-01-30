@@ -2,7 +2,7 @@
 import { useDashboard, type User } from '../composables/useDashboard'
 
 // Import Sub-Components
-import HomeView from '../components/HomeView.vue'
+import HomeView from '../components/Homeview.vue'
 import ResearchLibrary from '../components/ResearchLibrary.vue'
 import MyWorkspace from '../components/MyWorkspace.vue'
 import Approval from '../components/Approval.vue'
@@ -85,12 +85,12 @@ const handleUserUpdate = (updatedUser: User) => {
 
     <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
       
-      <HomeView 
-        v-if="currentTab === 'home'" 
-        :currentUser="currentUser" 
-        :stats="stats" 
-        @browse-click="setTab('research')" 
-      />
+  <HomeView 
+    v-if="currentTab === 'home'" 
+    :currentUser="currentUser" 
+    :stats="stats" 
+    @browse-click="setTab('research')"
+    @stat-click="setTab"  />
 
       <ResearchLibrary 
         v-if="currentTab === 'research'" 

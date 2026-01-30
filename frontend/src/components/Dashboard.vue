@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import { toRef } from 'vue' // <--- 1. Import toRef
 import { useDashboard, type User } from '../composables/useDashboard'
 
 // Import Sub-Components
-import HomeView from '../components/Homeview.vue'
+import HomeView from '../components/HomeView.vue'
 import ResearchLibrary from '../components/ResearchLibrary.vue'
 import MyWorkspace from '../components/MyWorkspace.vue'
 import Approval from '../components/Approval.vue'
-import Settings from '../components/Settings.vue' // <--- IMPORT SETTINGS
+import Settings from '../components/Settings.vue' 
 
 const props = defineProps<{
   currentUser: User | null
@@ -15,11 +16,15 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'login-click'): void
   (e: 'logout-click'): void
-  (e: 'update-user', user: User): void // New event to pass updates up to App.vue
+  (e: 'update-user', user: User): void 
 }>()
 
-// Use Composable
-const { currentTab, stats, updateStats, setTab } = useDashboard()
+// 2. Create a Reactive Reference for the User
+// This ensures the dashboard logic "sees" the user when they log in
+const currentUserRef = toRef(props, 'currentUser')
+
+// 3. Pass the Ref to the composable
+const { currentTab, stats, updateStats, setTab } = useDashboard(currentUserRef)
 
 // Handle Profile Updates locally + emit up
 const handleUserUpdate = (updatedUser: User) => {
@@ -85,12 +90,13 @@ const handleUserUpdate = (updatedUser: User) => {
 
     <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
       
-  <HomeView 
-    v-if="currentTab === 'home'" 
-    :currentUser="currentUser" 
-    :stats="stats" 
-    @browse-click="setTab('research')"
-    @stat-click="setTab"  />
+      <HomeView 
+        v-if="currentTab === 'home'" 
+        :currentUser="currentUser" 
+        :stats="stats" 
+        @browse-click="setTab('research')"
+        @stat-click="setTab"
+      />
 
       <ResearchLibrary 
         v-if="currentTab === 'research'" 

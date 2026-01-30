@@ -1,25 +1,19 @@
 <script setup lang="ts">
 import { useHomeView, type User, type Stat } from '../composables/useHomeView'
 
-// Define Props
 defineProps<{
   currentUser: User | null
   stats: Stat[]
 }>()
 
-// 1. ADD THE NEW EMIT HERE
 const emit = defineEmits<{
   (e: 'browse-click'): void
-  (e: 'stat-click', tab: string): void // <--- Allows sending the tab name ('approval', 'research')
+  (e: 'stat-click', tab: string): void
 }>()
-//comment ni baron
+
 const { 
-  recentResearches, 
-  currentSlide, 
-  nextSlide, 
-  prevSlide, 
-  startSlideTimer, 
-  stopSlideTimer 
+  recentResearches, currentSlide, nextSlide, prevSlide, 
+  startSlideTimer, stopSlideTimer 
 } = useHomeView()
 </script>
 
@@ -27,15 +21,20 @@ const {
   <div class="space-y-8"> 
     
     <div v-if="currentUser">
-      <h1 class="text-2xl font-bold text-gray-900 mb-4">📢 System Overview (Admin Only)</h1>
+      <h1 class="text-2xl font-bold text-gray-900 mb-4">
+        {{ currentUser.role === 'admin' ? '📢 System Overview (Admin)' : '👋 My Research Overview' }}
+      </h1>
+
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
         <div 
             v-for="stat in stats" 
             :key="stat.title" 
             @click="stat.action ? emit('stat-click', stat.action) : null"
             :class="[
-              'bg-white p-6 rounded-lg shadow border-l-4 border-green-500 transition-transform duration-200',
+              'bg-white p-6 rounded-lg shadow border-l-4 transition-transform duration-200',
+              stat.color === 'text-red-600' ? 'border-red-500' : 
+              stat.color === 'text-orange-500' ? 'border-orange-500' : 
+              stat.color === 'text-yellow-600' ? 'border-yellow-500' : 'border-green-500',
               stat.action ? 'cursor-pointer hover:scale-105 hover:shadow-lg' : '' 
             ]"
         >
@@ -44,15 +43,12 @@ const {
               <h3 class="text-gray-500 text-sm uppercase font-semibold">{{ stat.title }}</h3>
               <p :class="`text-4xl font-bold mt-2 ${stat.color}`">{{ stat.value }}</p>
             </div>
-            
             <span v-if="stat.action" class="text-gray-300 text-xl">↗</span>
           </div>
-          
           <div v-if="stat.action" class="mt-2 text-xs text-gray-400 font-medium">
-            Click to manage
+             {{ stat.action === 'workspace' ? 'Go to My Workspace' : 'Click to view' }}
           </div>
         </div>
-
       </div>
     </div>
 
@@ -73,7 +69,6 @@ const {
         >
            <div class="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent z-10"></div>
            <div class="absolute inset-0 bg-green-900 opacity-30"></div> 
-           
            <div class="absolute inset-0 opacity-10 bg-pattern-cubes"></div>
 
            <div class="absolute bottom-0 left-0 p-8 md:p-12 z-20 max-w-3xl">
@@ -123,7 +118,6 @@ const {
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      
       <div class="bg-green-900 text-white p-8 rounded-xl shadow-lg relative overflow-hidden group hover:shadow-2xl transition duration-300">
         <div class="absolute top-0 right-0 w-24 h-24 bg-white opacity-5 rounded-bl-full transition group-hover:scale-110 duration-500"></div>
         <div class="flex items-center gap-3 mb-4">
@@ -145,7 +139,6 @@ const {
           To generate relevant technologies and information on root crops through rigorous research, preserving genetic diversity and empowering local farming communities.
         </p>
       </div>
-
     </div>
 
   </div>

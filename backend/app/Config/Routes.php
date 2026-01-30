@@ -16,6 +16,7 @@ $routes->post('auth/update-profile', 'AuthController::updateProfile');
 
 // --- RESEARCH ROUTES ---
 $routes->group('research', function($routes) {
+    $routes->get('user-stats/(:num)', 'ResearchController::userStats/$1');
     
     // 1. PUBLIC LISTS
     $routes->get('/', 'ResearchController::index'); 
@@ -32,7 +33,7 @@ $routes->group('research', function($routes) {
     $routes->get('pending', 'ResearchController::pending');
     $routes->get('rejected', 'ResearchController::rejectedList'); 
     $routes->get('stats', 'ResearchController::stats');
-    
+
     // 4. COMMENTS
     $routes->get('comments/(:num)', 'ResearchController::getComments/$1');
     $routes->match(['post', 'options'], 'comment', 'ResearchController::addComment');

@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue'
+import { ref, watch, type Ref } from 'vue'
 
 export interface User {
   id: number
@@ -11,74 +11,74 @@ export interface Stat {
   title: string
   value: string | number
   color: string
-  action?: string // <--- This allows the Dashboard to know where to navigate
+  action?: string 
 }
 
-export function useDashboard() {
+export function useDashboard(currentUserRef: Ref<User | null>) { 
   
-  // Default tab
   const currentTab = ref('home')
   
-  // Stats Array with Actions
+  // Default Loading State
   const stats = ref<Stat[]>([
-    { 
-      title: 'Total Researches', 
-      value: '...', 
-      color: 'text-green-600', 
-      action: 'research' // Clicking this switches currentTab to 'research'
-    },
-    { 
-      title: 'Root Crop Varieties', 
-      value: '8', 
-      color: 'text-yellow-600', 
-      action: 'home'     // Clicking this stays on home
-    }, 
-    { 
-      title: 'Pending Reviews', 
-      value: '...', 
-      color: 'text-red-600', 
-      action: 'approval' // Clicking this switches currentTab to 'approval'
-    }
+      { title: 'Loading...', value: '...', color: 'text-gray-400' },
+      { title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
+      { title: 'Loading...', value: '...', color: 'text-gray-400' }
   ])
 
-  // Navigation Helper
   const setTab = (tab: string) => {
     currentTab.value = tab
   }
 
-  // Fetch Logic
   const fetchDashboardStats = async () => {
+    const user = currentUserRef.value
+    if (!user) return
+
     try {
-        const response = await fetch('http://localhost:8080/research/stats')
-        if (response.ok) {
+        // === ADMIN LOGIC ===
+        if (user.role === 'admin') {
+            const response = await fetch('http://localhost:8080/research/stats')
+            if (!response.ok) throw new Error("API Error")
+            
             const data = await response.json()
             
-            // Update "Total Researches" (Index 0)
-            stats.value[0].value = data.total
+            stats.value = [
+                { title: 'Total Researches', value: data.total, color: 'text-green-600', action: 'research' },
+                { title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' }, 
+                { title: 'Pending Reviews', value: data.pending, color: 'text-red-600', action: 'approval' }
+            ]
+        } 
+        // === RESEARCHER LOGIC ===
+        else {
+            const response = await fetch(`http://localhost:8080/research/user-stats/${user.id}`)
+            if (!response.ok) throw new Error("API Error")
             
-            // Update "Pending Reviews" (Index 2)
-            stats.value[2].value = data.pending
+            const data = await response.json()
+
+            stats.value = [
+                { title: 'My Published Works', value: data.published, color: 'text-green-600', action: 'workspace' },
+                { title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
+                { title: 'My Pending Submissions', value: data.pending, color: 'text-orange-500', action: 'workspace' }
+            ]
         }
     } catch (e) {
-        console.error("Failed to load stats")
+        console.error("Stats Fetch Failed:", e)
+        stats.value[0].title = "Connection Failed"
+        stats.value[2].title = "Connection Failed"
     }
   }
 
-  // Fetch immediately on load
-  onMounted(() => {
-    fetchDashboardStats()
-  })
+  watch(currentUserRef, (newUser) => {
+     if (newUser) fetchDashboardStats()
+  }, { immediate: true })
 
-  // Helper for manual updates (e.g. if the library list changes)
+  // --- THE FIX IS HERE ---
+  // We check the title. If it's "My Published Works", we ignore the update
+  // because the Library (which shows ALL works) shouldn't overwrite personal stats.
   const updateStats = (count: number) => { 
-    stats.value[0].value = count 
+    if (stats.value.length > 0 && stats.value[0].title === 'Total Researches') {
+        stats.value[0].value = count 
+    }
   }
 
-  return {
-    currentTab,
-    stats,
-    updateStats,
-    setTab,
-    fetchDashboardStats
-  }
+  return { currentTab, stats, updateStats, setTab, fetchDashboardStats }
 }

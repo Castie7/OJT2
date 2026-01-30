@@ -1,143 +1,21 @@
-<script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+<script setup lang="ts">
+import { useResearchLibrary, type User } from '../composables/useResearchLibrary'
 
-const props = defineProps(['currentUser'])
-const emit = defineEmits(['update-stats']) 
+const props = defineProps<{
+  currentUser: User | null
+}>()
 
-// Data States
-const researches = ref([]) 
-const searchQuery = ref('')
-const showArchived = ref(false)
-const viewMode = ref('list')
-const selectedResearch = ref(null)
+const emit = defineEmits<{
+  (e: 'update-stats', count: number): void
+}>()
 
-// UI States
-const isLoading = ref(false)
-const toast = ref({ show: false, message: '', type: 'success' }) 
-const confirmModal = ref({ show: false, id: null, action: '', title: '', subtext: '' })
-
-// --- PAGINATION STATE ---
-const currentPage = ref(1)
-const itemsPerPage = 10
-
-// --- HELPERS ---
-const showToast = (message, type = 'success') => {
-  toast.value = { show: true, message, type }
-  setTimeout(() => { toast.value.show = false }, 3000)
-}
-
-const getCookie = (name) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return null;
-}
-
-// DATE FORMATTER (New)
-const formatSimpleDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
-// --- FETCH DATA ---
-const fetchResearches = async () => {
-  isLoading.value = true
-  try {
-    const endpoint = showArchived.value 
-      ? 'http://localhost:8080/research/archived' 
-      : 'http://localhost:8080/research'
-
-    const token = getCookie('auth_token');
-    const headers = token ? { 'Authorization': token } : {};
-
-    const response = await fetch(endpoint, { headers })
-    
-    if (response.ok) {
-      const data = await response.json()
-      researches.value = data
-      
-      if (!showArchived.value) {
-        emit('update-stats', data.length)
-      }
-    } else {
-       if(showArchived.value) showToast("Access Denied to Archives", "error");
-    }
-  } catch (error) {
-    showToast("Failed to load data.", "error")
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// --- FILTER & PAGINATION LOGIC ---
-const filteredResearches = computed(() => {
-  if (!searchQuery.value) return researches.value
-  const query = searchQuery.value.toLowerCase()
-  return researches.value.filter(item => 
-    item.title.toLowerCase().includes(query) || 
-    item.author.toLowerCase().includes(query)
-  )
-})
-
-const paginatedResearches = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  const end = start + itemsPerPage
-  return filteredResearches.value.slice(start, end)
-})
-
-const totalPages = computed(() => {
-  return Math.ceil(filteredResearches.value.length / itemsPerPage)
-})
-
-// --- WATCHER ---
-watch([searchQuery, showArchived], () => {
-  currentPage.value = 1
-  fetchResearches() // Always fetch when tab changes
-})
-
-// Navigation
-const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
-const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
-
-onMounted(() => { fetchResearches() })
-
-// --- ARCHIVE LOGIC ---
-const requestArchiveToggle = (item) => {
-  const action = showArchived.value ? 'Restore' : 'Archive';
-  confirmModal.value = {
-    show: true, id: item.id, action: action,
-    title: action === 'Archive' ? 'Move to Trash?' : 'Restore Research?',
-    subtext: action === 'Archive' ? `Remove "${item.title}"?` : `Restore "${item.title}"?`
-  }
-}
-
-const executeArchiveToggle = async () => {
-  if (!confirmModal.value.id) return;
-  
-  const token = getCookie('auth_token');
-  if(!token) { showToast("Authentication Error", "error"); return; }
-
-  try {
-    // Dynamic Endpoint
-    const endpoint = confirmModal.value.action === 'Restore'
-      ? `http://localhost:8080/research/restore/${confirmModal.value.id}`
-      : `http://localhost:8080/research/archive/${confirmModal.value.id}`;
-
-    const response = await fetch(endpoint, { 
-      method: 'POST',
-      headers: { 'Authorization': token } 
-    })
-    
-    if(response.ok) {
-        fetchResearches() 
-        showToast(`Item ${confirmModal.value.action}d successfully!`, "success")
-        confirmModal.value.show = false
-    } else {
-        const err = await response.json();
-        showToast("Failed: " + (err.message || "Access Denied"), "error");
-    }
-  } catch (error) { showToast("Error updating status", "error") }
-}
+const {
+  searchQuery, showArchived, viewMode, selectedResearch,
+  isLoading, toast, confirmModal, currentPage, 
+  filteredResearches, paginatedResearches, totalPages,
+  nextPage, prevPage, requestArchiveToggle, executeArchiveToggle,
+  formatSimpleDate
+} = useResearchLibrary(props.currentUser, emit)
 </script>
 
 <template>
@@ -198,21 +76,20 @@ const executeArchiveToggle = async () => {
                   <tr>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Title</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Author</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Published</th> <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Published</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="item in paginatedResearches" :key="item.id" class="hover:bg-green-50 transition">
                     <td @click="selectedResearch = item" class="px-6 py-4 font-medium text-gray-900 cursor-pointer">{{ item.title }}</td>
                     <td @click="selectedResearch = item" class="px-6 py-4 text-gray-500 cursor-pointer">{{ item.author }}</td>
-                    
                     <td class="px-6 py-4 text-gray-500 text-sm">
                        <span v-if="item.approved_at" class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">
                          {{ formatSimpleDate(item.approved_at) }}
                        </span>
                        <span v-else class="text-gray-400 text-xs italic">N/A</span>
                     </td>
-
                     <td class="px-6 py-4 flex items-center gap-2">
                        <button @click="selectedResearch = item" class="text-xs px-2 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50">View PDF</button>
                        <button 
@@ -241,12 +118,10 @@ const executeArchiveToggle = async () => {
                   <div class="h-32 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 group-hover:bg-green-50 group-hover:text-green-600 transition"><span class="text-4xl">📄</span></div>
                   <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1 group-hover:text-green-700">{{ item.title }}</h3>
                   <p class="text-sm text-gray-500 mb-2">By {{ item.author }}</p>
-                  
                   <div class="text-xs text-gray-400 mb-2 pt-2 border-t mt-auto flex justify-between">
                      <span>Published:</span>
                      <span class="font-bold text-green-700">{{ formatSimpleDate(item.approved_at) }}</span>
                   </div>
-
                   <div class="text-blue-600 text-xs font-bold hover:underline">Read PDF →</div>
                 </div>
               </div>
@@ -257,15 +132,34 @@ const executeArchiveToggle = async () => {
               <span v-else>{{ showArchived ? 'Archive is empty.' : 'No active researches found.' }}</span>
             </div>
 
-            <div v-if="filteredResearches.length > itemsPerPage" class="mt-6 flex justify-between items-center border-t pt-4">
+            <div class="mt-6 flex flex-col sm:flex-row justify-between items-center border-t pt-4 gap-4">
               <span class="text-sm text-gray-500">
-                Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredResearches.length) }} of {{ filteredResearches.length }} entries
+                <span v-if="filteredResearches.length > 0">
+                  Showing {{ ((currentPage - 1) * 10) + 1 }} to {{ Math.min(currentPage * 10, filteredResearches.length) }} of {{ filteredResearches.length }} entries
+                </span>
+                <span v-else>No entries to show</span>
               </span>
               
               <div class="flex gap-2">
-                <button @click="prevPage" :disabled="currentPage === 1" class="px-4 py-2 text-sm font-bold rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition">Previous</button>
-                <span class="px-4 py-2 text-sm font-bold bg-green-50 text-green-700 rounded-lg border border-green-200">Page {{ currentPage }} of {{ totalPages }}</span>
-                <button @click="nextPage" :disabled="currentPage === totalPages" class="px-4 py-2 text-sm font-bold rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition">Next</button>
+                <button 
+                  @click="prevPage" 
+                  :disabled="currentPage === 1" 
+                  class="px-4 py-2 text-sm font-bold rounded-lg border bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Previous
+                </button>
+                
+                <span class="px-4 py-2 text-sm font-bold bg-green-50 text-green-700 rounded-lg border border-green-200">
+                  Page {{ currentPage }} of {{ totalPages > 0 ? totalPages : 1 }}
+                </span>
+                
+                <button 
+                  @click="nextPage" 
+                  :disabled="currentPage === totalPages || totalPages === 0" 
+                  class="px-4 py-2 text-sm font-bold rounded-lg border bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Next
+                </button>
               </div>
             </div>
 
@@ -307,19 +201,4 @@ const executeArchiveToggle = async () => {
   </div>
 </template>
 
-<style scoped>
-/* Animations */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-.slide-fade-enter-active { transition: all 0.3s ease-out; }
-.slide-fade-leave-active { transition: all 0.4s cubic-bezier(1, 0.5, 0.8, 1); }
-.slide-fade-enter-from, .slide-fade-leave-to { transform: translateX(20px); opacity: 0; }
-.pop-enter-active { animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.pop-leave-active { transition: opacity 0.2s ease; }
-.pop-leave-to { opacity: 0; }
-@keyframes pop-in { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-@keyframes wiggle { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
-.animate-wiggle { animation: wiggle 1s ease-in-out infinite; }
-.animate-spin-slow { animation: spin 3s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-</style>
+<style scoped src="../assets/styles/ResearchLibrary.css"></style>

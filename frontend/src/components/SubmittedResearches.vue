@@ -1,194 +1,32 @@
-<script setup>
-import { ref, onMounted, watch, nextTick, computed } from 'vue'
+<script setup lang="ts">
+import { useSubmittedResearches, type User } from '../composables/useSubmittedResearches' 
 
-const props = defineProps(['currentUser', 'isArchived'])
+const props = defineProps<{
+    currentUser: User | null
+    isArchived: boolean
+}>()
 
-// Data
-const myItems = ref([])
-const isLoading = ref(false)
-const searchQuery = ref('')
-
-// --- PAGINATION STATE ---
-const currentPage = ref(1)
-const itemsPerPage = 10
-
-// UI
-const editingItem = ref(null)
-const editPdfFile = ref(null)
-const isSaving = ref(false)
-const selectedResearch = ref(null)
-
-// Modals
-const commentModal = ref({ show: false, researchId: null, title: '', list: [], newComment: '' })
-const isSendingComment = ref(false)
-const chatContainer = ref(null)
-const confirmModal = ref({ show: false, id: null, action: '', title: '', subtext: '', isProcessing: false })
-
-// --- HELPERS ---
-const getHeaders = () => {
-  const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1];
-  return { 'Authorization': token };
-}
-
-const getDeadlineStatus = (deadline) => {
-  if (!deadline) return null;
-  const today = new Date();
-  const due = new Date(deadline);
-  const diffTime = due - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-  if (diffDays < 0) return { text: `Overdue by ${Math.abs(diffDays)} days`, color: 'text-red-600 bg-red-100' };
-  if (diffDays === 0) return { text: 'Due Today!', color: 'text-red-600 font-bold bg-red-100' };
-  if (diffDays <= 7) return { text: `${diffDays} days left`, color: 'text-yellow-700 bg-yellow-100' };
-  return { text: due.toLocaleDateString(), color: 'text-gray-500' };
-}
-
-const formatSimpleDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
-const getArchiveDaysLeft = (archivedDate) => {
-  if (!archivedDate) return 60; 
-  const start = new Date(archivedDate);
-  const expiration = new Date(start);
-  expiration.setDate(start.getDate() + 60); 
-  const today = new Date();
-  const diffTime = expiration - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays > 0 ? diffDays : 0;
-}
-
-// --- FETCH DATA ---
-const fetchData = async () => {
-  isLoading.value = true
-  try {
-    const endpoint = props.isArchived 
-      ? 'http://localhost:8080/research/my-archived' 
-      : 'http://localhost:8080/research/my-submissions';
-    const response = await fetch(endpoint, { headers: getHeaders() })
-    if (response.ok) {
-        myItems.value = await response.json()
-        currentPage.value = 1 
-        searchQuery.value = ''
-    }
-  } catch (error) { console.error("Error fetching items:", error) } 
-  finally { isLoading.value = false }
-}
+const {
+    // State
+    isLoading, searchQuery, 
+    editingItem, isSaving, selectedResearch, commentModal, isSendingComment,
+    chatContainer, confirmModal,
+    
+    // Computed
+    filteredItems, paginatedItems, currentPage, totalPages, itemsPerPage,
+    
+    // Methods
+    fetchData, nextPage, prevPage,
+    requestArchive, executeArchive, openComments, postComment,
+    openEdit, handleEditFile, saveEdit,
+    
+    // Helpers
+    getDeadlineStatus, 
+    getArchiveDaysLeft,
+    formatSimpleDate  // <--- ADD THIS HERE!
+} = useSubmittedResearches(props)
 
 defineExpose({ fetchData })
-onMounted(() => fetchData())
-watch(() => props.isArchived, () => fetchData())
-
-// --- SEARCH & PAGINATION ---
-const filteredItems = computed(() => {
-  if (!searchQuery.value) return myItems.value;
-  const query = searchQuery.value.toLowerCase();
-  return myItems.value.filter(item => 
-    item.title.toLowerCase().includes(query) || 
-    item.author.toLowerCase().includes(query)
-  );
-})
-
-const paginatedItems = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  const end = start + itemsPerPage
-  return filteredItems.value.slice(start, end)
-})
-
-const totalPages = computed(() => Math.ceil(filteredItems.value.length / itemsPerPage))
-watch(searchQuery, () => { currentPage.value = 1 })
-const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
-const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
-
-// --- ACTIONS ---
-const requestArchive = (item) => {
-  const action = props.isArchived ? 'Restore' : 'Archive';
-  confirmModal.value = {
-    show: true, id: item.id, action: action,
-    title: action === 'Archive' ? 'Move to Trash?' : 'Restore File?',
-    subtext: action === 'Archive' ? `Remove "${item.title}"?` : `Restore "${item.title}"?`,
-    isProcessing: false
-  }
-}
-
-const executeArchive = async () => {
-  if (!confirmModal.value.id) return;
-  confirmModal.value.isProcessing = true;
-  try {
-    const endpoint = props.isArchived 
-        ? `http://localhost:8080/research/restore/${confirmModal.value.id}` 
-        : `http://localhost:8080/research/archive/${confirmModal.value.id}`;
-
-    const response = await fetch(endpoint, { method: 'POST', headers: getHeaders() })
-    if (response.ok) {
-        confirmModal.value.show = false; 
-        fetchData(); 
-    } else {
-        alert("Action Failed.");
-    }
-  } catch (e) { alert("Network Error"); } 
-  finally { confirmModal.value.isProcessing = false; }
-}
-
-// --- COMMENTS ---
-const openComments = async (item) => {
-  commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
-  try {
-    const res = await fetch(`http://localhost:8080/research/comments/${item.id}`, { headers: getHeaders() })
-    if(res.ok) { commentModal.value.list = await res.json(); nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight }); }
-  } catch (e) {}
-}
-
-const postComment = async () => {
-  if (isSendingComment.value || !commentModal.value.newComment.trim()) return
-  isSendingComment.value = true
-  try {
-    await fetch('http://localhost:8080/research/comment', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', ...getHeaders() },
-      body: JSON.stringify({ research_id: commentModal.value.researchId, user_id: props.currentUser.id, user_name: props.currentUser.name, role: 'user', comment: commentModal.value.newComment })
-    })
-    const refreshRes = await fetch(`http://localhost:8080/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
-    commentModal.value.list = await refreshRes.json(); commentModal.value.newComment = '' 
-    nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight });
-  } catch (e) { alert("Failed: " + e.message); } finally { isSendingComment.value = false }
-}
-
-// --- EDIT LOGIC (SECURED + ANIMATED) ---
-const openEdit = (item) => { editingItem.value = { ...item }; editPdfFile.value = null }
-
-const handleEditFile = (e) => { 
-  const file = e.target.files[0]
-  if (!file) { editPdfFile.value = null; return; }
-  const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
-  if (!allowedExtensions.includes(file.name.split('.').pop().toLowerCase())) {
-    alert("❌ Invalid File!"); e.target.value = ''; editPdfFile.value = null; return
-  }
-  editPdfFile.value = file 
-}
-
-const saveEdit = async () => {
-  if (isSaving.value) return; 
-  const item = editingItem.value;
-  if (!item.title.trim() || !item.author.trim() || !item.deadline_date) { alert("⚠️ Missing Fields"); return; }
-  
-  isSaving.value = true 
-  const formData = new FormData()
-  formData.append('title', item.title); formData.append('author', item.author);
-  formData.append('abstract', item.abstract || ''); formData.append('start_date', item.start_date || '');
-  formData.append('deadline_date', item.deadline_date);
-  if (editPdfFile.value) formData.append('pdf_file', editPdfFile.value)
-
-  try {
-    const res = await fetch(`http://localhost:8080/research/update/${item.id}`, { method: 'POST', headers: getHeaders(), body: formData })
-    await new Promise(r => setTimeout(r, 500)); 
-    if (res.ok) { 
-        alert("✅ Updated!"); 
-        editingItem.value = null; 
-        fetchData(); 
-    } else { alert("Update Failed"); }
-  } catch (e) { alert("Server Error") } 
-  finally { isSaving.value = false }
-}
 </script>
 
 <template>
@@ -210,7 +48,9 @@ const saveEdit = async () => {
           <thead class="bg-gray-50">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Title</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{{ isArchived ? 'Auto-Delete In' : 'Timeline' }}</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+                {{ isArchived ? 'Auto-Delete In' : 'Timeline' }}
+              </th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Review</th>
               <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Actions</th>
@@ -218,34 +58,72 @@ const saveEdit = async () => {
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition">
+              
               <td class="px-6 py-4 font-medium text-gray-900">{{ item.title }}</td>
+              
               <td class="px-6 py-4">
-                <div v-if="isArchived"><span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200">⚠️ {{ getArchiveDaysLeft(item.archived_at) }} Days left</span></div>
-                <div v-else-if="item.status === 'approved'"><span class="px-2 py-0.5 text-xs font-bold rounded bg-green-100 text-green-700 border border-green-200">✅ Completed</span></div>
-                <div v-else-if="item.deadline_date"><span :class="`px-2 py-1 text-xs rounded font-bold ${getDeadlineStatus(item.deadline_date).color}`">{{ getDeadlineStatus(item.deadline_date).text }}</span></div>
+                
+                <div v-if="isArchived">
+                  <span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200">
+                    ⚠️ {{ getArchiveDaysLeft(item.archived_at) }} Days left
+                  </span>
+                </div>
+
+                <div v-else-if="item.status === 'approved'">
+                  <div class="mb-1">
+                    <span class="px-2 py-0.5 text-xs font-bold rounded bg-green-100 text-green-700 border border-green-200">✅ Completed</span>
+                  </div>
+                  <div class="text-[11px] text-gray-500 flex flex-col gap-0.5">
+                    <span>Submitted: <b class="text-gray-700">{{ formatSimpleDate(item.created_at) }}</b></span>
+                    <span>Approved: <b class="text-green-700">{{ formatSimpleDate(item.approved_at || item.updated_at) }}</b></span>
+                  </div>
+                </div>
+
+                <div v-else-if="item.deadline_date">
+                  <span :class="`px-2 py-1 text-xs rounded font-bold ${getDeadlineStatus(item.deadline_date)?.color}`">
+                    {{ getDeadlineStatus(item.deadline_date)?.text }}
+                  </span>
+                  <div class="text-[10px] text-gray-400 mt-1">
+                    Submitted: {{ formatSimpleDate(item.created_at) }}
+                  </div>
+                </div>
+
                 <span v-else class="text-gray-400 text-xs">No Deadline</span>
               </td>
+
               <td class="px-6 py-4">
                 <span v-if="isArchived" class="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">Archived</span>
                 <span v-else-if="item.status === 'pending'" class="px-2 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">⏳ Pending Review</span>
                 <span v-else-if="item.status === 'approved'" class="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-700 border border-green-200">✅ Published</span>
                 <span v-else-if="item.status === 'rejected'" class="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700 border border-red-200">❌ Rejected</span>
               </td>
-              <td class="px-6 py-4"><button @click="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1 transition-colors">💬 Comments</button></td>
+
+              <td class="px-6 py-4">
+                <button @click="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1 transition-colors">💬 Comments</button>
+              </td>
+
               <td class="px-6 py-4 text-right flex justify-end gap-2">
                 <button v-if="item.status === 'approved' && !isArchived" @click="selectedResearch = item" class="text-xs px-3 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 transition">View PDF</button>
                 <template v-else>
                   <button v-if="!isArchived" @click="openEdit(item)" class="text-xs px-3 py-1 rounded font-bold border text-yellow-700 border-yellow-400 hover:bg-yellow-100 transition">✏️ Edit</button>
-                  <button @click="requestArchive(item)" :class="`text-xs px-3 py-1 rounded font-bold border transition ${isArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">{{ isArchived ? '♻️ Restore' : '📦 Archive' }}</button>
+                  <button @click="requestArchive(item)" :class="`text-xs px-3 py-1 rounded font-bold border transition ${isArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">
+                    {{ isArchived ? '♻️ Restore' : '📦 Archive' }}
+                  </button>
                 </template>
               </td>
             </tr>
           </tbody>
         </table>
-        <div v-if="filteredItems.length === 0" class="text-center py-10 border border-dashed border-gray-300 rounded mt-4 text-gray-500">{{ isArchived ? 'No archived items.' : 'No submissions found.' }}</div>
+        
+        <div v-if="filteredItems.length === 0" class="text-center py-10 border border-dashed border-gray-300 rounded mt-4 text-gray-500">
+           {{ isArchived ? 'No archived items.' : 'No submissions found.' }}
+        </div>
       </div>
+      
       <div v-if="filteredItems.length > itemsPerPage" class="mt-4 flex justify-between items-center border-t pt-4">
-        <span class="text-sm text-gray-500">Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredItems.length) }} of {{ filteredItems.length }}</span>
+        <span class="text-sm text-gray-500">
+          Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredItems.length) }} of {{ filteredItems.length }} entries
+        </span>
         <div class="flex gap-2">
           <button @click="prevPage" :disabled="currentPage === 1" class="px-3 py-1 text-sm font-bold rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 transition">Previous</button>
           <span class="px-3 py-1 text-sm font-bold bg-green-50 text-green-700 rounded-lg border border-green-200">Page {{ currentPage }} of {{ totalPages }}</span>
@@ -255,7 +133,9 @@ const saveEdit = async () => {
     </div>
 
     <div v-if="commentModal.show" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h3>Review: {{ commentModal.title }}</h3><button @click="commentModal.show=false" class="close-btn">×</button></div><div class="modal-body"><div class="comments-list" ref="chatContainer"><TransitionGroup name="chat"><div v-for="c in commentModal.list" :key="c.id" :class="['comment-bubble', c.role==='admin'?'admin-msg':'user-msg']"><strong>{{ c.user_name }} ({{ c.role }}):</strong><p>{{ c.comment }}</p></div></TransitionGroup></div><div class="comment-input"><textarea v-model="commentModal.newComment" @keydown.enter.prevent="postComment"></textarea><button @click="postComment" :disabled="isSendingComment">Send</button></div></div></div></div>
+    
     <div v-if="selectedResearch" class="modal-overlay"><div class="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col"><div class="bg-green-800 text-white p-4 flex justify-between"><h2>{{ selectedResearch.title }}</h2><button @click="selectedResearch=null">&times;</button></div><div class="flex-1 bg-gray-100 p-4"><iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none"></iframe></div></div></div>
+    
     <Transition name="pop"><div v-if="confirmModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"><div class="bg-white rounded-2xl p-6 text-center"><h3>{{ confirmModal.title }}</h3><div class="flex gap-3 justify-center mt-4"><button @click="confirmModal.show=false" class="px-4 py-2 bg-gray-100 rounded" :disabled="confirmModal.isProcessing">Cancel</button><button @click="executeArchive" class="px-4 py-2 bg-green-600 text-white rounded" :disabled="confirmModal.isProcessing">Yes</button></div></div></div></Transition>
 
     <div v-if="editingItem" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
@@ -269,35 +149,15 @@ const saveEdit = async () => {
             <input v-model="editingItem.deadline_date" type="date" class="border p-2"/>
           </div>
           <textarea v-model="editingItem.abstract" class="w-full border p-2"></textarea>
-          
           <div class="relative group">
             <label class="block text-xs font-bold text-gray-500 mb-1">Update File (Optional)</label>
-            <input 
-              type="file" 
-              @change="handleEditFile" 
-              class="w-full text-sm text-slate-500 
-                     file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 
-                     file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 
-                     hover:file:bg-green-100 hover:file:text-green-800 
-                     hover:file:scale-105 hover:file:shadow-md 
-                     active:file:scale-95 
-                     file:transition-all file:duration-300 file:ease-in-out file:cursor-pointer"
-            />
+            <input type="file" @change="handleEditFile" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 hover:file:text-green-800 hover:file:scale-105 hover:file:shadow-md active:file:scale-95 file:transition-all file:duration-300 file:ease-in-out file:cursor-pointer"/>
           </div>
-
         </div>
         <div class="flex justify-end gap-2 mt-4">
           <button @click="editingItem=null" :disabled="isSaving" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancel</button>
-          
-          <button 
-            @click="saveEdit" 
-            :disabled="isSaving" 
-            class="relative flex items-center justify-center bg-yellow-500 text-white px-6 py-2 rounded font-bold shadow transition-all duration-200 disabled:opacity-75 disabled:cursor-not-allowed disabled:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
-          >
-            <svg v-if="isSaving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+          <button @click="saveEdit" :disabled="isSaving" class="relative flex items-center justify-center bg-yellow-500 text-white px-6 py-2 rounded font-bold shadow transition-all duration-200 disabled:opacity-75 disabled:cursor-not-allowed disabled:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:scale-95">
+            <svg v-if="isSaving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             {{ isSaving ? 'Saving...' : 'Save Changes' }}
           </button>
         </div>
@@ -307,26 +167,4 @@ const saveEdit = async () => {
   </div>
 </template>
 
-<style scoped>
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;}
-.modal-content { background: white; width: 600px; padding: 20px; border-radius: 8px; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-.modal-header { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; margin-bottom: 15px; align-items: center; }
-.close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; }
-.comments-list { background: #f9f9f9; padding: 10px; height: 250px; overflow-y: auto; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 4px; }
-.comment-bubble { padding: 10px; margin-bottom: 10px; border-radius: 6px; font-size: 0.9em; max-width: 85%; }
-.admin-msg { background: #e2e6ea; border-left: 4px solid #17a2b8; margin-right: auto; }
-.user-msg { background: #fff3cd; text-align: right; border-right: 4px solid #ffc107; margin-left: auto; }
-.comment-input { display: flex; gap: 10px; }
-.comment-input textarea { width: 100%; height: 50px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: none; outline: none; }
-.btn-send { background: #007bff; color: white; padding: 0 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: opacity 0.3s; }
-.chat-enter-active, .chat-leave-active { transition: all 0.4s ease; }
-.chat-enter-from, .chat-leave-to { opacity: 0; transform: translateY(20px); }
-.pop-enter-active { animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.pop-leave-active { transition: opacity 0.2s ease; }
-.pop-leave-to { opacity: 0; }
-@keyframes pop-in { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-@keyframes wiggle { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
-.animate-wiggle { animation: wiggle 1s ease-in-out infinite; }
-.animate-spin-slow { animation: spin 3s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-</style>
+<style scoped src="../assets/styles/SubmittedResearches.css"></style>

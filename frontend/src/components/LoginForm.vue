@@ -1,50 +1,21 @@
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { useLoginForm } from '../composables/useLoginForm'
 
-// 1. Add 'back' to the allowed signals
-const emit = defineEmits(['login-success', 'back'])
+// 1. Define Emits
+const emit = defineEmits<{
+  (e: 'login-success', data: any): void
+  (e: 'back'): void
+}>()
 
-const email = ref('')
-const password = ref('')
-const message = ref('')
-const isSuccess = ref(false)
-const isLoading = ref(false) // Added loading state for button animation
-
-const handleLogin = async () => {
-  isLoading.value = true
-  message.value = ""
-  
-  try {
-    const response = await fetch('http://localhost:8080/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        email: email.value, 
-        password: password.value 
-      })
-    })
-
-    const data = await response.json()
-    
-    if (data.status === 'success') {
-      isSuccess.value = true
-      message.value = "Login Successful!"
-      
-      setTimeout(() => {
-        // Send the WHOLE data object (contains user AND token)
-        emit('login-success', data)
-      }, 1000)
-    } else {
-      isSuccess.value = false
-      message.value = data.message || "Invalid credentials"
-      isLoading.value = false
-    }
-
-  } catch (error) {
-    message.value = "Server connection failed."
-    isLoading.value = false
-  }
-}
+// 2. Use Composable
+const { 
+  email, 
+  password, 
+  message, 
+  isSuccess, 
+  isLoading, 
+  handleLogin 
+} = useLoginForm(emit)
 </script>
 
 <template>
@@ -142,22 +113,4 @@ const handleLogin = async () => {
   </div>
 </template>
 
-<style scoped>
-/* Custom Animations for the Background Blobs */
-@keyframes blob {
-  0% { transform: translate(0px, 0px) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-  100% { transform: translate(0px, 0px) scale(1); }
-}
-.animate-blob {
-  animation: blob 7s infinite;
-}
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-/* Fade Transition for Messages */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-</style>
+<style scoped src="../assets/styles/LoginForm.css"></style>

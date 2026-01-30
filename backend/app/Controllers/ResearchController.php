@@ -213,6 +213,12 @@ class ResearchController extends BaseController
     public function update($id = null)
     {
         $this->handleCors();
+        
+        // 1. STRICT METHOD CHECK
+        if (!$this->request->is('post')) {
+            return $this->failMethodNotAllowed('Only POST requests allowed');
+        }
+
         $user = $this->validateUser();
         if (!$user) return $this->failUnauthorized();
 

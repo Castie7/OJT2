@@ -7,6 +7,7 @@ export interface Research {
   deadline_date: string
   rejected_at?: string
   file_path: string
+  created_at: string
 }
 
 export interface User {
@@ -25,32 +26,37 @@ interface Comment {
 
 export function useApproval(currentUser: User | null) {
   
-  // --- STATE ---
   const activeTab = ref<'pending' | 'rejected'>('pending')
   const items = ref<Research[]>([])
   const isLoading = ref(false)
   const selectedResearch = ref<Research | null>(null)
   
-  // Pagination
   const currentPage = ref(1)
   const itemsPerPage = 10
 
-  // Modals
   const deadlineModal = ref({ show: false, id: null as number | null, title: '', currentDate: '', newDate: '' })
   const commentModal = ref({ show: false, researchId: null as number | null, title: '', list: [] as Comment[], newComment: '' })
   const isSendingComment = ref(false)
   const chatContainer = ref<HTMLElement | null>(null)
 
-  // --- HELPERS ---
   const getHeaders = () => {
     const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1]
     return { 'Authorization': token || '' }
   }
 
+  // --- 1. UPDATED DATE FORMATTER (Standardized) ---
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'No Deadline'
-    return new Date(dateString).toLocaleDateString()
+    if (!dateString) return 'No Date'
+    // Converts "2026-02-07" -> "Feb 7, 2026"
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    })
   }
+
+  // Use the same logic for created_at (Aliases to the function above)
+  const formatSimpleDate = formatDate 
 
   const getDaysLeft = (rejectedDate?: string) => {
     if(!rejectedDate) return 30
@@ -63,7 +69,6 @@ export function useApproval(currentUser: User | null) {
     return diffDays > 0 ? diffDays : 0
   }
 
-  // --- API CALLS ---
   const fetchData = async () => {
     isLoading.value = true
     items.value = [] 
@@ -102,7 +107,6 @@ export function useApproval(currentUser: User | null) {
     } catch (error) { alert("Action failed") }
   }
 
-  // --- PAGINATION ---
   const paginatedItems = computed(() => {
     const start = (currentPage.value - 1) * itemsPerPage
     const end = start + itemsPerPage
@@ -113,7 +117,6 @@ export function useApproval(currentUser: User | null) {
   const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
   const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
 
-  // --- DEADLINE LOGIC ---
   const openDeadlineModal = (item: Research) => {
     deadlineModal.value = { show: true, id: item.id, title: item.title, currentDate: item.deadline_date, newDate: item.deadline_date }
   }
@@ -132,7 +135,6 @@ export function useApproval(currentUser: User | null) {
     } catch (e) { alert("Server Error") }
   }
 
-  // --- COMMENTS LOGIC ---
   const scrollToBottom = () => { nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight }) }
 
   const openComments = async (item: Research) => {
@@ -172,6 +174,7 @@ export function useApproval(currentUser: User | null) {
     currentPage, itemsPerPage, paginatedItems, totalPages, nextPage, prevPage,
     deadlineModal, commentModal, isSendingComment, chatContainer,
     fetchData, handleAction, formatDate, getDaysLeft,
-    openDeadlineModal, saveNewDeadline, openComments, postComment
+    openDeadlineModal, saveNewDeadline, openComments, postComment,
+    formatSimpleDate 
   }
 }

@@ -6,6 +6,7 @@ export interface Research {
   id: number
   title: string
   author: string
+  crop_variation: string
   abstract: string
   status: 'pending' | 'approved' | 'rejected' | 'archived'
   file_path: string

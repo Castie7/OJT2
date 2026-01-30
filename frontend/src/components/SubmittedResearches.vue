@@ -51,6 +51,7 @@ defineExpose({ fetchData })
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
                 {{ isArchived ? 'Auto-Delete In' : 'Timeline' }}
               </th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Crop Variation</th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Review</th>
               <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Actions</th>
@@ -78,7 +79,8 @@ defineExpose({ fetchData })
                     <span>Approved: <b class="text-green-700">{{ formatSimpleDate(item.approved_at || item.updated_at) }}</b></span>
                   </div>
                 </div>
-
+                
+                
                 <div v-else-if="item.deadline_date">
                   <span :class="`px-2 py-1 text-xs rounded font-bold ${getDeadlineStatus(item.deadline_date)?.color}`">
                     {{ getDeadlineStatus(item.deadline_date)?.text }}
@@ -90,7 +92,13 @@ defineExpose({ fetchData })
 
                 <span v-else class="text-gray-400 text-xs">No Deadline</span>
               </td>
-
+              
+              <td class="px-6 py-4">
+                <span class="px-2 py-1 text-xs font-semibold rounded bg-amber-50 text-amber-700 border border-amber-100">
+                  {{ item.crop_variation || 'Standard Variety' }}
+                </span>
+              </td>
+              
               <td class="px-6 py-4">
                 <span v-if="isArchived" class="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700">Archived</span>
                 <span v-else-if="item.status === 'pending'" class="px-2 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">⏳ Pending Review</span>

@@ -2,8 +2,8 @@
 import { useHomeView, type User, type Stat } from '../composables/useHomeView'
 
 defineProps<{
-  currentUser: User | null
-  stats: Stat[]
+  currentUser: User | null // id, name, role
+  stats: Stat[] // title, value, color
 }>()
 
 const emit = defineEmits<{

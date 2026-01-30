@@ -33,15 +33,24 @@ const getCookie = (name) => {
   return null;
 }
 
+// DATE FORMATTER
+const formatSimpleDate = (dateStr) => {
+  if (!dateStr) return 'N/A';
+  return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 // --- FETCH DATA ---
 const fetchResearches = async () => {
   isLoading.value = true
+  // Reset list slightly to indicate loading state if desired, or keep old data
+  // researches.value = [] 
   try {
     const endpoint = showArchived.value 
       ? 'http://localhost:8080/research/archived' 
       : 'http://localhost:8080/research'
 
     const token = getCookie('auth_token');
+    // Always attach headers if token exists (Admin needs it for Archive, Public doesn't hurt)
     const headers = token ? { 'Authorization': token } : {};
 
     const response = await fetch(endpoint, { headers })
@@ -64,8 +73,6 @@ const fetchResearches = async () => {
 }
 
 // --- FILTER & PAGINATION LOGIC ---
-
-// 1. Filter the list first (Search)
 const filteredResearches = computed(() => {
   if (!searchQuery.value) return researches.value
   const query = searchQuery.value.toLowerCase()
@@ -75,22 +82,20 @@ const filteredResearches = computed(() => {
   )
 })
 
-// 2. Paginate the filtered list
 const paginatedResearches = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
   const end = start + itemsPerPage
   return filteredResearches.value.slice(start, end)
 })
 
-// 3. Calculate Total Pages
 const totalPages = computed(() => {
   return Math.ceil(filteredResearches.value.length / itemsPerPage)
 })
 
-// 4. Reset to Page 1 if search query or tab changes
+// --- WATCHER FIX HERE ---
 watch([searchQuery, showArchived], () => {
   currentPage.value = 1
-  if(showArchived.value) fetchResearches()
+  fetchResearches() // <--- UPDATED: Always fetch, regardless of tab
 })
 
 // 5. Navigation Functions
@@ -117,11 +122,17 @@ const requestArchiveToggle = (item) => {
 
 const executeArchiveToggle = async () => {
   if (!confirmModal.value.id) return;
+  
   const token = getCookie('auth_token');
   if(!token) { showToast("Authentication Error", "error"); return; }
 
   try {
-    const response = await fetch(`http://localhost:8080/research/archive/${confirmModal.value.id}`, { 
+    // UPDATED: Dynamic Endpoint logic
+    const endpoint = confirmModal.value.action === 'Restore'
+      ? `http://localhost:8080/research/restore/${confirmModal.value.id}`
+      : `http://localhost:8080/research/archive/${confirmModal.value.id}`;
+
+    const response = await fetch(endpoint, { 
       method: 'POST',
       headers: { 'Authorization': token } 
     })
@@ -131,7 +142,8 @@ const executeArchiveToggle = async () => {
         showToast(`Item ${confirmModal.value.action}d successfully!`, "success")
         confirmModal.value.show = false
     } else {
-        showToast("Failed: Access Denied", "error");
+        const err = await response.json();
+        showToast("Failed: " + (err.message || "Access Denied"), "error");
     }
   } catch (error) { showToast("Error updating status", "error") }
 }

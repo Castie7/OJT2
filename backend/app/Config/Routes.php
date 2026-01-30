@@ -16,6 +16,7 @@ $routes->group('research', function($routes) {
     // 1. PUBLIC LISTS
     $routes->get('/', 'ResearchController::index'); // Public Library
     $routes->get('archived', 'ResearchController::archived'); // Public Archive (if admins want)
+    
 
     // 2. MY WORKSPACE (User Specific)
     $routes->get('my-submissions', 'ResearchController::mySubmissions');

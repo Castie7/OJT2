@@ -86,6 +86,26 @@ class ResearchController extends BaseController
         return $this->respond($data);
     }
 
+    public function archived()
+    {
+        $this->handleCors();
+        
+        // Security: Only allow Admins to see the global archive
+        $user = $this->validateUser();
+        if (!$user || $user['role'] !== 'admin') {
+             return $this->failForbidden('Access Denied');
+        }
+
+        $model = new ResearchModel();
+        
+        // Fetch all items with status 'archived'
+        $data = $model->where('status', 'archived')
+                      ->orderBy('archived_at', 'DESC')
+                      ->findAll();
+                      
+        return $this->respond($data);
+    }
+
     // 4. PENDING LIST (Admin Only)
     public function pending()
     {

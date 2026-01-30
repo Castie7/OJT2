@@ -31,7 +31,8 @@ $routes->group('research', function($routes) {
     // 3. ADMIN LISTS
     $routes->get('pending', 'ResearchController::pending');
     $routes->get('rejected', 'ResearchController::rejectedList'); 
-
+    $routes->get('stats', 'ResearchController::stats');
+    
     // 4. COMMENTS
     $routes->get('comments/(:num)', 'ResearchController::getComments/$1');
     $routes->match(['post', 'options'], 'comment', 'ResearchController::addComment');
@@ -45,10 +46,12 @@ $routes->group('research', function($routes) {
     $routes->match(['post', 'options'], 'reject/(:num)', 'ResearchController::reject/$1');
     $routes->match(['post', 'options'], 'extend-deadline/(:num)', 'ResearchController::extendDeadline/$1');
 
+    
     // 7. ARCHIVE / RESTORE
     $routes->match(['post', 'options'], 'archive/(:num)', 'ResearchController::archive/$1'); 
     $routes->match(['post', 'options'], 'restore/(:num)', 'ResearchController::restore/$1');
 });
+
 
 // Catch-all for OPTIONS requests (CORS Pre-flight)
 $routes->options('(:any)', 'Home::index');

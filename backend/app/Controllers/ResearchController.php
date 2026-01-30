@@ -394,4 +394,25 @@ class ResearchController extends BaseController
         return $this->respondCreated(['status' => 'success']);
     }
 
+    // GET /research/stats
+    public function stats()
+    {
+        // Allow CORS
+        header("Access-Control-Allow-Origin: *");
+        header("Access-Control-Allow-Headers: Authorization");
+
+        $model = new \App\Models\ResearchModel();
+
+        // 1. Count Approved (Total Researches in Library)
+        $approved = $model->where('status', 'approved')->countAllResults();
+
+        // 2. Count Pending (For Admin)
+        $pending = $model->where('status', 'pending')->countAllResults();
+
+        return $this->respond([
+            'total' => $approved,
+            'pending' => $pending
+        ]);
+    }
+
 }

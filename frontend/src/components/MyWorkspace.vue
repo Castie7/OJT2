@@ -1,124 +1,33 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue' 
 import SubmittedResearches from './SubmittedResearches.vue'
+import { useMyWorkspace, type User } from '../composables/useMyWorkspace'
 
-const props = defineProps(['currentUser'])
+// Define Props
+const props = defineProps<{
+  currentUser: User | null
+}>()
 
-// State
-const activeTab = ref('submitted') 
-const uploadModal = ref({ show: false, title: '', author: '', abstract: '', start_date: '', deadline_date: '', file: null })
-const isUploading = ref(false)
-const submissionsRef = ref(null)
+// Use Composable
+const { 
+  activeTab, 
+  uploadModal, 
+  isUploading, 
+  todayStr, 
+  handleUploadFile, 
+  submitResearch 
+} = useMyWorkspace(props.currentUser)
 
-// --- HELPERS ---
-const getHeaders = () => {
-  const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1];
-  return { 'Authorization': token };
-}
+// Reference to Child Component to trigger refresh
+const submissionsRef = ref<InstanceType<typeof SubmittedResearches> | null>(null)
 
-// Get Today's date for "max" attributes (optional UI helper)
-const todayStr = new Date().toISOString().split('T')[0];
-
-// --- UPLOAD LOGIC ---
-const handleUploadFile = (e) => { 
-  const file = e.target.files[0]
-  
-  // 1. If user cancels file dialog, clear state
-  if (!file) {
-    uploadModal.value.file = null
-    return
-  }
-
-  // 2. CHECK FILE EXTENSION (Robust Check)
-  const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
-  const fileExtension = file.name.split('.').pop().toLowerCase();
-  
-  if (!allowedExtensions.includes(fileExtension)) {
-    alert("❌ Invalid File!\nPlease upload a PDF or an Image (JPG/PNG).")
-    e.target.value = '' // Clear the input visually
-    uploadModal.value.file = null
-    return
-  }
-
-  // If valid, save it
-  uploadModal.value.file = file 
-}
-
-const submitResearch = async () => {
-  const form = uploadModal.value;
-
-  // 1. REQUIRED FIELDS CHECK
-  if (!form.title.trim()) { alert("⚠️ Title is required."); return; }
-  if (!form.author.trim()) { alert("⚠️ Author is required."); return; }
-  if (!form.deadline_date) { alert("⚠️ Deadline Date is required."); return; }
-  // Check if file is actually selected in state
-  if (!form.file) { alert("⚠️ File is missing.\nPlease select a valid PDF or Image."); return; }
-
-  // 2. STRICT DATE VALIDATION
-  const start = form.start_date ? new Date(form.start_date) : null;
-  const deadline = new Date(form.deadline_date);
-  
-  const minYear = 2000;
-  const maxYear = 2100;
-
-  // A. Check Deadline Year
-  if (deadline.getFullYear() < minYear || deadline.getFullYear() > maxYear) {
-     alert(`⚠️ Invalid Deadline Date.\nPlease enter a year between ${minYear} and ${maxYear}.`);
-     return;
-  }
-
-  // B. Check Start Date Logic (if provided)
-  if (start) {
-    if (start.getFullYear() < minYear || start.getFullYear() > maxYear) {
-        alert(`⚠️ Invalid Start Date.\nPlease enter a year between ${minYear} and ${maxYear}.`);
-        return;
+// Wrapper function to pass the refresh callback
+const handleSubmit = () => {
+  submitResearch(() => {
+    if (submissionsRef.value) {
+      submissionsRef.value.fetchData()
     }
-    // Check Logical Order
-    if (deadline < start) {
-      alert("⚠️ Date Error: Deadline cannot be before the Start Date.");
-      return;
-    }
-  }
-
-  // 3. PROCEED TO UPLOAD
-  isUploading.value = true
-  const formData = new FormData()
-  formData.append('title', form.title)
-  formData.append('author', form.author)
-  formData.append('abstract', form.abstract)
-  formData.append('start_date', form.start_date)
-  formData.append('deadline_date', form.deadline_date)
-  formData.append('uploaded_by', props.currentUser.id)
-  formData.append('pdf_file', form.file)
-
-  try {
-    const res = await fetch('http://localhost:8080/research/create', {
-      method: 'POST', headers: getHeaders(), body: formData
-    })
-    const result = await res.json()
-    
-    if (res.ok) {
-      alert("✅ Success! Research Submitted.")
-      // Reset Form
-      uploadModal.value = { show: false, title: '', author: '', abstract: '', start_date: '', deadline_date: '', file: null }
-      if(submissionsRef.value) submissionsRef.value.fetchData()
-    } else { 
-      // Handle backend error messages
-      if (result.messages) {
-          const msg = typeof result.messages === 'object' 
-              ? Object.values(result.messages).join('\n') 
-              : result.messages;
-          alert("❌ Submission Failed:\n" + msg);
-      } else {
-          alert("❌ Error: " + (result.message || "Upload Failed"));
-      }
-    }
-  } catch (error) { 
-    console.error(error)
-    alert("❌ Server Error.") 
-  } finally { 
-    isUploading.value = false 
-  }
+  })
 }
 </script>
 
@@ -128,7 +37,7 @@ const submitResearch = async () => {
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
       <div>
         <h2 class="text-xl font-bold text-gray-800">👤 My Workspace</h2>
-        <p class="text-sm text-gray-500">Managing uploads for: <span class="font-bold text-green-700">{{ currentUser.name }}</span></p>
+        <p class="text-sm text-gray-500">Managing uploads for: <span class="font-bold text-green-700">{{ currentUser?.name }}</span></p>
       </div>
       <div class="flex items-center gap-4">
         <button 
@@ -213,7 +122,7 @@ const submitResearch = async () => {
               </button>
 
               <button 
-                @click="submitResearch" 
+                @click="handleSubmit" 
                 :disabled="isUploading" 
                 class="px-6 py-2 rounded-lg font-bold text-white bg-green-600 shadow-md hover:bg-green-700 hover:shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
@@ -227,10 +136,4 @@ const submitResearch = async () => {
   </div>
 </template>
 
-<style scoped>
-/* Modal Pop Animation */
-.modal-pop-enter-active { animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.modal-pop-leave-active { transition: opacity 0.2s ease; }
-.modal-pop-leave-to { opacity: 0; }
-@keyframes pop-in { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-</style>
+<style scoped src="../assets/styles/MyWorkspace.css"></style>

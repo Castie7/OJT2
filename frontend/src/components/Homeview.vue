@@ -1,58 +1,26 @@
-<script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+<script setup lang="ts">
+import { useHomeView, type User, type Stat } from '../composables/useHomeView'
 
-defineProps(['currentUser', 'stats'])
-const emit = defineEmits(['browse-click']) 
+// Define Props
+defineProps<{
+  currentUser: User | null
+  stats: Stat[]
+}>()
 
-// --- SLIDER STATE ---
-const recentResearches = ref([])
-const currentSlide = ref(0)
-const slideInterval = ref(null)
+// Define Emits
+defineEmits<{
+  (e: 'browse-click'): void
+}>()
 
-// --- FETCH PUBLIC DATA (For Slider) ---
-const fetchSliderData = async () => {
-  try {
-    // Fetch public approved list
-    const response = await fetch('http://localhost:8080/research')
-    if (response.ok) {
-      const data = await response.json()
-      // Take top 5 for the slider
-      recentResearches.value = data.slice(0, 5)
-    }
-  } catch (e) {
-    console.error("Failed to load slider data")
-  }
-}
-
-// --- SLIDER LOGIC ---
-const nextSlide = () => {
-  if (recentResearches.value.length === 0) return;
-  currentSlide.value = (currentSlide.value + 1) % recentResearches.value.length;
-}
-
-const prevSlide = () => {
-  if (recentResearches.value.length === 0) return;
-  currentSlide.value = (currentSlide.value - 1 + recentResearches.value.length) % recentResearches.value.length;
-}
-
-const startSlideTimer = () => {
-  stopSlideTimer();
-  slideInterval.value = setInterval(nextSlide, 5000); // 5 Seconds
-}
-
-const stopSlideTimer = () => {
-  if (slideInterval.value) clearInterval(slideInterval.value);
-}
-
-// --- LIFECYCLE ---
-onMounted(() => {
-  fetchSliderData();
-  startSlideTimer();
-})
-
-onUnmounted(() => {
-  stopSlideTimer();
-})
+// Use Composable
+const { 
+  recentResearches, 
+  currentSlide, 
+  nextSlide, 
+  prevSlide, 
+  startSlideTimer, 
+  stopSlideTimer 
+} = useHomeView()
 </script>
 
 <template>
@@ -75,18 +43,18 @@ onUnmounted(() => {
       @mouseleave="startSlideTimer"
     >
       <div 
-        class="absolute inset-0 flex transition-transform duration-700 ease-in-out" 
+        class="absolute inset-0 flex slide-transition" 
         :style="{ transform: `translateX(-${currentSlide * 100}%)` }"
       >
         <div 
-          v-for="(item, index) in recentResearches" 
+          v-for="item in recentResearches" 
           :key="item.id" 
           class="min-w-full h-full relative"
         >
            <div class="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent z-10"></div>
            <div class="absolute inset-0 bg-green-900 opacity-30"></div> 
            
-           <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+           <div class="absolute inset-0 opacity-10 bg-pattern-cubes"></div>
 
            <div class="absolute bottom-0 left-0 p-8 md:p-12 z-20 max-w-3xl">
               <span class="inline-block px-3 py-1 bg-yellow-500 text-green-900 text-xs font-bold rounded mb-3">
@@ -101,7 +69,7 @@ onUnmounted(() => {
               
               <button 
                 @click="$emit('browse-click')" 
-                class="px-6 py-3 bg-white text-green-900 font-bold rounded hover:bg-yellow-400 transition flex items-center gap-2 transform hover:scale-105 active:scale-95"
+                class="px-6 py-3 bg-white text-green-900 font-bold rounded hover:bg-yellow-400 flex items-center gap-2 btn-hover-effect"
               >
                 <span>📖</span> Read Full Paper
               </button>
@@ -128,7 +96,7 @@ onUnmounted(() => {
       <h1 class="text-4xl font-bold text-green-800 mb-4 relative z-10">Welcome to BSU RootCrops</h1>
       <p class="text-lg text-gray-600 mb-6 relative z-10">The official repository for root crop research. Browse our open collection of research data.</p>
       <div class="flex gap-4 relative z-10">
-        <button @click="$emit('browse-click')" class="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+        <button @click="$emit('browse-click')" class="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg hover:shadow-xl btn-hover-effect">
           Browse All Researches
         </button>
       </div>
@@ -162,3 +130,5 @@ onUnmounted(() => {
 
   </div>
 </template>
+
+<style scoped src="../assets/styles/HomeView.css"></style>

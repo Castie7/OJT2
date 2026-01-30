@@ -414,5 +414,34 @@ class ResearchController extends BaseController
             'pending' => $pending
         ]);
     }
+    // GET /research/user-stats/(:num)
+    // GET /research/user-stats/(:num)
+// GET /research/user-stats/(:num)
+    public function userStats($userId = null)
+    {
+        header("Access-Control-Allow-Origin: *");
+        header("Access-Control-Allow-Headers: Authorization");
+
+        if (!$userId) return $this->fail('User ID required');
+
+        $model = new \App\Models\ResearchModel();
+
+        // 1. Count ONLY this user's Approved items
+        // FIX: Changed 'user_id' to 'uploaded_by' to match your database
+        $myPublished = $model->where('uploaded_by', $userId) 
+                             ->where('status', 'approved')
+                             ->countAllResults();
+
+        // 2. Count ONLY this user's Pending items
+        // FIX: Changed 'user_id' to 'uploaded_by'
+        $myPending = $model->where('uploaded_by', $userId)
+                           ->where('status', 'pending')
+                           ->countAllResults();
+
+        return $this->respond([
+            'published' => $myPublished,
+            'pending'   => $myPending
+        ]);
+    }
 
 }

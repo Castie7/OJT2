@@ -3,7 +3,6 @@
 namespace Config;
 
 use CodeIgniter\Config\Filters as BaseFilters;
-use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
 use CodeIgniter\Filters\DebugToolbar;
 use CodeIgniter\Filters\ForceHTTPS;
@@ -25,16 +24,17 @@ class Filters extends BaseFilters
      * or [filter_name => [classname1, classname2, ...]]
      */
     public array $aliases = [
-    'cors'          => \CodeIgniter\Filters\Cors::class, // Keep this one
-    'csrf'          => CSRF::class,
-    'toolbar'       => DebugToolbar::class,
-    'honeypot'      => Honeypot::class,
-    'invalidchars'  => InvalidChars::class,
-    'secureheaders' => SecureHeaders::class,
-    // 'cors'       => Cors::class, <-- Remove this duplicate
-    'forcehttps'    => ForceHTTPS::class,
-    'pagecache'     => PageCache::class,
-    'performance'   => PerformanceMetrics::class,
+        'csrf'          => CSRF::class,
+        'toolbar'       => DebugToolbar::class,
+        'honeypot'      => Honeypot::class,
+        'invalidchars'  => InvalidChars::class,
+        'secureheaders' => SecureHeaders::class,
+        'forcehttps'    => ForceHTTPS::class,
+        'pagecache'     => PageCache::class,
+        'performance'   => PerformanceMetrics::class,
+        
+        // This now correctly points to your custom CORS filter
+        'cors'          => \App\Filters\Cors::class, 
     ];
 
     /**
@@ -67,13 +67,14 @@ class Filters extends BaseFilters
      * applied before and after every request.
      *
      * @var array{
-     *     before: array<string, array{except: list<string>|string}>|list<string>,
-     *     after: array<string, array{except: list<string>|string}>|list<string>
+     * before: array<string, array{except: list<string>|string}>|list<string>,
+     * after: array<string, array{except: list<string>|string}>|list<string>
      * }
      */
     public array $globals = [
         'before' => [
-            'cors' ,
+            // 'cors' runs first to handle Preflight OPTIONS requests immediately
+            'cors',
             // 'honeypot',
             // 'csrf',
             // 'invalidchars',

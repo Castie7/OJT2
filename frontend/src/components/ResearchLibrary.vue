@@ -20,7 +20,7 @@ const confirmModal = ref({ show: false, id: null, action: '', title: '', subtext
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-// --- HELPER: SHOW TOAST ---
+// --- HELPERS ---
 const showToast = (message, type = 'success') => {
   toast.value = { show: true, message, type }
   setTimeout(() => { toast.value.show = false }, 3000)
@@ -33,7 +33,7 @@ const getCookie = (name) => {
   return null;
 }
 
-// DATE FORMATTER
+// DATE FORMATTER (New)
 const formatSimpleDate = (dateStr) => {
   if (!dateStr) return 'N/A';
   return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -42,15 +42,12 @@ const formatSimpleDate = (dateStr) => {
 // --- FETCH DATA ---
 const fetchResearches = async () => {
   isLoading.value = true
-  // Reset list slightly to indicate loading state if desired, or keep old data
-  // researches.value = [] 
   try {
     const endpoint = showArchived.value 
       ? 'http://localhost:8080/research/archived' 
       : 'http://localhost:8080/research'
 
     const token = getCookie('auth_token');
-    // Always attach headers if token exists (Admin needs it for Archive, Public doesn't hurt)
     const headers = token ? { 'Authorization': token } : {};
 
     const response = await fetch(endpoint, { headers })
@@ -92,23 +89,17 @@ const totalPages = computed(() => {
   return Math.ceil(filteredResearches.value.length / itemsPerPage)
 })
 
-// --- WATCHER FIX HERE ---
+// --- WATCHER ---
 watch([searchQuery, showArchived], () => {
   currentPage.value = 1
-  fetchResearches() // <--- UPDATED: Always fetch, regardless of tab
+  fetchResearches() // Always fetch when tab changes
 })
 
-// 5. Navigation Functions
-const nextPage = () => {
-  if (currentPage.value < totalPages.value) currentPage.value++
-}
-const prevPage = () => {
-  if (currentPage.value > 1) currentPage.value--
-}
+// Navigation
+const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
+const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
 
-onMounted(() => {
-  fetchResearches()
-})
+onMounted(() => { fetchResearches() })
 
 // --- ARCHIVE LOGIC ---
 const requestArchiveToggle = (item) => {
@@ -127,7 +118,7 @@ const executeArchiveToggle = async () => {
   if(!token) { showToast("Authentication Error", "error"); return; }
 
   try {
-    // UPDATED: Dynamic Endpoint logic
+    // Dynamic Endpoint
     const endpoint = confirmModal.value.action === 'Restore'
       ? `http://localhost:8080/research/restore/${confirmModal.value.id}`
       : `http://localhost:8080/research/archive/${confirmModal.value.id}`;
@@ -207,13 +198,21 @@ const executeArchiveToggle = async () => {
                   <tr>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Title</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Author</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Published</th> <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="item in paginatedResearches" :key="item.id" class="hover:bg-green-50 transition">
                     <td @click="selectedResearch = item" class="px-6 py-4 font-medium text-gray-900 cursor-pointer">{{ item.title }}</td>
                     <td @click="selectedResearch = item" class="px-6 py-4 text-gray-500 cursor-pointer">{{ item.author }}</td>
+                    
+                    <td class="px-6 py-4 text-gray-500 text-sm">
+                       <span v-if="item.approved_at" class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">
+                         {{ formatSimpleDate(item.approved_at) }}
+                       </span>
+                       <span v-else class="text-gray-400 text-xs italic">N/A</span>
+                    </td>
+
                     <td class="px-6 py-4 flex items-center gap-2">
                        <button @click="selectedResearch = item" class="text-xs px-2 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50">View PDF</button>
                        <button 
@@ -242,8 +241,13 @@ const executeArchiveToggle = async () => {
                   <div class="h-32 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 group-hover:bg-green-50 group-hover:text-green-600 transition"><span class="text-4xl">📄</span></div>
                   <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1 group-hover:text-green-700">{{ item.title }}</h3>
                   <p class="text-sm text-gray-500 mb-2">By {{ item.author }}</p>
-                  <p class="text-sm text-gray-400 line-clamp-2">{{ item.abstract }}</p>
-                  <div class="mt-auto pt-4 text-blue-600 text-xs font-bold hover:underline">Read PDF →</div>
+                  
+                  <div class="text-xs text-gray-400 mb-2 pt-2 border-t mt-auto flex justify-between">
+                     <span>Published:</span>
+                     <span class="font-bold text-green-700">{{ formatSimpleDate(item.approved_at) }}</span>
+                  </div>
+
+                  <div class="text-blue-600 text-xs font-bold hover:underline">Read PDF →</div>
                 </div>
               </div>
             </div>
@@ -259,25 +263,9 @@ const executeArchiveToggle = async () => {
               </span>
               
               <div class="flex gap-2">
-                <button 
-                  @click="prevPage" 
-                  :disabled="currentPage === 1"
-                  class="px-4 py-2 text-sm font-bold rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                  Previous
-                </button>
-                
-                <span class="px-4 py-2 text-sm font-bold bg-green-50 text-green-700 rounded-lg border border-green-200">
-                  Page {{ currentPage }} of {{ totalPages }}
-                </span>
-
-                <button 
-                  @click="nextPage" 
-                  :disabled="currentPage === totalPages"
-                  class="px-4 py-2 text-sm font-bold rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                  Next
-                </button>
+                <button @click="prevPage" :disabled="currentPage === 1" class="px-4 py-2 text-sm font-bold rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition">Previous</button>
+                <span class="px-4 py-2 text-sm font-bold bg-green-50 text-green-700 rounded-lg border border-green-200">Page {{ currentPage }} of {{ totalPages }}</span>
+                <button @click="nextPage" :disabled="currentPage === totalPages" class="px-4 py-2 text-sm font-bold rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition">Next</button>
               </div>
             </div>
 

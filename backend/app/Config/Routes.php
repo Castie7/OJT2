@@ -9,50 +9,54 @@ $routes->get('/', 'Home::index');
 $routes->match(['post', 'options'], 'auth/login', 'AuthController::login');
 $routes->match(['post', 'options'], 'auth/verify', 'AuthController::verify');
 $routes->match(['post', 'options'], 'auth/logout', 'AuthController::logout');
+$routes->match(['post', 'options'], 'auth/update-profile', 'AuthController::updateProfile');
 
-// ✅ MOVE THIS HERE (Outside the 'research' group)
-$routes->post('auth/update-profile', 'AuthController::updateProfile');
+// --- API ROUTES (Notifications & Comments) ---
+// This handles localhost:8080/api/...
+$routes->group('api', function($routes) {
+    
+    // 1. Notifications
+    $routes->match(['get', 'options'], 'notifications', 'NotificationController::index');
+    $routes->match(['post', 'options'], 'notifications/read', 'NotificationController::markAsRead');
 
+    // 2. Comments (Fixes the CORS/404 issue)
+    $routes->match(['post', 'options'], 'comments', 'ResearchController::addComment');
+});
 
 // --- RESEARCH ROUTES ---
 $routes->group('research', function($routes) {
-    $routes->get('user-stats/(:num)', 'ResearchController::userStats/$1');
     
-    // 1. PUBLIC LISTS
-    $routes->get('/', 'ResearchController::index'); 
-    $routes->get('archived', 'ResearchController::archived'); 
+    // Stats
+    $routes->match(['get', 'options'], 'user-stats/(:num)', 'ResearchController::userStats/$1');
+    $routes->match(['get', 'options'], 'stats', 'ResearchController::stats');
 
-    // 2. MY WORKSPACE 
-    $routes->get('my-submissions', 'ResearchController::mySubmissions');
-    $routes->get('my-archived', 'ResearchController::myArchived'); 
+    // Lists
+    $routes->match(['get', 'options'], '/', 'ResearchController::index'); 
+    $routes->match(['get', 'options'], 'archived', 'ResearchController::archived'); 
+    $routes->match(['get', 'options'], 'my-submissions', 'ResearchController::mySubmissions');
+    $routes->match(['get', 'options'], 'my-archived', 'ResearchController::myArchived'); 
+    $routes->match(['get', 'options'], 'pending', 'ResearchController::pending');
+    $routes->match(['get', 'options'], 'rejected', 'ResearchController::rejectedList'); 
 
-    // ❌ REMOVED FROM HERE
-    // $routes->post('auth/update-profile', 'AuthController::updateProfile');
-
-    // 3. ADMIN LISTS
-    $routes->get('pending', 'ResearchController::pending');
-    $routes->get('rejected', 'ResearchController::rejectedList'); 
-    $routes->get('stats', 'ResearchController::stats');
-
-    // 4. COMMENTS
-    $routes->get('comments/(:num)', 'ResearchController::getComments/$1');
-    $routes->match(['post', 'options'], 'comment', 'ResearchController::addComment');
-
-    // 5. ACTIONS (Create/Update)
+    // Comments List (GET)
+    $routes->match(['get', 'options'], 'comments/(:num)', 'ResearchController::getComments/$1');
+    
+    // Actions
     $routes->match(['post', 'options'], 'create', 'ResearchController::create');
     $routes->match(['post', 'options'], 'update/(:num)', 'ResearchController::update/$1');
-    
-    // 6. ACTIONS (Workflow)
     $routes->match(['post', 'options'], 'approve/(:num)', 'ResearchController::approve/$1');
     $routes->match(['post', 'options'], 'reject/(:num)', 'ResearchController::reject/$1');
     $routes->match(['post', 'options'], 'extend-deadline/(:num)', 'ResearchController::extendDeadline/$1');
-
-    
-    // 7. ARCHIVE / RESTORE
     $routes->match(['post', 'options'], 'archive/(:num)', 'ResearchController::archive/$1'); 
     $routes->match(['post', 'options'], 'restore/(:num)', 'ResearchController::restore/$1');
 });
 
-
-// Catch-all for OPTIONS requests (CORS Pre-flight)
-$routes->options('(:any)', 'Home::index');
+// Catch-all for Pre-flight checks
+$routes->options('(:any)', function() {
+    $response = service('response');
+    $response->setHeader('Access-Control-Allow-Origin', '*');
+    $response->setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    $response->setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    $response->setStatusCode(200);
+    return $response;
+});

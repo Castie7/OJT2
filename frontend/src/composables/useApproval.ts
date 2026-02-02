@@ -149,7 +149,8 @@ export function useApproval(currentUser: User | null) {
     if (isSendingComment.value || !commentModal.value.newComment.trim() || !currentUser) return
     isSendingComment.value = true 
     try {
-      await fetch('http://localhost:8080/research/comment', {
+      // ✅ FIXED: Pointing to the correct API endpoint
+      await fetch('http://localhost:8080/api/comments', {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...getHeaders() },
         body: JSON.stringify({ 
             research_id: commentModal.value.researchId, 

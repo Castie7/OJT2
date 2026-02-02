@@ -14,7 +14,7 @@ export interface Research {
   archived_at?: string
   approved_at?: string
   updated_at?: string
-  created_at: string // <--- MAKE SURE THIS IS HERE
+  created_at: string 
 }
 
 export interface User {
@@ -178,6 +178,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
     const openComments = async (item: Research) => {
         commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
         try {
+            // GET list of comments (Remains under /research/ group)
             const res = await fetch(`http://localhost:8080/research/comments/${item.id}`, { headers: getHeaders() })
             if(res.ok) { 
                 commentModal.value.list = await res.json()
@@ -190,16 +191,20 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (isSendingComment.value || !commentModal.value.newComment.trim() || !props.currentUser) return
         isSendingComment.value = true
         try {
-            await fetch('http://localhost:8080/research/comment', {
-                method: 'POST', headers: { 'Content-Type': 'application/json', ...getHeaders() },
+            // ✅ FIX: Point to the new API group we created
+            await fetch('http://localhost:8080/api/comments', {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', ...getHeaders() },
                 body: JSON.stringify({ 
                     research_id: commentModal.value.researchId, 
                     user_id: props.currentUser.id, 
                     user_name: props.currentUser.name, 
-                    role: 'user', 
+                    role: props.currentUser.role, // Use actual role (admin/user)
                     comment: commentModal.value.newComment 
                 })
             })
+            
+            // Refresh comments list
             const refreshRes = await fetch(`http://localhost:8080/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
             commentModal.value.list = await refreshRes.json()
             commentModal.value.newComment = '' 

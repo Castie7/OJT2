@@ -23,12 +23,11 @@ const {
     // Methods
     fetchData, nextPage, prevPage,
     requestArchive, executeArchive, openComments, postComment,
-    // Removed internal edit methods (openEdit, saveEdit, etc.) since parent handles it now
     
     // Helpers
     getDeadlineStatus, 
     getArchiveDaysLeft,
-    formatSimpleDate  // <--- ADDED AS REQUESTED
+    formatSimpleDate
 } = useSubmittedResearches(props)
 
 defineExpose({ fetchData })
@@ -151,13 +150,99 @@ defineExpose({ fetchData })
       </div>
     </div>
 
-    <div v-if="commentModal.show" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h3>Review: {{ commentModal.title }}</h3><button @click="commentModal.show=false" class="close-btn">×</button></div><div class="modal-body"><div class="comments-list" ref="chatContainer"><TransitionGroup name="chat"><div v-for="c in commentModal.list" :key="c.id" :class="['comment-bubble', c.role==='admin'?'admin-msg':'user-msg']"><strong>{{ c.user_name }} ({{ c.role }}):</strong><p>{{ c.comment }}</p></div></TransitionGroup></div><div class="comment-input"><textarea v-model="commentModal.newComment" @keydown.enter.prevent="postComment"></textarea><button @click="postComment" :disabled="isSendingComment">Send</button></div></div></div></div>
-    
-    <div v-if="selectedResearch" class="modal-overlay"><div class="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col"><div class="bg-green-800 text-white p-4 flex justify-between"><h2>{{ selectedResearch.title }}</h2><button @click="selectedResearch=null">&times;</button></div><div class="flex-1 bg-gray-100 p-4"><iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none"></iframe></div></div></div>
-    
-    <Transition name="pop"><div v-if="confirmModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"><div class="bg-white rounded-2xl p-6 text-center"><h3>{{ confirmModal.title }}</h3><div class="flex gap-3 justify-center mt-4"><button @click="confirmModal.show=false" class="px-4 py-2 bg-gray-100 rounded" :disabled="confirmModal.isProcessing">Cancel</button><button @click="executeArchive" class="px-4 py-2 bg-green-600 text-white rounded" :disabled="confirmModal.isProcessing">Yes</button></div></div></div></Transition>
+    <Transition name="fade">
+      <div v-if="commentModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col h-[600px] overflow-hidden transform transition-all">
+          
+          <div class="bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+            <div>
+              <h3 class="font-bold text-gray-800 text-lg">Review & Feedback</h3>
+              <p class="text-xs text-gray-500 truncate max-w-[250px]">Topic: {{ commentModal.title }}</p>
+            </div>
+            <button @click="commentModal.show = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-red-500 transition-colors">
+              <span class="text-xl leading-none">&times;</span>
+            </button>
+          </div>
 
+          <div class="flex-1 bg-gray-50 overflow-y-auto p-4 custom-scrollbar" ref="chatContainer">
+            <div v-if="commentModal.list.length === 0" class="h-full flex flex-col items-center justify-center text-gray-400 space-y-2">
+              <span class="text-4xl">💬</span>
+              <p class="text-sm">No comments yet. Start the conversation.</p>
+            </div>
+
+            <TransitionGroup name="message" tag="div" class="space-y-3">
+              <div v-for="c in commentModal.list" :key="c.id" class="flex flex-col max-w-[85%]"
+                   :class="c.role === 'admin' ? 'self-start items-start' : 'self-end items-end ml-auto'">
+                
+                <span class="text-[10px] text-gray-400 mb-1 px-1">
+                  {{ c.user_name }} <span v-if="c.role === 'admin'" class="text-green-600 font-bold">(Admin)</span>
+                </span>
+                
+                <div class="px-4 py-2.5 shadow-sm text-sm break-words relative"
+                     :class="c.role === 'admin' ? 'bg-white text-gray-800 rounded-2xl rounded-tl-none border border-gray-100' : 'bg-green-600 text-white rounded-2xl rounded-tr-none'">
+                  <p>{{ c.comment }}</p>
+                </div>
+              </div>
+            </TransitionGroup>
+          </div>
+
+          <div class="bg-white border-t p-4">
+            <div class="relative flex items-end gap-2 bg-gray-100 rounded-xl p-2 border border-transparent focus-within:border-green-300 focus-within:ring-2 focus-within:ring-green-100 transition-all">
+              <textarea 
+                v-model="commentModal.newComment" 
+                @keydown.enter.prevent="postComment" 
+                placeholder="Type your reply..." 
+                class="w-full bg-transparent border-none focus:ring-0 text-sm resize-none max-h-32 text-gray-700 placeholder-gray-400 py-2 pl-2"
+                rows="1"
+                style="min-height: 44px;"
+              ></textarea>
+              
+              <button 
+                @click="postComment" 
+                :disabled="isSendingComment || !commentModal.newComment.trim()"
+                class="mb-1 p-2 rounded-full flex-shrink-0 transition-all duration-300 ease-in-out"
+                :class="isSendingComment || !commentModal.newComment.trim() ? 'bg-gray-300 cursor-not-allowed text-gray-500' : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:scale-105 active:scale-95'"
+              >
+                <svg v-if="isSendingComment" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                  <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+                </svg>
+              </button>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-2 text-right">Press Enter to send</div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+    
+    <div v-if="selectedResearch" class="modal-overlay">
+      <div class="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
+        <div class="bg-green-800 text-white p-4 flex justify-between">
+          <h2>{{ selectedResearch.title }}</h2>
+          <button @click="selectedResearch=null">&times;</button>
+        </div>
+        <div class="flex-1 bg-gray-100 p-4">
+          <iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none"></iframe>
+        </div>
+      </div>
     </div>
+    
+    <Transition name="pop">
+      <div v-if="confirmModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+        <div class="bg-white rounded-2xl p-6 text-center">
+          <h3>{{ confirmModal.title }}</h3>
+          <div class="flex gap-3 justify-center mt-4">
+            <button @click="confirmModal.show=false" class="px-4 py-2 bg-gray-100 rounded" :disabled="confirmModal.isProcessing">Cancel</button>
+            <button @click="executeArchive" class="px-4 py-2 bg-green-600 text-white rounded" :disabled="confirmModal.isProcessing">Yes</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+  </div>
 </template>
 
 <style scoped src="../assets/styles/SubmittedResearches.css"></style>

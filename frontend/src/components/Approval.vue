@@ -55,7 +55,7 @@ const {
                 </div>
                 <div v-else><span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200">⚠️ {{ getDaysLeft(item.rejected_at) }} Days left</span></div>
               </td>
-              <td class="px-6 py-4"><button @click="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1">💬 Comments</button></td>
+              <td class="px-6 py-4"><button @click.stop="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1">💬 Comments</button></td>
               <td class="px-6 py-4 text-right space-x-2">
                 <template v-if="activeTab === 'pending'">
                   <button @click.stop="handleAction(item.id, 'approve')" class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded font-bold hover:bg-green-200 transition">✅ Approve</button>

@@ -101,3 +101,47 @@
 
 .chat-enter-active, .chat-leave-active { transition: all 0.4s ease; }
 .chat-enter-from, .chat-leave-to { opacity: 0; transform: translateY(20px); }
+
+/* Modal Fade In/Out */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Message Bubbles popping in */
+.message-enter-active {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.message-leave-active {
+  transition: all 0.3s ease-in;
+}
+.message-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+.message-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+.message-move {
+  transition: transform 0.4s ease;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db; 
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af; 
+}

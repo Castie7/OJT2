@@ -4,7 +4,7 @@ import { useApproval, type User } from '../composables/useApproval'
 const props = defineProps<{
   currentUser: User | null
 }>()
-//COmment ni Baron
+
 const {
   activeTab, items, isLoading, selectedResearch, 
   currentPage, itemsPerPage, paginatedItems, totalPages, nextPage, prevPage,
@@ -79,33 +79,120 @@ const {
       </div>
     </div>
 
-    <div v-if="deadlineModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75"><div class="bg-white rounded-lg w-full max-w-sm p-6 shadow-2xl"><h3 class="font-bold text-lg mb-2 text-gray-800">🕒 Extend Deadline</h3><p class="text-sm text-gray-500 mb-4">Set a new due date for: <br><b>{{ deadlineModal.title }}</b></p><input v-model="deadlineModal.newDate" type="date" class="w-full border p-2 rounded mb-6 focus:ring-2 focus:ring-green-500 outline-none"/><div class="flex justify-end gap-2"><button @click="deadlineModal.show = false" class="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded">Cancel</button><button @click="saveNewDeadline" class="px-4 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700">Update Date</button></div></div></div>
-    <div v-if="selectedResearch" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm"><div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden"><div class="bg-green-800 text-white p-4 flex justify-between items-center shrink-0"><div><h2 class="text-xl font-bold leading-tight">{{ selectedResearch.title }}</h2><p class="text-green-200 text-sm">Author: {{ selectedResearch.author }}</p></div><button @click="selectedResearch = null" class="text-white hover:text-gray-300 text-3xl font-bold leading-none">&times;</button></div><div class="flex-1 overflow-y-auto bg-gray-100 p-4"><div v-if="selectedResearch.file_path" class="bg-white p-1 rounded shadow h-[600px]"><iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none rounded" title="PDF Viewer"></iframe></div></div></div></div>
-    
-    <div v-if="commentModal.show" class="modal-overlay">
-      <div class="modal-content">
-        <div class="modal-header"><h3>Review: {{ commentModal.title }}</h3><button @click="commentModal.show = false" class="close-btn">×</button></div>
-        <div class="modal-body">
-          <div class="comments-section">
-            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Revision History</h4>
-            <div class="comments-list" ref="chatContainer">
-              <TransitionGroup name="chat">
-                <div v-for="msg in commentModal.list" :key="msg.id" :class="['comment-bubble', msg.role === 'admin' ? 'admin-msg' : 'user-msg']">
-                  <strong>{{ msg.user_name }} ({{ msg.role }})</strong><p>{{ msg.comment }}</p><small>{{ new Date(msg.created_at).toLocaleString() }}</small>
-                </div>
-              </TransitionGroup>
-              <p v-if="commentModal.list.length === 0" class="no-comments">No comments yet.</p>
-            </div>
-            <div class="comment-input">
-              <textarea v-model="commentModal.newComment" placeholder="Write a reply..." @keydown.enter.prevent="postComment"></textarea>
-              <button @click="postComment" :disabled="isSendingComment" :class="`btn btn-send ${isSendingComment ? 'opacity-50 cursor-not-allowed' : ''}`">{{ isSendingComment ? 'Sending...' : 'Send' }}</button>
-            </div>
+    <Transition name="fade">
+      <div v-if="deadlineModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm">
+        <div class="bg-white rounded-lg w-full max-w-sm p-6 shadow-2xl">
+          <h3 class="font-bold text-lg mb-2 text-gray-800">🕒 Extend Deadline</h3>
+          <p class="text-sm text-gray-500 mb-4">Set a new due date for: <br><b>{{ deadlineModal.title }}</b></p>
+          <input v-model="deadlineModal.newDate" type="date" class="w-full border p-2 rounded mb-6 focus:ring-2 focus:ring-green-500 outline-none"/>
+          <div class="flex justify-end gap-2">
+            <button @click="deadlineModal.show = false" class="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded">Cancel</button>
+            <button @click="saveNewDeadline" class="px-4 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700">Update Date</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <div v-if="selectedResearch" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm">
+      <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+        <div class="bg-green-800 text-white p-4 flex justify-between items-center shrink-0">
+          <div>
+            <h2 class="text-xl font-bold leading-tight">{{ selectedResearch.title }}</h2>
+            <p class="text-green-200 text-sm">Author: {{ selectedResearch.author }}</p>
+          </div>
+          <button @click="selectedResearch = null" class="text-white hover:text-gray-300 text-3xl font-bold leading-none">&times;</button>
+        </div>
+        <div class="flex-1 overflow-y-auto bg-gray-100 p-4">
+          <div v-if="selectedResearch.file_path" class="bg-white p-1 rounded shadow h-[600px]">
+            <iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none rounded" title="PDF Viewer"></iframe>
           </div>
         </div>
       </div>
     </div>
+    
+    <Transition name="fade">
+      <div v-if="commentModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col h-[600px] overflow-hidden transform transition-all">
+          
+          <div class="bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+            <div>
+              <h3 class="font-bold text-gray-800 text-lg">Feedback & Review</h3>
+              <p class="text-xs text-gray-500 truncate max-w-[250px]">Submission: {{ commentModal.title }}</p>
+            </div>
+            <button 
+              @click="commentModal.show = false" 
+              class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-red-500 transition-colors"
+            >
+              <span class="text-xl leading-none">&times;</span>
+            </button>
+          </div>
 
-  </div>
+          <div class="flex-1 bg-gray-50 overflow-y-auto p-4 custom-scrollbar" ref="chatContainer">
+            <div v-if="commentModal.list.length === 0" class="h-full flex flex-col items-center justify-center text-gray-400 space-y-2">
+              <span class="text-4xl">💬</span>
+              <p class="text-sm">No remarks yet.</p>
+            </div>
+
+            <TransitionGroup name="message" tag="div" class="space-y-3">
+              <div 
+                v-for="c in commentModal.list" 
+                :key="c.id" 
+                class="flex flex-col max-w-[85%]"
+                :class="c.role === 'admin' ? 'self-end items-end ml-auto' : 'self-start items-start'"
+              >
+                <span class="text-[10px] text-gray-400 mb-1 px-1">
+                  {{ c.user_name }} <span v-if="c.role === 'admin'" class="text-green-600 font-bold">(You)</span>
+                </span>
+                
+                <div 
+                  class="px-4 py-2.5 shadow-sm text-sm break-words relative"
+                  :class="c.role === 'admin' 
+                    ? 'bg-green-600 text-white rounded-2xl rounded-tr-none' 
+                    : 'bg-white text-gray-800 rounded-2xl rounded-tl-none border border-gray-100'"
+                >
+                  <p>{{ c.comment }}</p>
+                </div>
+              </div>
+            </TransitionGroup>
+          </div>
+
+          <div class="bg-white border-t p-4">
+            <div class="relative flex items-end gap-2 bg-gray-100 rounded-xl p-2 border border-transparent focus-within:border-green-300 focus-within:ring-2 focus-within:ring-green-100 transition-all">
+              <textarea 
+                v-model="commentModal.newComment" 
+                @keydown.enter.prevent="postComment" 
+                placeholder="Type your feedback..." 
+                class="w-full bg-transparent border-none focus:ring-0 text-sm resize-none max-h-32 text-gray-700 placeholder-gray-400 py-2 pl-2"
+                rows="1"
+                style="min-height: 44px;"
+              ></textarea>
+              
+              <button 
+                @click="postComment" 
+                :disabled="isSendingComment || !commentModal.newComment.trim()"
+                class="mb-1 p-2 rounded-full flex-shrink-0 transition-all duration-300 ease-in-out"
+                :class="isSendingComment || !commentModal.newComment.trim() 
+                  ? 'bg-gray-300 cursor-not-allowed text-gray-500' 
+                  : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:scale-105 active:scale-95'"
+              >
+                <svg v-if="isSendingComment" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+
+                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                  <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+                </svg>
+              </button>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-2 text-right">Press Enter to send</div>
+          </div>
+
+        </div>
+      </div>
+    </Transition>
+    </div>
 </template>
 
 <style scoped src="../assets/styles/Approval.css"></style>

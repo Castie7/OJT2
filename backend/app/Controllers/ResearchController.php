@@ -409,27 +409,24 @@ class ResearchController extends BaseController
     }
 
     // STATS
+    // GET /research/stats
     public function stats()
     {
-        $this->handleCors(); // Ensure CORS is handled
+        $this->handleCors();
         
         $model = new ResearchModel();
 
-        // 1. Count Approved (Total Active in Library)
-        // We exclude archived items just in case
+        // 1. Total Published (Approved)
         $approved = $model->where('status', 'approved')->countAllResults();
 
-        // 2. Count Pending (Strictly 'pending')
+        // 2. Pending Reviews
         $pending = $model->where('status', 'pending')->countAllResults();
-        
-        // 3. (Optional) Count Users if you show that too
-        $userModel = new UserModel();
-        $users = $userModel->where('role !=', 'admin')->countAllResults();
+
+        // Note: Root Crop Variety is not yet in DB, so we don't count it here.
 
         return $this->respond([
-            'total' => $approved,
-            'pending' => $pending,
-            'users' => $users
+            'total'   => $approved,
+            'pending' => $pending
         ]);
     }
 

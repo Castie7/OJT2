@@ -12,6 +12,7 @@ export interface Stat {
   title: string
   value: string | number
   color: string
+  action?: string // <--- ADDED: Required for the click navigation logic
 }
 
 export interface User {
@@ -54,7 +55,7 @@ export function useHomeView() {
 
   const startSlideTimer = () => {
     stopSlideTimer()
-    // Cast to any or number to satisfy TypeScript compiler for browser environments
+    // Cast to unknown then number to satisfy TypeScript in browser env
     slideInterval.value = setInterval(nextSlide, 5000) as unknown as number 
   }
 

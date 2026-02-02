@@ -12,7 +12,7 @@ export interface Stat {
   title: string
   value: string | number
   color: string
-  action?: string // <--- ADDED: Required for the click navigation logic
+  action?: string 
 }
 
 export interface User {

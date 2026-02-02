@@ -2,10 +2,12 @@
 import { ref } from 'vue' 
 import SubmittedResearches from './SubmittedResearches.vue'
 import { useMyWorkspace, type User } from '../composables/useMyWorkspace' 
-
+import ResearchDetailsModal from './ResearchDetailsModal.vue'
 const props = defineProps<{
   currentUser: User | null
 }>()
+
+
 
 const { 
   activeTab, 
@@ -19,6 +21,11 @@ const {
 } = useMyWorkspace(props.currentUser)
 
 const submissionsRef = ref<InstanceType<typeof SubmittedResearches> | null>(null)
+
+const selectedResearch = ref(null)
+const handleViewResearch = (item: any) => {
+  selectedResearch.value = item
+}
 
 const handleSubmit = async () => {
   await submitResearch()
@@ -55,7 +62,8 @@ const handleSubmit = async () => {
         ref="submissionsRef" 
         :currentUser="currentUser" 
         :isArchived="activeTab === 'archived'" 
-        @edit="openEditModal" 
+        @edit="openEditModal"
+        @view="handleViewResearch"
     />
 
     <Transition name="modal-pop">
@@ -208,6 +216,10 @@ const handleSubmit = async () => {
       </div>
     </Transition>
 
+    <ResearchDetailsModal 
+      :research="selectedResearch" 
+      @close="selectedResearch = null" 
+    />
   </div>
 </template>
 

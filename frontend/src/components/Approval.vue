@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useApproval, type User } from '../composables/useApproval'
+import ResearchDetailsModal from './ResearchDetailsModal.vue'
 
 const props = defineProps<{
   currentUser: User | null
@@ -42,7 +43,7 @@ const {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition">
+            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition" @click="selectedResearch = item"> >
               <td class="px-6 py-4">
                 <div class="font-bold text-gray-900">{{ item.title }}</div>
                 <div class="text-sm text-gray-500">By: {{ item.author }}</div>
@@ -58,8 +59,8 @@ const {
               <td class="px-6 py-4"><button @click="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1">💬 Comments</button></td>
               <td class="px-6 py-4 text-right space-x-2">
                 <template v-if="activeTab === 'pending'">
-                  <button @click="handleAction(item.id, 'approve')" class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded font-bold hover:bg-green-200 transition">✅ Approve</button>
-                  <button @click="handleAction(item.id, 'reject')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-bold hover:bg-red-200 transition">❌ Reject</button>
+                  <button @click.stop="handleAction(item.id, 'approve')" class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded font-bold hover:bg-green-200 transition">✅ Approve</button>
+                  <button @click.stop="handleAction(item.id, 'reject')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-bold hover:bg-red-200 transition">❌ Reject</button>
                 </template>
                 <template v-else><button @click="handleAction(item.id, 'restore')" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200 transition">♻️ Restore to Pending</button></template>
               </td>
@@ -93,22 +94,10 @@ const {
       </div>
     </Transition>
 
-    <div v-if="selectedResearch" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm">
-      <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
-        <div class="bg-green-800 text-white p-4 flex justify-between items-center shrink-0">
-          <div>
-            <h2 class="text-xl font-bold leading-tight">{{ selectedResearch.title }}</h2>
-            <p class="text-green-200 text-sm">Author: {{ selectedResearch.author }}</p>
-          </div>
-          <button @click="selectedResearch = null" class="text-white hover:text-gray-300 text-3xl font-bold leading-none">&times;</button>
-        </div>
-        <div class="flex-1 overflow-y-auto bg-gray-100 p-4">
-          <div v-if="selectedResearch.file_path" class="bg-white p-1 rounded shadow h-[600px]">
-            <iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none rounded" title="PDF Viewer"></iframe>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ResearchDetailsModal 
+      :research="selectedResearch" 
+      @close="selectedResearch = null" 
+    />
     
     <Transition name="fade">
       <div v-if="commentModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">

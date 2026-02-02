@@ -9,6 +9,7 @@ const props = defineProps<{
 // 1. Define Emit for the parent to catch
 const emit = defineEmits<{
   (e: 'edit', item: any): void
+  (e: 'view', item: any): void
 }>()
 
 const {
@@ -62,7 +63,7 @@ defineExpose({ fetchData })
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition">
+            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition" @click="$emit('view', item)">
               
               <td class="px-6 py-4 font-medium text-gray-900">{{ item.title }}</td>
               
@@ -109,22 +110,22 @@ defineExpose({ fetchData })
               </td>
 
               <td class="px-6 py-4">
-                <button @click="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1 transition-colors">💬 Comments</button>
+                <button @click.stop="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1 transition-colors">💬 Comments</button>
               </td>
 
               <td class="px-6 py-4 text-right flex justify-end gap-2">
-                <button v-if="item.status === 'approved' && !isArchived" @click="selectedResearch = item" class="text-xs px-3 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 transition">View PDF</button>
+                <button v-if="item.status === 'approved' && !isArchived" @click.stop="selectedResearch = item" class="text-xs px-3 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 transition">View PDF</button>
                 <template v-else>
                   
                   <button 
                     v-if="!isArchived" 
-                    @click="emit('edit', item)" 
+                    @click.stop="emit('edit', item)" 
                     class="text-xs px-3 py-1 rounded font-bold border text-yellow-700 border-yellow-400 hover:bg-yellow-100 transition"
                   >
                     ✏️ Edit
                   </button>
 
-                  <button @click="requestArchive(item)" :class="`text-xs px-3 py-1 rounded font-bold border transition ${isArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">
+                  <button @click.stop="requestArchive(item)" :class="`text-xs px-3 py-1 rounded font-bold border transition ${isArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">
                     {{ isArchived ? '♻️ Restore' : '📦 Archive' }}
                   </button>
                 </template>

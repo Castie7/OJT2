@@ -40,3 +40,9 @@ Ver 2.0
 Ver 2.1
 - Added Settings for the account to change password
 - 
+
+Ver 2.2
+- Added another table for more information
+- updated db
+- Research library added catalog and location for more information
+

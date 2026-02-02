@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 30, 2026 at 09:45 AM
+-- Generation Time: Feb 02, 2026 at 04:04 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -52,7 +52,7 @@ CREATE TABLE `researches` (
 --
 
 INSERT INTO `researches` (`id`, `title`, `author`, `crop_variation`, `abstract`, `created_at`, `file_path`, `uploaded_by`, `is_archived`, `is_approved`, `updated_at`, `status`, `start_date`, `deadline_date`, `rejected_at`, `approved_at`, `archived_at`) VALUES
-(1, 'Sample Study: Sweet Potato', 'Dr. Test', NULL, 'This is a test entry from the database.', '2026-01-28 10:56:54', NULL, 'System Admin', 0, 1, NULL, 'approved', NULL, NULL, NULL, NULL, NULL),
+(1, 'Sample Study: Sweet Potato', 'Dr. Test', NULL, 'This is a test entry from the database.', '2026-01-28 10:56:54', NULL, 'System Admin', 0, 1, '2026-02-02 02:16:36', 'approved', NULL, NULL, NULL, '2026-02-02 02:16:36', NULL),
 (2, 'asd', 'asd', NULL, '', '2026-01-28 10:59:48', NULL, 'System Admin', 1, 1, NULL, '', NULL, NULL, NULL, NULL, NULL),
 (3, 'asdf', 'asdf', NULL, 'asdf', '2026-01-28 11:40:03', '1769571603_c059111ca0f1607b6f62.pdf', 'Super Admin', 1, 1, NULL, '', NULL, NULL, NULL, NULL, NULL),
 (4, 'well', 'asd', NULL, 'asd', '2026-01-28 12:10:24', NULL, 'Super Admin', 1, 1, NULL, '', NULL, NULL, NULL, NULL, NULL),
@@ -79,13 +79,15 @@ INSERT INTO `researches` (`id`, `title`, `author`, `crop_variation`, `abstract`,
 (25, 'Research 12', 'Well Done', NULL, 'a', '2026-01-29 07:57:48', '1769673468_fb462e66f2184b1537b4.pdf', '4', 1, 0, '2026-01-30 01:49:14', 'archived', '2026-01-29', '2026-01-30', '2026-01-30 01:40:32', NULL, '2026-01-30 01:49:14'),
 (26, 'asd', 'asd', NULL, 'asd', '2026-01-29 08:10:44', '1769674244_17a97f3db3d28f2da36b.pdf', '4', 1, 0, '2026-01-30 01:49:08', 'archived', '2026-01-21', '2026-01-29', '2026-01-30 00:50:15', NULL, '2026-01-30 01:49:08'),
 (27, 'dsasa', 'fsa', NULL, 'dgfhfdjvn', '2026-01-30 01:41:53', '1769737313_fcca34f79accb080a4a6.jpg', '3', 0, 0, '2026-01-30 01:47:34', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:47:34', NULL),
-(28, 'Joebama', 'Joeschmo', NULL, 'asd', '2026-01-30 01:43:10', '1769737390_2e5b223303d15c8b242d.jpg', '3', 0, 0, '2026-01-30 01:44:27', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:44:27', NULL),
+(28, 'Research 21', 'Joeschmo', NULL, 'asd', '2026-01-30 01:43:10', '1769737390_2e5b223303d15c8b242d.jpg', '3', 0, 0, '2026-01-30 01:44:27', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:44:27', NULL),
 (29, 'joe', 'joeschmo', NULL, 'joeschmo', '2026-01-30 01:49:45', '1769737785_c5da404afce05be758fe.jpg', '4', 0, 0, '2026-01-30 01:51:01', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:51:01', NULL),
 (30, 'Research 5', 'Karlo', NULL, 'Weena', '2026-01-30 01:59:26', '1769738365_5621fe2cff5c99341d2e.jpg', '3', 0, 0, '2026-01-30 03:05:28', 'approved', '2025-05-12', '2026-01-30', NULL, '2026-01-30 03:05:28', NULL),
 (31, 'Do not Restore', 'TO check if deleted', NULL, 'Do not restore', '2026-01-30 03:09:19', '1769742559_11a551345ca4d4630fe4.jpg', '3', 0, 0, '2026-01-30 03:09:29', 'rejected', '2025-12-12', '2026-01-01', '2026-01-30 03:09:29', NULL, NULL),
-(32, 'Pending', 'Pendo', NULL, 'asd', '2026-01-30 07:35:16', '1769758516_cf3da701558aca13baf1.pdf', '3', 0, 0, '2026-01-30 07:35:16', 'pending', '2026-01-30', '2026-01-31', NULL, NULL, NULL),
+(32, 'Pending', 'Pendo', NULL, 'asd', '2026-01-30 07:35:16', '1769758516_cf3da701558aca13baf1.pdf', '3', 0, 0, '2026-01-30 08:57:12', 'approved', '2026-01-30', '2026-01-31', NULL, '2026-01-30 08:57:12', NULL),
 (33, 'Pending ni research', 'well', NULL, 'asd', '2026-01-30 08:02:32', '1769760152_64a1745d2c974b073471.pdf', '4', 0, 0, '2026-01-30 08:02:32', 'pending', '2026-01-30', '2026-01-31', NULL, NULL, NULL),
-(34, 'barbaru', 'baron', 'Liberica', 'by baron', '2026-01-30 08:39:11', '1769762351_bbc92853c72f168c673a.pdf', '4', 0, 0, '2026-01-30 08:42:14', 'pending', '2026-01-30', '2026-02-07', NULL, NULL, NULL);
+(34, 'barbaru', 'baron', 'Arabica', 'by baron', '2026-01-30 08:39:11', '1769762351_bbc92853c72f168c673a.pdf', '4', 0, 0, '2026-02-02 03:00:16', 'pending', '2026-01-30', '2026-02-07', NULL, NULL, NULL),
+(35, 'research', 'karlo', 'Robusta', '', '2026-01-30 08:58:58', '1769763538_b41e87310950989ee606.pdf', '4', 0, 0, '2026-02-02 02:19:16', 'archived', '2026-01-30', '2026-02-07', NULL, NULL, '2026-02-02 02:19:16'),
+(36, 'Research', 'Juan', 'Liberica', NULL, '2026-02-02 02:14:25', '1769998465_41ecc3083ec2764c7ca9.pdf', '4', 0, 0, '2026-02-02 02:18:49', 'approved', NULL, NULL, NULL, '2026-02-02 02:18:49', NULL);
 
 -- --------------------------------------------------------
 
@@ -129,7 +131,38 @@ INSERT INTO `research_comments` (`id`, `research_id`, `user_id`, `user_name`, `r
 (19, 25, 3, 'Super Admin', 'admin', 'g', '2026-01-30 09:40:05'),
 (20, 28, 3, 'Super Admin', 'user', 'jasfbk', '2026-01-30 09:45:21'),
 (21, 30, 3, 'Super Admin', 'user', 'boi', '2026-01-30 10:54:14'),
-(22, 30, 3, 'Super Admin', 'user', 'ivan is gae', '2026-01-30 11:10:03');
+(22, 30, 3, 'Super Admin', 'user', 'ivan is gae', '2026-01-30 11:10:03'),
+(23, 32, 3, 'Super Admin', 'admin', 'need revisions', '2026-01-30 16:56:58'),
+(24, 33, 4, 'Juan Dela Cruz', 'user', 'asd', '2026-02-02 10:54:29');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `research_details`
+--
+
+CREATE TABLE `research_details` (
+  `id` int(11) NOT NULL,
+  `research_id` int(11) NOT NULL,
+  `knowledge_type` varchar(100) DEFAULT 'Research Paper',
+  `publication_date` date DEFAULT NULL,
+  `edition` varchar(50) DEFAULT NULL,
+  `publisher` varchar(255) DEFAULT NULL,
+  `physical_description` text DEFAULT NULL,
+  `isbn_issn` varchar(50) DEFAULT NULL,
+  `subjects` text DEFAULT NULL,
+  `shelf_location` varchar(100) DEFAULT NULL,
+  `item_condition` varchar(50) DEFAULT 'Good',
+  `link` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `research_details`
+--
+
+INSERT INTO `research_details` (`id`, `research_id`, `knowledge_type`, `publication_date`, `edition`, `publisher`, `physical_description`, `isbn_issn`, `subjects`, `shelf_location`, `item_condition`, `link`) VALUES
+(1, 36, 'Research Paper', '1987-05-02', '', 'Well', '150', '12334-221', 'Sweet Potato', 'Shelf 2a', 'Good', ''),
+(2, 34, 'Research Paper', '0000-00-00', '', '', '', '', '', '', 'Good', '');
 
 -- --------------------------------------------------------
 
@@ -152,8 +185,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `email`, `password`, `created_at`, `auth_token`, `role`) VALUES
-(3, 'Super Admin', 'admin@bsu.edu.ph', '$2y$10$JtJ7rRhD70H86k35fuhb/OhbSpj4DfiBQby3y2W5cuGNZ77Rhrt36', '2026-01-28 11:20:35', NULL, 'admin'),
-(4, 'Juan Dela Cruz', 'researcher@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-29 09:42:12', NULL, 'user');
+(3, 'Super Admin', 'admin@bsu.edu.ph', '$2y$10$JtJ7rRhD70H86k35fuhb/OhbSpj4DfiBQby3y2W5cuGNZ77Rhrt36', '2026-01-28 11:20:35', 'a5e24ca103eaed8c02ed769d1762168782447591e4bdf65cfbe5662bb0e5cfbb', 'admin'),
+(4, 'Juan Dela Cruz', 'researcher@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-29 09:42:12', 'cf4efb0a11151ef01d30ccbf0b1e3c00fe3f807a74060ab89bc0450f1e55f460', 'user');
 
 --
 -- Indexes for dumped tables
@@ -172,6 +205,13 @@ ALTER TABLE `research_comments`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `research_details`
+--
+ALTER TABLE `research_details`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `research_id` (`research_id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -186,19 +226,35 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `researches`
 --
 ALTER TABLE `researches`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `research_comments`
 --
 ALTER TABLE `research_comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+
+--
+-- AUTO_INCREMENT for table `research_details`
+--
+ALTER TABLE `research_details`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `research_details`
+--
+ALTER TABLE `research_details`
+  ADD CONSTRAINT `fk_research_details` FOREIGN KEY (`research_id`) REFERENCES `researches` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

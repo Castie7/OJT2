@@ -1,33 +1,30 @@
 <script setup lang="ts">
 import { ref } from 'vue' 
 import SubmittedResearches from './SubmittedResearches.vue'
-import { useMyWorkspace, type User } from '../composables/useMyWorkspace'
+import { useMyWorkspace, type User } from '../composables/useMyWorkspace' 
 
-// Define Props
 const props = defineProps<{
   currentUser: User | null
 }>()
 
-// Use Composable
 const { 
   activeTab, 
-  uploadModal, 
-  isUploading, 
-  todayStr, 
-  handleUploadFile, 
-  submitResearch 
+  isModalOpen, 
+  isSubmitting, 
+  form, 
+  openSubmitModal, 
+  openEditModal, // <--- Imported from updated composable
+  submitResearch,
+  handleFileChange
 } = useMyWorkspace(props.currentUser)
 
-// Reference to Child Component to trigger refresh
 const submissionsRef = ref<InstanceType<typeof SubmittedResearches> | null>(null)
 
-// Wrapper function to pass the refresh callback
-const handleSubmit = () => {
-  submitResearch(() => {
-    if (submissionsRef.value) {
-      submissionsRef.value.fetchData()
-    }
-  })
+const handleSubmit = async () => {
+  await submitResearch()
+  if (submissionsRef.value) {
+    submissionsRef.value.fetchData()
+  }
 }
 </script>
 
@@ -41,10 +38,10 @@ const handleSubmit = () => {
       </div>
       <div class="flex items-center gap-4">
         <button 
-            @click="uploadModal.show = true" 
+            @click="openSubmitModal" 
             class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-bold text-sm flex items-center gap-2 shadow hover:shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95"
         >
-          <span>➕</span> Submit New
+          <span>➕</span> Submit New Item
         </button>
       </div>
     </div>
@@ -54,94 +51,157 @@ const handleSubmit = () => {
       <button @click="activeTab = 'archived'" :class="`pb-2 px-4 font-medium text-sm transition ${activeTab === 'archived' ? 'border-b-2 border-red-500 text-red-600' : 'text-gray-500 hover:text-gray-700'}`">🗑️ Archived Files</button>
     </div>
 
-    <SubmittedResearches ref="submissionsRef" :currentUser="currentUser" :isArchived="activeTab === 'archived'" />
+    <SubmittedResearches 
+        ref="submissionsRef" 
+        :currentUser="currentUser" 
+        :isArchived="activeTab === 'archived'" 
+        @edit="openEditModal" 
+    />
 
     <Transition name="modal-pop">
-      <div v-if="uploadModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm">
-        <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden shadow-2xl transform transition-all">
+      <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-xl w-full max-w-4xl overflow-hidden shadow-2xl transform transition-all flex flex-col max-h-[90vh]">
           
-          <div class="bg-green-700 text-white p-4 flex justify-between items-center">
-              <h2 class="font-bold text-lg">📤 Submit Research</h2>
-              <button @click="uploadModal.show = false" class="text-green-100 hover:text-white text-2xl font-bold transition-transform hover:rotate-90">&times;</button>
+          <div class="bg-green-700 text-white p-4 flex justify-between items-center shrink-0">
+              <h2 class="font-bold text-lg">
+                  {{ form.id ? '✏️ Edit Knowledge Product' : '📤 Submit Knowledge Product' }}
+              </h2>
+              <button @click="isModalOpen = false" class="text-green-100 hover:text-white text-2xl font-bold transition-transform hover:rotate-90">&times;</button>
           </div>
           
-          <div class="p-6 space-y-4">
-              <div>
-                <label class="block text-xs font-bold text-gray-500 mb-1">Research Title <span class="text-red-500">*</span></label>
-                <input v-model="uploadModal.title" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" placeholder="Enter title" />
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-gray-500 mb-1">Author Name <span class="text-red-500">*</span></label>
-                <input v-model="uploadModal.author" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" placeholder="Enter author" />
-              </div>
+          <div class="p-6 overflow-y-auto custom-scrollbar">
+            <form @submit.prevent="handleSubmit" class="space-y-4">
               
-              <div>
-                <label class="block text-xs font-bold text-gray-500 mb-1">Crop Variation <span class="text-red-500">*</span></label>
-                <select 
-                  v-model="uploadModal.crop_variation" 
-                  class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition bg-white"
-                >
-                  <option value="" disabled>Select a variation</option>
-                  <option value="Arabica">Arabica</option>
-                  <option value="Robusta">Robusta</option>
-                  <option value="Liberica">Liberica</option>
-                  <option value="Excelsa">Excelsa</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-bold text-gray-500 mb-1">Date Started</label>
-                  <input 
-                    v-model="uploadModal.start_date" 
-                    type="date" 
-                    :max="todayStr"
-                    class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" 
-                  />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-gray-500 mb-1">Deadline <span class="text-red-500">*</span></label>
-                  <input 
-                    v-model="uploadModal.deadline_date" 
-                    type="date" 
-                    :min="uploadModal.start_date"
-                    class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" 
-                  />
-                </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type <span class="text-red-500">*</span></label>
+                    <select v-model="form.knowledge_type" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white">
+                      <option>Research Paper</option>
+                      <option>Book</option>
+                      <option>Journal</option>
+                      <option>IEC Material</option>
+                      <option>Thesis</option>
+                    </select>
+                 </div>
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Crop Variation (Optional)</label>
+                    <select v-model="form.crop_variation" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white">
+                      <option value="" disabled>Select Variation</option>
+                      <option>Arabica</option>
+                      <option>Robusta</option>
+                      <option>Liberica</option>
+                      <option>Excelsa</option>
+                      <option>Sweet Potato</option>
+                      <option>Cassava</option>
+                      <option>Other</option>
+                    </select>
+                 </div>
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-gray-500 mb-1">Abstract</label>
-                <textarea v-model="uploadModal.abstract" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" placeholder="Short description..." rows="3"></textarea>
+                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Title / Name of Product <span class="text-red-500">*</span></label>
+                 <input v-model="form.title" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="Enter title" required />
               </div>
-              
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Author(s) <span class="text-red-500">*</span></label>
+                    <input v-model="form.author" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. Juan Cruz" required />
+                 </div>
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Publication / Creation Date</label>
+                    <input v-model="form.publication_date" type="date" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" />
+                 </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-3 rounded border border-gray-200">
+                 <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Date Started (Optional)</label>
+                    <input v-model="form.start_date" type="date" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white" />
+                 </div>
+                 <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Deadline Date (Optional)</label>
+                    <input v-model="form.deadline_date" type="date" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white" />
+                 </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Publisher / Producer</label>
+                    <input v-model="form.publisher" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" />
+                 </div>
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Edition (Optional)</label>
+                    <input v-model="form.edition" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 2nd Edition" />
+                 </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Physical Description</label>
+                    <input v-model="form.physical_description" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 150 pages" />
+                 </div>
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ISBN / ISSN</label>
+                    <input v-model="form.isbn_issn" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" />
+                 </div>
+              </div>
+
               <div>
-                <label class="block text-xs font-bold text-gray-500 mb-1">Upload File (PDF/Image) <span class="text-red-500">*</span></label>
-                <input 
-                  type="file" 
-                  @change="handleUploadFile" 
-                  class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 hover:file:scale-105 file:transition-all file:duration-200 file:cursor-pointer"
-                  accept=".pdf, .jpg, .jpeg, .png" 
-                />
+                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Subject(s) / Keywords</label>
+                 <textarea v-model="form.subjects" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="Keywords describing content..." rows="2"></textarea>
               </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Shelf Location</label>
+                    <input v-model="form.shelf_location" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. Shelf A-1" />
+                 </div>
+                 <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Condition</label>
+                    <select v-model="form.item_condition" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white">
+                      <option>New</option>
+                      <option>Good</option>
+                      <option>Fair</option>
+                      <option>Poor</option>
+                      <option>Damaged</option>
+                    </select>
+                 </div>
+                 <div>
+                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Link (Optional)</label>
+                     <input v-model="form.link" type="url" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="https://..." />
+                 </div>
+              </div>
+
+              <div class="bg-gray-50 p-4 rounded border border-dashed border-gray-300">
+                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">
+                    {{ form.id ? 'Replace File (Optional)' : 'Upload File (PDF/Image) (Optional)' }}
+                 </label>
+                 <input 
+                    type="file" 
+                    @change="handleFileChange" 
+                    accept=".pdf, .jpg, .jpeg, .png" 
+                    class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 cursor-pointer"
+                 />
+              </div>
+
+            </form>
           </div>
 
-          <div class="bg-gray-50 p-4 border-t flex justify-end gap-3">
+          <div class="bg-gray-50 p-4 border-t flex justify-end gap-3 shrink-0">
               <button 
-                @click="uploadModal.show = false" 
-                class="px-5 py-2 rounded-lg font-bold text-gray-600 bg-white border border-gray-200 shadow-sm hover:bg-gray-50 hover:shadow-md hover:text-gray-800 transform transition-all duration-200 hover:scale-105 active:scale-95"
+                @click="isModalOpen = false" 
+                class="px-5 py-2 rounded-lg font-bold text-gray-600 bg-white border border-gray-200 shadow-sm hover:bg-gray-100 hover:text-gray-800 transition"
               >
                 Cancel
               </button>
 
               <button 
                 @click="handleSubmit" 
-                :disabled="isUploading" 
-                class="px-6 py-2 rounded-lg font-bold text-white bg-green-600 shadow-md hover:bg-green-700 hover:shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                :disabled="isSubmitting" 
+                class="px-6 py-2 rounded-lg font-bold text-white bg-green-600 shadow-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                  {{ isUploading ? 'Uploading...' : 'Submit 🚀' }}
+                  {{ isSubmitting ? 'Saving...' : (form.id ? 'Update Item 💾' : 'Submit 🚀') }}
               </button>
           </div>
         </div>

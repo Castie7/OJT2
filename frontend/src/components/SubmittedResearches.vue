@@ -6,10 +6,15 @@ const props = defineProps<{
     isArchived: boolean
 }>()
 
+// 1. Define Emit for the parent to catch
+const emit = defineEmits<{
+  (e: 'edit', item: any): void
+}>()
+
 const {
     // State
     isLoading, searchQuery, 
-    editingItem, isSaving, selectedResearch, commentModal, isSendingComment,
+    selectedResearch, commentModal, isSendingComment,
     chatContainer, confirmModal,
     
     // Computed
@@ -18,12 +23,12 @@ const {
     // Methods
     fetchData, nextPage, prevPage,
     requestArchive, executeArchive, openComments, postComment,
-    openEdit, handleEditFile, saveEdit,
+    // Removed internal edit methods (openEdit, saveEdit, etc.) since parent handles it now
     
     // Helpers
     getDeadlineStatus, 
     getArchiveDaysLeft,
-    formatSimpleDate  // <--- ADD THIS HERE!
+    formatSimpleDate  // <--- ADDED AS REQUESTED
 } = useSubmittedResearches(props)
 
 defineExpose({ fetchData })
@@ -63,7 +68,6 @@ defineExpose({ fetchData })
               <td class="px-6 py-4 font-medium text-gray-900">{{ item.title }}</td>
               
               <td class="px-6 py-4">
-                
                 <div v-if="isArchived">
                   <span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200">
                     ⚠️ {{ getArchiveDaysLeft(item.archived_at) }} Days left
@@ -79,7 +83,6 @@ defineExpose({ fetchData })
                     <span>Approved: <b class="text-green-700">{{ formatSimpleDate(item.approved_at || item.updated_at) }}</b></span>
                   </div>
                 </div>
-                
                 
                 <div v-else-if="item.deadline_date">
                   <span :class="`px-2 py-1 text-xs rounded font-bold ${getDeadlineStatus(item.deadline_date)?.color}`">
@@ -113,7 +116,15 @@ defineExpose({ fetchData })
               <td class="px-6 py-4 text-right flex justify-end gap-2">
                 <button v-if="item.status === 'approved' && !isArchived" @click="selectedResearch = item" class="text-xs px-3 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 transition">View PDF</button>
                 <template v-else>
-                  <button v-if="!isArchived" @click="openEdit(item)" class="text-xs px-3 py-1 rounded font-bold border text-yellow-700 border-yellow-400 hover:bg-yellow-100 transition">✏️ Edit</button>
+                  
+                  <button 
+                    v-if="!isArchived" 
+                    @click="emit('edit', item)" 
+                    class="text-xs px-3 py-1 rounded font-bold border text-yellow-700 border-yellow-400 hover:bg-yellow-100 transition"
+                  >
+                    ✏️ Edit
+                  </button>
+
                   <button @click="requestArchive(item)" :class="`text-xs px-3 py-1 rounded font-bold border transition ${isArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">
                     {{ isArchived ? '♻️ Restore' : '📦 Archive' }}
                   </button>
@@ -146,33 +157,7 @@ defineExpose({ fetchData })
     
     <Transition name="pop"><div v-if="confirmModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"><div class="bg-white rounded-2xl p-6 text-center"><h3>{{ confirmModal.title }}</h3><div class="flex gap-3 justify-center mt-4"><button @click="confirmModal.show=false" class="px-4 py-2 bg-gray-100 rounded" :disabled="confirmModal.isProcessing">Cancel</button><button @click="executeArchive" class="px-4 py-2 bg-green-600 text-white rounded" :disabled="confirmModal.isProcessing">Yes</button></div></div></div></Transition>
 
-    <div v-if="editingItem" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
-      <div class="bg-white rounded-lg w-full max-w-lg p-6">
-        <h2 class="font-bold mb-4">Edit Research</h2>
-        <div class="space-y-4">
-          <input v-model="editingItem.title" class="w-full border p-2"/>
-          <input v-model="editingItem.author" class="w-full border p-2"/>
-          <div class="grid grid-cols-2 gap-4">
-            <input v-model="editingItem.start_date" type="date" class="border p-2"/>
-            <input v-model="editingItem.deadline_date" type="date" class="border p-2"/>
-          </div>
-          <textarea v-model="editingItem.abstract" class="w-full border p-2"></textarea>
-          <div class="relative group">
-            <label class="block text-xs font-bold text-gray-500 mb-1">Update File (Optional)</label>
-            <input type="file" @change="handleEditFile" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 hover:file:text-green-800 hover:file:scale-105 hover:file:shadow-md active:file:scale-95 file:transition-all file:duration-300 file:ease-in-out file:cursor-pointer"/>
-          </div>
-        </div>
-        <div class="flex justify-end gap-2 mt-4">
-          <button @click="editingItem=null" :disabled="isSaving" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancel</button>
-          <button @click="saveEdit" :disabled="isSaving" class="relative flex items-center justify-center bg-yellow-500 text-white px-6 py-2 rounded font-bold shadow transition-all duration-200 disabled:opacity-75 disabled:cursor-not-allowed disabled:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:scale-95">
-            <svg v-if="isSaving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            {{ isSaving ? 'Saving...' : 'Save Changes' }}
-          </button>
-        </div>
-      </div>
     </div>
-
-  </div>
 </template>
 
 <style scoped src="../assets/styles/SubmittedResearches.css"></style>

@@ -1,37 +1,61 @@
-import { ref } from 'vue'
-
-// Define Types
-export interface UploadModalState {
-  show: boolean
-  title: string
-  author: string
-  crop_variation: string
-  abstract: string
-  start_date: string
-  deadline_date: string
-  file: File | null
-}
+import { ref, reactive } from 'vue'
 
 export interface User {
   id: number
   name: string
   role: string
+  email: string
+}
+
+export interface Research {
+  id: number
+  title: string
+  author: string
+  status: string
+  crop_variation: string
+  start_date: string
+  deadline_date: string
+  knowledge_type: string
+  publication_date: string
+  edition: string
+  publisher: string
+  physical_description: string
+  isbn_issn: string
+  subjects: string
+  shelf_location: string
+  item_condition: string
+  link: string
+  file_path?: string
+  rejected_at?: string
+  archived_at?: string
 }
 
 export function useMyWorkspace(currentUser: User | null) {
   
-  // --- STATE ---
   const activeTab = ref<'submitted' | 'archived'>('submitted')
-  const isUploading = ref(false)
-  const uploadModal = ref<UploadModalState>({
-    show: false,
+  const isModalOpen = ref(false)
+  const isSubmitting = ref(false)
+  const myResearches = ref<Research[]>([])
+
+  // FORM STATE
+  const form = reactive({
+    id: null as number | null,
     title: '',
     author: '',
     crop_variation: '',
-    abstract: '',
     start_date: '',
     deadline_date: '',
-    file: null
+    knowledge_type: 'Research Paper', 
+    publication_date: '',
+    edition: '',
+    publisher: '',
+    physical_description: '',
+    isbn_issn: '',
+    subjects: '',
+    shelf_location: '',
+    item_condition: 'Good', 
+    link: '',
+    pdf_file: null as File | null
   })
 
   // --- HELPERS ---
@@ -40,121 +64,128 @@ export function useMyWorkspace(currentUser: User | null) {
     return { 'Authorization': token || '' }
   }
 
-  // Get Today's date for "max" attributes
-  const todayStr = new Date().toISOString().split('T')[0]
+  // --- ACTIONS ---
 
-  // --- FILE HANDLING ---
-  const handleUploadFile = (e: Event) => {
+  // 1. OPEN FOR NEW SUBMISSION
+  const openSubmitModal = () => {
+    Object.assign(form, {
+      id: null, // Null ID means Create Mode
+      title: '', author: '', crop_variation: '', 
+      start_date: '', deadline_date: '',
+      knowledge_type: 'Research Paper',
+      publication_date: '', edition: '', publisher: '',
+      physical_description: '', isbn_issn: '', subjects: '',
+      shelf_location: '', item_condition: 'Good', link: '',
+      pdf_file: null
+    })
+    isModalOpen.value = true
+  }
+
+  // 2. OPEN FOR EDITING (Pre-fill Data)
+  const openEditModal = (item: Research) => {
+    Object.assign(form, {
+      id: item.id, // ID exists means Update Mode
+      title: item.title,
+      author: item.author,
+      crop_variation: item.crop_variation || '',
+      start_date: item.start_date || '',
+      deadline_date: item.deadline_date || '',
+      knowledge_type: item.knowledge_type || 'Research Paper',
+      publication_date: item.publication_date || '',
+      edition: item.edition || '',
+      publisher: item.publisher || '',
+      physical_description: item.physical_description || '',
+      isbn_issn: item.isbn_issn || '',
+      subjects: item.subjects || '',
+      shelf_location: item.shelf_location || '',
+      item_condition: item.item_condition || 'Good',
+      link: item.link || '',
+      pdf_file: null // Reset file input (user might not want to change it)
+    })
+    isModalOpen.value = true
+  }
+
+  const handleFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement
     const file = target.files?.[0]
+    if (!file) { form.pdf_file = null; return }
 
-    // 1. Reset if cancelled
-    if (!file) {
-      uploadModal.value.file = null
-      return
-    }
-
-    // 2. Validate Extension
     const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png']
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || ''
 
     if (!allowedExtensions.includes(fileExtension)) {
-      alert("❌ Invalid File!\nPlease upload a PDF or an Image (JPG/PNG).")
-      target.value = '' // Clear visual input
-      uploadModal.value.file = null
+      alert("❌ Invalid File!\nPlease upload a PDF or an Image.")
+      target.value = '' 
+      form.pdf_file = null
       return
     }
-
-    // Valid
-    uploadModal.value.file = file
+    form.pdf_file = file
   }
 
-  // --- SUBMISSION LOGIC ---
-  const submitResearch = async (refreshCallback?: () => void) => {
-    const form = uploadModal.value
-
-    // 1. Basic Validation
+  const submitResearch = async () => {
     if (!form.title.trim()) { alert("⚠️ Title is required."); return }
     if (!form.author.trim()) { alert("⚠️ Author is required."); return }
-    if (!form.deadline_date) { alert("⚠️ Deadline Date is required."); return }
-    if (!form.file) { alert("⚠️ File is missing.\nPlease select a valid PDF or Image."); return }
 
-    // 2. Date Validation
-    const start = form.start_date ? new Date(form.start_date) : null
-    const deadline = new Date(form.deadline_date)
-    const minYear = 2000
-    const maxYear = 2100
-
-    if (deadline.getFullYear() < minYear || deadline.getFullYear() > maxYear) {
-      alert(`⚠️ Invalid Deadline Date.\nPlease enter a year between ${minYear} and ${maxYear}.`)
-      return
-    }
-
-    if (start) {
-      if (start.getFullYear() < minYear || start.getFullYear() > maxYear) {
-        alert(`⚠️ Invalid Start Date.\nPlease enter a year between ${minYear} and ${maxYear}.`)
-        return
-      }
-      if (deadline < start) {
-        alert("⚠️ Date Error: Deadline cannot be before the Start Date.")
-        return
-      }
-    }
-
-    // 3. Prepare Upload
-    isUploading.value = true
+    isSubmitting.value = true
     const formData = new FormData()
+
+    // Append Fields
     formData.append('title', form.title)
     formData.append('author', form.author)
     formData.append('crop_variation', form.crop_variation)
-    formData.append('abstract', form.abstract)
     formData.append('start_date', form.start_date)
     formData.append('deadline_date', form.deadline_date)
-    if (currentUser) formData.append('uploaded_by', String(currentUser.id))
-    if (form.file) formData.append('pdf_file', form.file)
+    formData.append('knowledge_type', form.knowledge_type)
+    formData.append('publication_date', form.publication_date)
+    formData.append('edition', form.edition)
+    formData.append('publisher', form.publisher)
+    formData.append('physical_description', form.physical_description)
+    formData.append('isbn_issn', form.isbn_issn)
+    formData.append('subjects', form.subjects)
+    formData.append('shelf_location', form.shelf_location)
+    formData.append('item_condition', form.item_condition)
+    formData.append('link', form.link)
+    
+    if (form.pdf_file) formData.append('pdf_file', form.pdf_file)
 
     try {
-      const res = await fetch('http://localhost:8080/research/create', {
+      // 3. SWITCH URL BASED ON ID
+      const url = form.id 
+        ? `http://localhost:8080/research/update/${form.id}`
+        : 'http://localhost:8080/research/create'
+
+      const res = await fetch(url, {
         method: 'POST',
-        headers: getHeaders(), // Note: Headers for FormData usually shouldn't set Content-Type manually
+        headers: getHeaders(),
         body: formData
       })
       
       const result = await res.json()
 
       if (res.ok) {
-        alert("✅ Success! Research Submitted.")
-        // Reset Form
-        uploadModal.value = { 
-          show: false, title: '', author: '', crop_variation: '', abstract: '', 
-          start_date: '', deadline_date: '', file: null 
-        }
-        // Trigger Refresh in Component
-        if (refreshCallback) refreshCallback()
+        alert(form.id ? "✅ Success! Research Updated." : "✅ Success! Research Submitted.")
+        isModalOpen.value = false
       } else {
-        if (result.messages) {
-          const msg = typeof result.messages === 'object' 
-            ? Object.values(result.messages).join('\n') 
-            : result.messages
-          alert("❌ Submission Failed:\n" + msg)
-        } else {
-          alert("❌ Error: " + (result.message || "Upload Failed"))
-        }
+        const msg = result.messages ? JSON.stringify(result.messages) : (result.message || "Action Failed")
+        alert("❌ Error: " + msg)
       }
     } catch (error) {
       console.error(error)
       alert("❌ Server Error.")
     } finally {
-      isUploading.value = false
+      isSubmitting.value = false
     }
   }
 
   return {
     activeTab,
-    uploadModal,
-    isUploading,
-    todayStr,
-    handleUploadFile,
-    submitResearch
+    myResearches,
+    isModalOpen,
+    isSubmitting,
+    form,
+    openSubmitModal,
+    openEditModal, // <--- Exported new function
+    submitResearch,
+    handleFileChange
   }
 }

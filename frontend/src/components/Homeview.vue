@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { ref, onMounted, watch } from 'vue'
 import { useHomeView, type User, type Stat } from '../composables/useHomeView'
 
-defineProps<{
-  currentUser: User | null // id, name, role
-  stats: Stat[] // title, value, color
+const props = defineProps<{
+  currentUser: User | null
+  stats: Stat[] // Initial stats from parent
 }>()
 
 const emit = defineEmits<{
@@ -15,11 +16,66 @@ const {
   recentResearches, currentSlide, nextSlide, prevSlide, 
   startSlideTimer, stopSlideTimer 
 } = useHomeView()
+
+// --- FIX: Live Stats Logic ---
+// We create a local copy so we can overwrite it with fresh API data
+const displayStats = ref<Stat[]>([...props.stats])
+
+const fetchLiveAdminStats = async () => {
+  // Only fetch if user is Admin
+  if (props.currentUser?.role !== 'admin') return
+
+  try {
+    // Add timestamp to prevent browser caching
+    const res = await fetch(`http://localhost:8080/research/stats?t=${Date.now()}`)
+    if (res.ok) {
+      const data = await res.json()
+      
+      // Update the stats with live numbers
+      displayStats.value = [
+        { 
+          title: 'Total Published', 
+          value: data.total, 
+          color: 'text-green-600', 
+          action: 'submitted' // or whatever tab name you use for the library
+        },
+        { 
+          title: 'Pending Reviews', 
+          value: data.pending, // <--- THIS IS THE FIX
+          color: 'text-amber-600', 
+          action: 'pending' 
+        },
+        { 
+          title: 'Registered Users', 
+          value: data.users || 0, 
+          color: 'text-blue-600', 
+          action: 'users' // Optional: if you have a users tab
+        }
+      ]
+    }
+  } catch (error) {
+    console.error("Error fetching live stats:", error)
+  }
+}
+
+// Fetch on mount
+onMounted(() => {
+  fetchLiveAdminStats()
+})
+
+// Keep local stats in sync if props change (for non-admins)
+watch(() => props.stats, (newStats) => {
+  if (props.currentUser?.role !== 'admin') {
+    displayStats.value = newStats
+  }
+})
 </script>
 
 <template>
   <div class="space-y-8"> 
     
+    
+
     <div v-if="currentUser">
       <h1 class="text-2xl font-bold text-gray-900 mb-4">
         {{ currentUser.role === 'admin' ? '📢 System Overview (Admin)' : '👋 My Research Overview' }}
@@ -27,14 +83,15 @@ const {
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div 
-            v-for="stat in stats" 
+            v-for="stat in displayStats" 
             :key="stat.title" 
             @click="stat.action ? emit('stat-click', stat.action) : null"
             :class="[
               'bg-white p-6 rounded-lg shadow border-l-4 transition-transform duration-200',
               stat.color === 'text-red-600' ? 'border-red-500' : 
               stat.color === 'text-orange-500' ? 'border-orange-500' : 
-              stat.color === 'text-yellow-600' ? 'border-yellow-500' : 'border-green-500',
+              stat.color === 'text-amber-600' ? 'border-amber-500' : 
+              stat.color === 'text-blue-600' ? 'border-blue-500' : 'border-green-500',
               stat.action ? 'cursor-pointer hover:scale-105 hover:shadow-lg' : '' 
             ]"
         >
@@ -72,22 +129,22 @@ const {
            <div class="absolute inset-0 opacity-10 bg-pattern-cubes"></div>
 
            <div class="absolute bottom-0 left-0 p-8 md:p-12 z-20 max-w-3xl">
-              <span class="inline-block px-3 py-1 bg-yellow-500 text-green-900 text-xs font-bold rounded mb-3">
-                Featured Study
-              </span>
-              <h2 class="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight drop-shadow-lg">
-                {{ item.title }}
-              </h2>
-              <p class="text-gray-200 text-sm md:text-base line-clamp-2 mb-6 border-l-4 border-yellow-500 pl-4">
-                {{ item.abstract || 'Explore this latest research in our library.' }}
-              </p>
-              
-              <button 
-                @click="$emit('browse-click')" 
-                class="px-6 py-3 bg-white text-green-900 font-bold rounded hover:bg-yellow-400 flex items-center gap-2 btn-hover-effect"
-              >
-                <span>📖</span> Read Full Paper
-              </button>
+             <span class="inline-block px-3 py-1 bg-yellow-500 text-green-900 text-xs font-bold rounded mb-3">
+               Featured Study
+             </span>
+             <h2 class="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight drop-shadow-lg">
+               {{ item.title }}
+             </h2>
+             <p class="text-gray-200 text-sm md:text-base line-clamp-2 mb-6 border-l-4 border-yellow-500 pl-4">
+               {{ item.abstract || 'Explore this latest research in our library.' }}
+             </p>
+             
+             <button 
+               @click="$emit('browse-click')" 
+               class="px-6 py-3 bg-white text-green-900 font-bold rounded hover:bg-yellow-400 flex items-center gap-2 btn-hover-effect"
+             >
+               <span>📖</span> Read Full Paper
+             </button>
            </div>
         </div>
       </div>

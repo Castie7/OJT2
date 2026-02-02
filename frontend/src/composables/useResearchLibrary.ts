@@ -1,15 +1,27 @@
-// src/composables/useResearchLibrary.ts
 import { ref, computed, watch, onMounted } from 'vue'
 
-// --- TYPE DEFINITIONS ---
+// --- 1. UPDATED INTERFACE (Matches your DB) ---
 export interface Research {
   id: number
   title: string
   author: string
-  crop_variation: string
-  abstract: string
   status: 'pending' | 'approved' | 'rejected' | 'archived'
+  
+  // Library Catalog Fields
+  knowledge_type: string
+  crop_variation: string
+  publication_date: string
+  edition: string
+  publisher: string
+  physical_description: string
+  isbn_issn: string
+  subjects: string
+  shelf_location: string
+  item_condition: string
+  link: string
   file_path: string
+  
+  // Dates
   approved_at?: string
   archived_at?: string
   created_at: string
@@ -26,7 +38,10 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
   
   // --- STATE ---
   const researches = ref<Research[]>([])
+  
   const searchQuery = ref('')
+  const selectedType = ref('') // <--- NEW: For the Dropdown Filter (Default: All)
+  
   const showArchived = ref(false)
   const viewMode = ref<'list' | 'grid'>('list')
   const selectedResearch = ref<Research | null>(null)
@@ -94,14 +109,23 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
     }
   }
 
-  // --- COMPUTED LOGIC ---
+  // --- 2. UPDATED FILTERING LOGIC ---
   const filteredResearches = computed(() => {
-    if (!searchQuery.value) return researches.value
-    const query = searchQuery.value.toLowerCase()
-    return researches.value.filter(item => 
-      item.title.toLowerCase().includes(query) || 
-      item.author.toLowerCase().includes(query)
-    )
+    return researches.value.filter(item => {
+      // A. Search Query (Expanded to include ISBN and Subjects)
+      const q = searchQuery.value.toLowerCase()
+      const matchesSearch = 
+        item.title.toLowerCase().includes(q) || 
+        item.author.toLowerCase().includes(q) ||
+        (item.isbn_issn && item.isbn_issn.toLowerCase().includes(q)) ||
+        (item.subjects && item.subjects.toLowerCase().includes(q))
+
+      // B. Knowledge Type Filter
+      // If selectedType is empty string, we return true (match all)
+      const matchesType = selectedType.value === '' || item.knowledge_type === selectedType.value
+
+      return matchesSearch && matchesType
+    })
   })
 
   const paginatedResearches = computed(() => {
@@ -154,10 +178,17 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
     } catch (error) { showToast("Error updating status", "error") }
   }
 
-  // --- WATCHERS & LIFECYCLE ---
-  watch([searchQuery, showArchived], () => {
+  // --- WATCHERS ---
+  
+  // Watch for endpoint changes (Active vs Archived)
+  watch(showArchived, () => {
     currentPage.value = 1
     fetchResearches()
+  })
+
+  // Watch for local filter changes to reset pagination
+  watch([searchQuery, selectedType], () => {
+    currentPage.value = 1
   })
 
   onMounted(() => {
@@ -166,15 +197,30 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
 
   return {
     // State
-    researches, searchQuery, showArchived, viewMode, selectedResearch,
-    isLoading, toast, confirmModal, currentPage, itemsPerPage,
+    researches, 
+    searchQuery, 
+    selectedType, // <--- EXPORTED THIS
+    showArchived, 
+    viewMode, 
+    selectedResearch,
+    isLoading, 
+    toast, 
+    confirmModal, 
+    currentPage, 
+    itemsPerPage,
     
     // Computed
-    filteredResearches, paginatedResearches, totalPages,
+    filteredResearches, 
+    paginatedResearches, 
+    totalPages,
     
     // Methods
-    fetchResearches, nextPage, prevPage, 
-    requestArchiveToggle, executeArchiveToggle,
-    formatSimpleDate, showToast
+    fetchResearches, 
+    nextPage, 
+    prevPage, 
+    requestArchiveToggle, 
+    executeArchiveToggle,
+    formatSimpleDate, 
+    showToast
   }
 }

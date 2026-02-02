@@ -43,11 +43,10 @@ const {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition" @click="selectedResearch = item"> >
+            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition" @click="selectedResearch = item">
               <td class="px-6 py-4">
                 <div class="font-bold text-gray-900">{{ item.title }}</div>
                 <div class="text-sm text-gray-500">By: {{ item.author }}</div>
-                <button @click="selectedResearch = item" class="text-xs text-blue-600 font-bold hover:underline mt-1">📄 View PDF</button>
               </td>
               <td class="px-6 py-4">
                 <div v-if="activeTab === 'pending'" class="flex items-center gap-2">
@@ -60,9 +59,9 @@ const {
               <td class="px-6 py-4 text-right space-x-2">
                 <template v-if="activeTab === 'pending'">
                   <button @click.stop="handleAction(item.id, 'approve')" class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded font-bold hover:bg-green-200 transition">✅ Approve</button>
-                  <button @click.stop="handleAction(item.id, 'reject')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-bold hover:bg-red-200 transition">❌ Reject</button>
+                  <button @click="handleAction(item.id, 'reject')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-bold hover:bg-red-200 transition">❌ Reject</button>
                 </template>
-                <template v-else><button @click="handleAction(item.id, 'restore')" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200 transition">♻️ Restore to Pending</button></template>
+                <template v-else><button @click.stop="handleAction(item.id, 'restore')" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200 transition">♻️ Restore to Pending</button></template>
               </td>
             </tr>
           </tbody>

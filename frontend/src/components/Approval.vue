@@ -13,6 +13,29 @@ const {
   fetchData, handleAction, formatDate, getDaysLeft,
   openDeadlineModal, saveNewDeadline, openComments, postComment
 } = useApproval(props.currentUser)
+
+// --- NEW: Handle Notification Clicks from Dashboard ---
+const openNotification = async (researchId: number) => {
+  // 1. Ensure data is loaded
+  if (items.value.length === 0) {
+      await fetchData()
+  }
+  
+  // 2. Find the item in the current list
+  const targetItem = items.value.find(i => i.id === researchId)
+  
+  // 3. Open the comment modal if found
+  if (targetItem) {
+    openComments(targetItem)
+  } else {
+    // If not found in 'pending', you might want to switch to 'rejected' logic here
+    // But for now, this handles the standard flow
+    console.warn("Research item not found in current list.")
+  }
+}
+
+// Expose this function so Dashboard.vue can call it
+defineExpose({ openNotification })
 </script>
 
 <template>
@@ -51,7 +74,7 @@ const {
               <td class="px-6 py-4">
                 <div v-if="activeTab === 'pending'" class="flex items-center gap-2">
                   <span :class="`text-sm font-medium ${!item.deadline_date ? 'text-gray-400' : 'text-gray-700'}`">{{ formatDate(item.deadline_date) }}</span>
-                  <button @click="openDeadlineModal(item)" class="text-gray-400 hover:text-green-600 transition" title="Extend Deadline">🕒</button>
+                  <button @click.stop="openDeadlineModal(item)" class="text-gray-400 hover:text-green-600 transition" title="Extend Deadline">🕒</button>
                 </div>
                 <div v-else><span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200">⚠️ {{ getDaysLeft(item.rejected_at) }} Days left</span></div>
               </td>
@@ -59,7 +82,7 @@ const {
               <td class="px-6 py-4 text-right space-x-2">
                 <template v-if="activeTab === 'pending'">
                   <button @click.stop="handleAction(item.id, 'approve')" class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded font-bold hover:bg-green-200 transition">✅ Approve</button>
-                  <button @click="handleAction(item.id, 'reject')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-bold hover:bg-red-200 transition">❌ Reject</button>
+                  <button @click.stop="handleAction(item.id, 'reject')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-bold hover:bg-red-200 transition">❌ Reject</button>
                 </template>
                 <template v-else><button @click.stop="handleAction(item.id, 'restore')" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200 transition">♻️ Restore to Pending</button></template>
               </td>

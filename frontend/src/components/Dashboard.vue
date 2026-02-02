@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef } from 'vue' // <--- 1. Import toRef
+import { toRef, ref, onMounted, onUnmounted, computed, nextTick } from 'vue' 
 import { useDashboard, type User } from '../composables/useDashboard'
 
 // Import Sub-Components
@@ -19,17 +19,102 @@ const emit = defineEmits<{
   (e: 'update-user', user: User): void 
 }>()
 
-// 2. Create a Reactive Reference for the User
-// This ensures the dashboard logic "sees" the user when they log in
+// --- Core Dashboard Logic ---
 const currentUserRef = toRef(props, 'currentUser')
-
-// 3. Pass the Ref to the composable
 const { currentTab, stats, updateStats, setTab } = useDashboard(currentUserRef)
 
-// Handle Profile Updates locally + emit up
+// --- Component Refs (To access methods inside children) ---
+const workspaceRef = ref<any>(null)
+const approvalRef = ref<any>(null)
+
 const handleUserUpdate = (updatedUser: User) => {
   emit('update-user', updatedUser)
 }
+
+// --- Notification Logic ---
+const showNotifications = ref(false)
+const notifications = ref<any[]>([])
+const pollingInterval = ref<any>(null)
+
+// Computed count (loose equality for 0 vs "0")
+const unreadCount = computed(() => {
+  return notifications.value.filter(n => n.is_read == 0).length
+})
+
+const fetchNotifications = async () => {
+  if (!props.currentUser) return
+  try {
+    const response = await fetch(`http://localhost:8080/api/notifications?user_id=${props.currentUser.id}`)
+    if (response.ok) {
+      notifications.value = await response.json()
+    }
+  } catch (error) {
+    console.error("Failed to fetch notifications", error)
+  }
+}
+
+const toggleNotifications = async () => {
+  showNotifications.value = !showNotifications.value
+  
+  if (showNotifications.value && unreadCount.value > 0) {
+    try {
+        // Optimistic update
+        notifications.value.forEach(n => n.is_read = 1)
+        
+        await fetch('http://localhost:8080/api/notifications/read', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: props.currentUser?.id })
+        })
+    } catch (e) { console.error(e) }
+  }
+}
+
+// --- CLICK HANDLER (The New Logic) ---
+const handleNotificationClick = async (notif: any) => {
+    if (!notif.research_id) return
+    
+    showNotifications.value = false // Close dropdown
+
+    // 1. If User is Admin -> Go to Approval Tab
+    if (props.currentUser?.role === 'admin') {
+        setTab('approval')
+        await nextTick() // Wait for component to render
+        if (approvalRef.value) {
+            // Call the exposed function in Approval.vue
+            approvalRef.value.openNotification(notif.research_id)
+        }
+    } 
+    // 2. If User is Student -> Go to Workspace Tab
+    else {
+        setTab('workspace')
+        await nextTick() // Wait for component to render
+        if (workspaceRef.value) {
+             // Call the exposed function in MyWorkspace.vue
+            workspaceRef.value.openNotification(notif.research_id)
+        }
+    }
+}
+
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  
+  if (diffInSeconds < 60) return 'Just now'
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+  return date.toLocaleDateString()
+}
+
+onMounted(() => {
+  fetchNotifications()
+  pollingInterval.value = setInterval(fetchNotifications, 10000)
+})
+
+onUnmounted(() => {
+  if (pollingInterval.value) clearInterval(pollingInterval.value)
+})
 </script>
 
 <template>
@@ -71,6 +156,53 @@ const handleUserUpdate = (updatedUser: User) => {
             <div v-if="currentUser" class="flex items-center gap-4">
               <span class="text-sm font-light hidden sm:block">Welcome, {{ currentUser.name }}</span>
               
+              <div class="relative">
+                <button 
+                  @click="toggleNotifications" 
+                  class="p-2 rounded-full hover:bg-green-700 transition relative focus:outline-none"
+                  title="Notifications"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  
+                  <span 
+                    v-if="unreadCount > 0" 
+                    class="absolute top-1 right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center border border-green-800"
+                  >
+                    {{ unreadCount }}
+                  </span>
+                </button>
+
+                <div v-if="showNotifications" class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl overflow-hidden z-50 border border-gray-100 animate-fade-in">
+                  <div class="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="text-sm font-bold text-gray-700">Notifications</h3>
+                    <span class="text-xs text-gray-500 cursor-pointer hover:text-green-600">Mark all read</span>
+                  </div>
+                  
+                  <div class="max-h-64 overflow-y-auto custom-scrollbar">
+                    <div v-if="notifications.length === 0" class="p-4 text-center text-gray-400 text-sm">
+                      No new notifications.
+                    </div>
+                    
+                    <div 
+                      v-for="notif in notifications" 
+                      :key="notif.id" 
+                      @click="handleNotificationClick(notif)"
+                      class="px-4 py-3 border-b border-gray-50 hover:bg-green-50 transition cursor-pointer flex gap-3 items-start"
+                      :class="{'bg-blue-50/30': notif.is_read == 0}"
+                    >
+                      <div class="mt-1 text-xl">💬</div>
+                      <div>
+                        <p class="text-sm text-gray-800 leading-tight">{{ notif.message }}</p>
+                        <span class="text-[10px] text-gray-400 font-medium">{{ formatTimeAgo(notif.created_at) }}</span>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
               <button @click="setTab('settings')" class="btn-settings" title="Settings">
                 ⚙️
               </button>
@@ -106,11 +238,13 @@ const handleUserUpdate = (updatedUser: User) => {
 
       <MyWorkspace 
         v-if="currentTab === 'workspace'" 
+        ref="workspaceRef"
         :currentUser="currentUser" 
       />
 
       <Approval 
         v-if="currentTab === 'approval' && currentUser && currentUser.role === 'admin'" 
+        ref="approvalRef"
         :currentUser="currentUser" 
       />
 
@@ -126,3 +260,21 @@ const handleUserUpdate = (updatedUser: User) => {
 </template>
 
 <style scoped src="../assets/styles/Dashboard.css"></style>
+
+<style scoped>
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; 
+  border-radius: 4px;
+}
+</style>

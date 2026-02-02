@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\ResearchModel;
 use App\Models\ResearchDetailsModel;
 use App\Models\UserModel;
+use App\Models\NotificationModel; // <--- ADDED THIS IMPORT
 use CodeIgniter\API\ResponseTrait;
 
 class ResearchController extends BaseController
@@ -48,7 +49,6 @@ class ResearchController extends BaseController
         $this->handleCors();
         $model = new ResearchModel();
 
-        // FIX: Use specific select string
         $data = $model->select($this->selectString) 
                       ->join('research_details', 'researches.id = research_details.research_id', 'left')
                       ->where('researches.status', 'approved')
@@ -125,7 +125,7 @@ class ResearchController extends BaseController
         return $this->respond($data);
     }
 
-    // 4. PENDING LIST (Admin Only) - THIS WAS THE ISSUE
+    // 4. PENDING LIST (Admin Only)
     public function pending()
     {
         $this->handleCors();
@@ -134,7 +134,6 @@ class ResearchController extends BaseController
 
         $model = new ResearchModel();
         
-        // FIX: Use specific select string to ensure 'id' is correct
         $data = $model->select($this->selectString)
                       ->join('research_details', 'researches.id = research_details.research_id', 'left')
                       ->where('researches.status', 'pending')
@@ -196,7 +195,6 @@ class ResearchController extends BaseController
             'uploaded_by' => $user['id'],
             'title'       => $this->request->getPost('title'),
             'author'      => $this->request->getPost('author'),
-            // Map crop_variation
             'crop_variation' => $this->request->getPost('crop_variation'),
             'status'      => 'pending',
             'file_path'   => $fileName,
@@ -208,17 +206,17 @@ class ResearchController extends BaseController
         $detailsModel = new ResearchDetailsModel();
         
         $detailsData = [
-            'research_id'          => $newResearchId,
-            'knowledge_type'       => $this->request->getPost('knowledge_type'),
-            'publication_date'     => $this->request->getPost('publication_date'),
-            'edition'              => $this->request->getPost('edition'),
-            'publisher'            => $this->request->getPost('publisher'),
+            'research_id'      => $newResearchId,
+            'knowledge_type'   => $this->request->getPost('knowledge_type'),
+            'publication_date' => $this->request->getPost('publication_date'),
+            'edition'          => $this->request->getPost('edition'),
+            'publisher'        => $this->request->getPost('publisher'),
             'physical_description' => $this->request->getPost('physical_description'),
-            'isbn_issn'            => $this->request->getPost('isbn_issn'),
-            'subjects'             => $this->request->getPost('subjects'),
-            'shelf_location'       => $this->request->getPost('shelf_location'),
-            'item_condition'       => $this->request->getPost('item_condition'),
-            'link'                 => $this->request->getPost('link'),
+            'isbn_issn'        => $this->request->getPost('isbn_issn'),
+            'subjects'         => $this->request->getPost('subjects'),
+            'shelf_location'   => $this->request->getPost('shelf_location'),
+            'item_condition'   => $this->request->getPost('item_condition'),
+            'link'             => $this->request->getPost('link'),
         ];
 
         $detailsModel->insert($detailsData);
@@ -264,16 +262,16 @@ class ResearchController extends BaseController
         $exists = $detailsModel->where('research_id', $id)->first();
         
         $detailsData = [
-            'knowledge_type'       => $this->request->getPost('knowledge_type'),
-            'publication_date'     => $this->request->getPost('publication_date'),
-            'edition'              => $this->request->getPost('edition'),
-            'publisher'            => $this->request->getPost('publisher'),
+            'knowledge_type'   => $this->request->getPost('knowledge_type'),
+            'publication_date' => $this->request->getPost('publication_date'),
+            'edition'          => $this->request->getPost('edition'),
+            'publisher'        => $this->request->getPost('publisher'),
             'physical_description' => $this->request->getPost('physical_description'),
-            'isbn_issn'            => $this->request->getPost('isbn_issn'),
-            'subjects'             => $this->request->getPost('subjects'),
-            'shelf_location'       => $this->request->getPost('shelf_location'),
-            'item_condition'       => $this->request->getPost('item_condition'),
-            'link'                 => $this->request->getPost('link'),
+            'isbn_issn'        => $this->request->getPost('isbn_issn'),
+            'subjects'         => $this->request->getPost('subjects'),
+            'shelf_location'   => $this->request->getPost('shelf_location'),
+            'item_condition'   => $this->request->getPost('item_condition'),
+            'link'             => $this->request->getPost('link'),
         ];
 
         if ($exists) {
@@ -379,7 +377,7 @@ class ResearchController extends BaseController
         return $this->respond(['status' => 'success']);
     }
 
-    // 13. COMMENTS - (No changes needed here)
+    // 13. COMMENTS - UPDATED FOR NOTIFICATIONS
     public function getComments($id = null)
     {
         $this->handleCors();
@@ -394,6 +392,10 @@ class ResearchController extends BaseController
         $user = $this->validateUser(); 
         
         $commentModel = new \App\Models\ResearchCommentModel();
+        $notifModel   = new NotificationModel();
+        $researchModel = new ResearchModel();
+        $userModel = new UserModel(); // Import this to find the real admin
+
         $json = $this->request->getJSON();
 
         $data = [
@@ -404,8 +406,55 @@ class ResearchController extends BaseController
             'comment'     => $json->comment
         ];
 
-        $commentModel->insert($data);
-        return $this->respondCreated(['status' => 'success']);
+        // 1. Insert the Comment
+        if ($commentModel->insert($data)) {
+            
+            // --- NOTIFICATION LOGIC ---
+            $researchId = $json->research_id;
+            $senderId   = $json->user_id;
+            // Convert role to lowercase to avoid "Admin" vs "admin" issues
+            $role       = strtolower($json->role); 
+
+            // CASE A: Admin commented -> Notify the Student (Author)
+            if ($role === 'admin') {
+                $research = $researchModel->find($researchId);
+                
+                // Ensure research exists and target is not the sender
+                if ($research && isset($research['uploaded_by']) && $research['uploaded_by'] != $senderId) {
+                    $notifModel->insert([
+                        'user_id'     => $research['uploaded_by'],
+                        'sender_id'   => $senderId,
+                        'research_id' => $researchId,
+                        'message'     => "Admin commented: " . substr($json->comment, 0, 15) . "...",
+                        'is_read'     => 0,
+                        'created_at'  => date('Y-m-d H:i:s')
+                    ]);
+                }
+            } 
+            // CASE B: Student commented -> Notify the Admin(s)
+            else {
+                // FIX: Don't assume Admin is ID 1. Find the actual Admin ID.
+                // This finds the first user with role 'admin'
+                $adminUser = $userModel->where('role', 'admin')->first();
+                $targetAdminId = $adminUser ? $adminUser['id'] : 1; 
+                
+                // Only notify if the sender isn't the admin themselves
+                if ($senderId != $targetAdminId) {
+                    $notifModel->insert([
+                        'user_id'     => $targetAdminId,
+                        'sender_id'   => $senderId,
+                        'research_id' => $researchId,
+                        'message'     => "New comment by {$json->user_name}",
+                        'is_read'     => 0,
+                        'created_at'  => date('Y-m-d H:i:s')
+                    ]);
+                }
+            }
+
+            return $this->respondCreated(['status' => 'success']);
+        }
+
+        return $this->fail('Failed to save comment');
     }
 
     // STATS
@@ -421,8 +470,6 @@ class ResearchController extends BaseController
 
         // 2. Pending Reviews
         $pending = $model->where('status', 'pending')->countAllResults();
-
-        // Note: Root Crop Variety is not yet in DB, so we don't count it here.
 
         return $this->respond([
             'total'   => $approved,

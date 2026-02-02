@@ -3,11 +3,10 @@ import { ref } from 'vue'
 import SubmittedResearches from './SubmittedResearches.vue'
 import { useMyWorkspace, type User } from '../composables/useMyWorkspace' 
 import ResearchDetailsModal from './ResearchDetailsModal.vue'
+
 const props = defineProps<{
   currentUser: User | null
 }>()
-
-
 
 const { 
   activeTab, 
@@ -15,14 +14,14 @@ const {
   isSubmitting, 
   form, 
   openSubmitModal, 
-  openEditModal, // <--- Imported from updated composable
+  openEditModal,
   submitResearch,
   handleFileChange
 } = useMyWorkspace(props.currentUser)
 
 const submissionsRef = ref<InstanceType<typeof SubmittedResearches> | null>(null)
-
 const selectedResearch = ref(null)
+
 const handleViewResearch = (item: any) => {
   selectedResearch.value = item
 }
@@ -33,6 +32,17 @@ const handleSubmit = async () => {
     submissionsRef.value.fetchData()
   }
 }
+
+// --- NEW: Handle Notification Click from Dashboard ---
+const openNotification = (id: number) => {
+    // Pass the ID down to the inner component (SubmittedResearches.vue)
+    if (submissionsRef.value) {
+        submissionsRef.value.openNotification(id)
+    }
+}
+
+// Expose the function to the parent
+defineExpose({ openNotification })
 </script>
 
 <template>
@@ -95,13 +105,31 @@ const handleSubmit = async () => {
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Crop Variation (Optional)</label>
                     <select v-model="form.crop_variation" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white">
                       <option value="" disabled>Select Variation</option>
-                      <option>Arabica</option>
-                      <option>Robusta</option>
-                      <option>Liberica</option>
-                      <option>Excelsa</option>
                       <option>Sweet Potato</option>
+                      <option>Potato</option>
+                      <option>Yam Aeroponics</option>
+                      <option>Yam Minisetts</option>
+                      <option>Taro</option>
                       <option>Cassava</option>
-                      <option>Other</option>
+                      <option>Yacon</option>
+                      <option>Ginger</option>
+                      <option>Canna</option>
+                      <option>Arrowroot</option>
+                      <option>Turmeric</option>
+                      <option>Tannia</option>
+                      <option>Kinampay</option>
+                      <option>Zambal</option>
+                      <option>Bengueta</option>
+                      <option>Immitlog</option>
+                      <option>Beniazuma</option>
+                      <option>Haponita</option>
+                      <option>Ganza</option>
+                      <option>Montanosa</option>
+                      <option>Igorota</option>
+                      <option>Solibao</option>
+                      <option>Raniag</option>
+                      <option>Dalisay</option>
+                      <option>Others</option>
                     </select>
                  </div>
               </div>
@@ -176,8 +204,8 @@ const handleSubmit = async () => {
                     </select>
                  </div>
                  <div>
-                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Link (Optional)</label>
-                     <input v-model="form.link" type="url" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="https://..." />
+                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Link (Optional)</label>
+                      <input v-model="form.link" type="url" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="https://..." />
                  </div>
               </div>
 

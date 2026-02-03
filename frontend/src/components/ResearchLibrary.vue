@@ -2,6 +2,12 @@
 import { ref } from 'vue' // Ensure ref is imported
 import { useResearchLibrary, type User } from '../composables/useResearchLibrary'
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Update this to match your backend folder
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 const props = defineProps<{
   currentUser: User | null
 }>()
@@ -108,37 +114,37 @@ const toggleFullscreen = () => {
                       <div class="text-xs text-gray-500">{{ item.author }}</div>
                     </td>
                     <td class="px-4 py-4 cursor-pointer" @click="selectedResearch = item">
-                       <span class="inline-block px-2 py-1 text-[10px] font-bold rounded bg-blue-50 text-blue-700 uppercase mb-1">
-                         {{ item.knowledge_type }}
-                       </span>
-                       <div v-if="item.crop_variation" class="text-xs text-amber-600 italic">
-                         {{ item.crop_variation }}
-                       </div>
+                        <span class="inline-block px-2 py-1 text-[10px] font-bold rounded bg-blue-50 text-blue-700 uppercase mb-1">
+                          {{ item.knowledge_type }}
+                        </span>
+                        <div v-if="item.crop_variation" class="text-xs text-amber-600 italic">
+                          {{ item.crop_variation }}
+                        </div>
                     </td>
                     <td class="px-4 py-4 text-xs cursor-pointer" @click="selectedResearch = item">
-                       <div class="font-mono text-gray-600 font-bold">{{ item.shelf_location || 'No Location' }}</div>
-                       <span :class="`inline-block mt-1 px-1.5 rounded text-[10px] ${item.item_condition === 'Good' || item.item_condition === 'New' ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`">
-                         {{ item.item_condition }}
-                       </span>
+                        <div class="font-mono text-gray-600 font-bold">{{ item.shelf_location || 'No Location' }}</div>
+                        <span :class="`inline-block mt-1 px-1.5 rounded text-[10px] ${item.item_condition === 'Good' || item.item_condition === 'New' ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`">
+                          {{ item.item_condition }}
+                        </span>
                     </td>
                     <td class="px-4 py-4">
-                       <div class="flex gap-2">
-                         <button v-if="item.file_path" @click.stop="selectedResearch = item" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border">
-                           📄 PDF
-                         </button>
-                         <a v-if="item.link" :href="item.link" target="_blank" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200 flex items-center gap-1">
-                           🔗 Link
-                         </a>
-                       </div>
+                        <div class="flex gap-2">
+                          <button v-if="item.file_path" @click.stop="selectedResearch = item" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border">
+                            📄 PDF
+                          </button>
+                          <a v-if="item.link" :href="item.link" target="_blank" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200 flex items-center gap-1">
+                            🔗 Link
+                          </a>
+                        </div>
                     </td>
                     <td class="px-4 py-4 text-right">
-                       <button 
-                         v-if="currentUser && currentUser.role === 'admin'"
-                         @click.stop="requestArchiveToggle(item)" 
-                         :class="`text-xs px-2 py-1 rounded font-bold border ${showArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`"
-                       >
-                        {{ showArchived ? 'Restore' : 'Archive' }}
-                      </button>
+                        <button 
+                          v-if="currentUser && currentUser.role === 'admin'"
+                          @click.stop="requestArchiveToggle(item)" 
+                          :class="`text-xs px-2 py-1 rounded font-bold border ${showArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`"
+                        >
+                          {{ showArchived ? 'Restore' : 'Archive' }}
+                        </button>
                     </td>
                   </tr>
                 </tbody>
@@ -164,7 +170,7 @@ const toggleFullscreen = () => {
 
             <div class="mt-6 flex flex-col sm:flex-row justify-between items-center border-t pt-4 gap-4">
               <span class="text-sm text-gray-500">
-                 Page {{ currentPage }} of {{ totalPages || 1 }}
+                  Page {{ currentPage }} of {{ totalPages || 1 }}
               </span>
               <div class="flex gap-2">
                 <button @click="prevPage" :disabled="currentPage === 1" class="px-4 py-2 text-sm font-bold rounded border hover:bg-gray-50 disabled:opacity-50">Previous</button>
@@ -191,7 +197,7 @@ const toggleFullscreen = () => {
           </div>
 
           <div class="flex-1 overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
-             
+              
              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="bg-white p-5 rounded-lg border shadow-sm space-y-3">
                    <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">📖 Catalog Details</h3>
@@ -221,23 +227,23 @@ const toggleFullscreen = () => {
                 <div class="flex flex-wrap gap-4">
                   
                   <div v-if="selectedResearch.file_path" class="w-full">
-                     <div class="flex justify-between items-center mb-2">
-                        <p class="text-xs text-blue-600 font-bold uppercase">Attached Document:</p>
-                        <button @click="toggleFullscreen" class="text-xs flex items-center gap-1 bg-white border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-50 font-bold transition">
-                          ⛶ Full Screen
-                        </button>
-                     </div>
-                     
-                     <div ref="pdfContainer" class="w-full bg-black rounded overflow-hidden shadow-lg h-[500px]">
-                        <iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none bg-white" title="PDF Preview"></iframe>
-                     </div>
-                  </div>
+                      <div class="flex justify-between items-center mb-2">
+                         <p class="text-xs text-blue-600 font-bold uppercase">Attached Document:</p>
+                         <button @click="toggleFullscreen" class="text-xs flex items-center gap-1 bg-white border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-50 font-bold transition">
+                           ⛶ Full Screen
+                         </button>
+                      </div>
+                      
+                      <div ref="pdfContainer" class="w-full bg-black rounded overflow-hidden shadow-lg h-[500px]">
+                         <iframe :src="`${API_BASE_URL}/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none bg-white" title="PDF Preview"></iframe>
+                      </div>
+                   </div>
 
-                  <div v-if="selectedResearch.link" class="w-full mt-2">
-                     <a :href="selectedResearch.link" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow hover:bg-blue-700 transition">
-                        <span>🔗 Open External Link / Website</span>
-                     </a>
-                  </div>
+                   <div v-if="selectedResearch.link" class="w-full mt-2">
+                      <a :href="selectedResearch.link" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow hover:bg-blue-700 transition">
+                         <span>🔗 Open External Link / Website</span>
+                      </a>
+                   </div>
                 </div>
              </div>
              <div v-else class="text-center py-8 text-gray-400 italic bg-white rounded border border-dashed">

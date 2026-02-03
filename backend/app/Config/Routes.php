@@ -26,6 +26,7 @@ $routes->group('research', function($routes) {
     // Stats
     $routes->get('user-stats/(:num)', 'ResearchController::userStats/$1');
     $routes->get('stats', 'ResearchController::stats');
+    
 
     // Lists
     $routes->get('/', 'ResearchController::index'); 
@@ -46,6 +47,7 @@ $routes->group('research', function($routes) {
     $routes->post('extend-deadline/(:num)', 'ResearchController::extendDeadline/$1');
     $routes->post('archive/(:num)', 'ResearchController::archive/$1'); 
     $routes->post('restore/(:num)', 'ResearchController::restore/$1');
+    $routes->post('import-csv', 'ResearchController::importCsv'); // <--- ADD THIS
 });
 
 // --------------------------------------------------------------------

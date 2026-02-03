@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Update this to match your backend folder
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 // Ideally, import your shared 'Research' interface here. 
 // For now, I'm using 'any', but you should replace it with your actual type.
 defineProps<{
@@ -45,8 +51,8 @@ const toggleFullscreen = () => {
 
         <div class="flex-1 overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              
-              <div class="bg-white p-5 rounded-lg border shadow-sm space-y-3">
+             
+             <div class="bg-white p-5 rounded-lg border shadow-sm space-y-3">
                  <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">📖 Catalog Details</h3>
                  <div class="grid grid-cols-3 gap-2 text-sm">
                     <span class="text-gray-500">Publisher:</span> <span class="col-span-2 font-medium">{{ research.publisher || '-' }}</span>
@@ -80,7 +86,7 @@ const toggleFullscreen = () => {
                       </button>
                    </div>
                    <div ref="pdfContainer" class="w-full bg-black rounded overflow-hidden shadow-lg h-[500px]">
-                      <iframe :src="`http://localhost:8080/uploads/${research.file_path}`" class="w-full h-full border-none bg-white" title="PDF Preview"></iframe>
+                      <iframe :src="`${API_BASE_URL}/uploads/${research.file_path}`" class="w-full h-full border-none bg-white" title="PDF Preview"></iframe>
                    </div>
                 </div>
                 <div v-if="research.link" class="w-full mt-2">

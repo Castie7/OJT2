@@ -5,7 +5,7 @@ namespace App\Controllers;
 use App\Models\ResearchModel;
 use App\Models\ResearchDetailsModel;
 use App\Models\UserModel;
-use App\Models\NotificationModel; // <--- ADDED THIS IMPORT
+use App\Models\NotificationModel; // <--- Notification Model
 use CodeIgniter\API\ResponseTrait;
 
 class ResearchController extends BaseController
@@ -284,7 +284,7 @@ class ResearchController extends BaseController
         return $this->respond(['status' => 'success']);
     }
 
-    // 8. APPROVE
+    // 8. APPROVE (Updated with Notification)
     public function approve($id = null)
     {
         $this->handleCors();
@@ -296,11 +296,25 @@ class ResearchController extends BaseController
             'status' => 'approved',
             'approved_at' => date('Y-m-d H:i:s') 
         ]);
+
+        // Notify User
+        $item = $model->find($id);
+        if ($item && $item['uploaded_by']) {
+            $notifModel = new NotificationModel();
+            $notifModel->insert([
+                'user_id'     => $item['uploaded_by'],
+                'sender_id'   => $user['id'],
+                'research_id' => $id,
+                'message'     => "🎉 Your research '{$item['title']}' has been APPROVED!",
+                'is_read'     => 0,
+                'created_at'  => date('Y-m-d H:i:s')
+            ]);
+        }
         
         return $this->respond(['status' => 'success']);
     }
 
-    // 9. REJECT
+    // 9. REJECT (Updated with Notification)
     public function reject($id = null)
     {
         $this->handleCors();
@@ -312,6 +326,20 @@ class ResearchController extends BaseController
             'status' => 'rejected',
             'rejected_at' => date('Y-m-d H:i:s')
         ]);
+
+        // Notify User
+        $item = $model->find($id);
+        if ($item && $item['uploaded_by']) {
+            $notifModel = new NotificationModel();
+            $notifModel->insert([
+                'user_id'     => $item['uploaded_by'],
+                'sender_id'   => $user['id'],
+                'research_id' => $id,
+                'message'     => "⚠️ Your research '{$item['title']}' was returned for revision.",
+                'is_read'     => 0,
+                'created_at'  => date('Y-m-d H:i:s')
+            ]);
+        }
         
         return $this->respond(['status' => 'success']);
     }
@@ -361,7 +389,7 @@ class ResearchController extends BaseController
         return $this->respond(['status' => 'success']);
     }
 
-    // 12. EXTEND DEADLINE
+    // 12. EXTEND DEADLINE (Updated with Notification)
     public function extendDeadline($id = null)
     {
         $this->handleCors();
@@ -373,11 +401,26 @@ class ResearchController extends BaseController
 
         $model = new ResearchModel();
         $model->update($id, ['deadline_date' => $newDate]);
+
+        // Notify User
+        $item = $model->find($id);
+        if ($item && $item['uploaded_by']) {
+            $formattedDate = date('M d, Y', strtotime($newDate));
+            $notifModel = new NotificationModel();
+            $notifModel->insert([
+                'user_id'     => $item['uploaded_by'],
+                'sender_id'   => $user['id'],
+                'research_id' => $id,
+                'message'     => "📅 Deadline Updated: '{$item['title']}' is due on {$formattedDate}.",
+                'is_read'     => 0,
+                'created_at'  => date('Y-m-d H:i:s')
+            ]);
+        }
         
         return $this->respond(['status' => 'success']);
     }
 
-    // 13. COMMENTS - UPDATED FOR NOTIFICATIONS
+    // 13. COMMENTS
     public function getComments($id = null)
     {
         $this->handleCors();
@@ -386,6 +429,7 @@ class ResearchController extends BaseController
         return $this->respond($data);
     }
 
+    // 14. ADD COMMENT (With Notification Logic)
     public function addComment()
     {
         $this->handleCors();
@@ -394,7 +438,7 @@ class ResearchController extends BaseController
         $commentModel = new \App\Models\ResearchCommentModel();
         $notifModel   = new NotificationModel();
         $researchModel = new ResearchModel();
-        $userModel = new UserModel(); // Import this to find the real admin
+        $userModel = new UserModel();
 
         $json = $this->request->getJSON();
 
@@ -406,20 +450,18 @@ class ResearchController extends BaseController
             'comment'     => $json->comment
         ];
 
-        // 1. Insert the Comment
+        // Insert Comment
         if ($commentModel->insert($data)) {
             
             // --- NOTIFICATION LOGIC ---
             $researchId = $json->research_id;
             $senderId   = $json->user_id;
-            // Convert role to lowercase to avoid "Admin" vs "admin" issues
             $role       = strtolower($json->role); 
 
-            // CASE A: Admin commented -> Notify the Student (Author)
+            // CASE A: Admin commented -> Notify Student
             if ($role === 'admin') {
                 $research = $researchModel->find($researchId);
                 
-                // Ensure research exists and target is not the sender
                 if ($research && isset($research['uploaded_by']) && $research['uploaded_by'] != $senderId) {
                     $notifModel->insert([
                         'user_id'     => $research['uploaded_by'],
@@ -431,14 +473,12 @@ class ResearchController extends BaseController
                     ]);
                 }
             } 
-            // CASE B: Student commented -> Notify the Admin(s)
+            // CASE B: Student commented -> Notify Admin
             else {
-                // FIX: Don't assume Admin is ID 1. Find the actual Admin ID.
-                // This finds the first user with role 'admin'
+                // Dynamic Admin ID Lookup
                 $adminUser = $userModel->where('role', 'admin')->first();
                 $targetAdminId = $adminUser ? $adminUser['id'] : 1; 
                 
-                // Only notify if the sender isn't the admin themselves
                 if ($senderId != $targetAdminId) {
                     $notifModel->insert([
                         'user_id'     => $targetAdminId,
@@ -458,17 +498,12 @@ class ResearchController extends BaseController
     }
 
     // STATS
-    // GET /research/stats
     public function stats()
     {
         $this->handleCors();
         
         $model = new ResearchModel();
-
-        // 1. Total Published (Approved)
         $approved = $model->where('status', 'approved')->countAllResults();
-
-        // 2. Pending Reviews
         $pending = $model->where('status', 'pending')->countAllResults();
 
         return $this->respond([

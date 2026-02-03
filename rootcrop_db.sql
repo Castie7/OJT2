@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 02, 2026 at 04:04 AM
+-- Generation Time: Feb 03, 2026 at 09:33 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,22 @@ SET time_zone = "+00:00";
 --
 -- Database: `rootcrop_db`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `sender_id` int(11) DEFAULT NULL,
+  `research_id` int(11) DEFAULT NULL,
+  `message` text NOT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -52,42 +68,9 @@ CREATE TABLE `researches` (
 --
 
 INSERT INTO `researches` (`id`, `title`, `author`, `crop_variation`, `abstract`, `created_at`, `file_path`, `uploaded_by`, `is_archived`, `is_approved`, `updated_at`, `status`, `start_date`, `deadline_date`, `rejected_at`, `approved_at`, `archived_at`) VALUES
-(1, 'Sample Study: Sweet Potato', 'Dr. Test', NULL, 'This is a test entry from the database.', '2026-01-28 10:56:54', NULL, 'System Admin', 0, 1, '2026-02-02 02:16:36', 'approved', NULL, NULL, NULL, '2026-02-02 02:16:36', NULL),
-(2, 'asd', 'asd', NULL, '', '2026-01-28 10:59:48', NULL, 'System Admin', 1, 1, NULL, '', NULL, NULL, NULL, NULL, NULL),
-(3, 'asdf', 'asdf', NULL, 'asdf', '2026-01-28 11:40:03', '1769571603_c059111ca0f1607b6f62.pdf', 'Super Admin', 1, 1, NULL, '', NULL, NULL, NULL, NULL, NULL),
-(4, 'well', 'asd', NULL, 'asd', '2026-01-28 12:10:24', NULL, 'Super Admin', 1, 1, NULL, '', NULL, NULL, NULL, NULL, NULL),
-(5, 'asdffffff', 'asdffff', NULL, 'asdffff', '2026-01-28 15:19:49', '1769584815_25ecc2d593570c132cdd.pdf', 'Super Admin', 1, 1, NULL, '', NULL, NULL, NULL, NULL, NULL),
-(6, 'asdww', 'awww', NULL, 'wwww', '2026-01-28 15:55:16', '1769586916_81d3b1cf049180b3caae.pdf', 'Super Admin', 1, 1, NULL, '', NULL, NULL, NULL, NULL, NULL),
-(7, 'aaa', 'aaa', NULL, 'aaa', '2026-01-28 16:21:34', NULL, 'Super Admin', 1, 1, NULL, '', NULL, NULL, NULL, NULL, NULL),
-(8, 'asd', 'asda', NULL, 'sd', '2026-01-28 16:56:33', NULL, 'Super Admin', 1, 0, NULL, '', NULL, NULL, NULL, NULL, NULL),
-(9, 'aaaaaaaaaaaaaaaaaa', 'asdsssssssss', NULL, 'asdsssssssss', '2026-01-28 17:01:31', '1769590958_d521b0e18faa385ace8d.pdf', 'Super Admin', 1, 0, NULL, '', NULL, NULL, NULL, NULL, NULL),
-(10, 'Testing', 'Ni Syak', NULL, 'Well', '2026-01-29 09:03:33', '1769648613_29d0059c809502ffd950.pdf', 'Super Admin', 1, 0, NULL, '', NULL, NULL, NULL, NULL, NULL),
-(11, 'aaaa', 'aaa', NULL, 'aaaaaaa', '2026-01-29 09:15:40', '1769649340_40cfd2df09e8eecba214.pdf', 'Super Admin', 0, 0, '2026-01-29 07:36:37', 'approved', NULL, NULL, NULL, '2026-01-29 07:36:37', NULL),
-(12, 'Juan Only', 'Juan Only', NULL, 'asdf', '2026-01-29 09:54:54', '1769651694_9dae4ade6cd00f5373f2.pdf', '4', 0, 0, '2026-01-29 03:38:56', 'approved', NULL, NULL, NULL, '2026-01-29 03:38:56', NULL),
-(13, 'Juan Only', 'Juannnnnn', NULL, 'wells', '2026-01-29 10:04:11', '1769652251_1f429d95e61f453e0d55.pdf', '4', 0, 0, '2026-01-29 07:01:18', 'approved', NULL, NULL, NULL, '2026-01-29 07:01:18', NULL),
-(14, 'was', 'sa', NULL, 'sa', '2026-01-29 10:46:16', NULL, '3', 0, 0, '2026-01-29 07:01:21', 'approved', NULL, NULL, NULL, '2026-01-29 07:01:21', NULL),
-(15, 'Research 1', 'Well Welll', NULL, 'well', '2026-01-29 10:47:01', '1769654821_fdc71c00cb08ba34a124.pdf', '3', 0, 0, '2026-01-29 07:01:24', 'approved', '2026-01-30', '2026-01-30', NULL, '2026-01-29 07:01:24', NULL),
-(16, 'With Deadline', 'Dead', NULL, 'ohh no', '2026-01-29 03:08:08', '1769656088_df98624efd52ec73006d.pdf', '3', 0, 0, '2026-01-29 03:40:06', 'approved', '2026-01-29', '2026-01-31', NULL, '2026-01-29 03:40:06', NULL),
-(17, 'Title', 'Author', NULL, 'asd', '2026-01-29 03:44:39', '1769658279_f16e7f7cb6b149f30c41.png', '3', 0, 0, '2026-01-29 05:47:37', 'approved', '2026-01-29', '2026-01-28', NULL, '2026-01-29 05:47:37', NULL),
-(18, 'asd', 'asd', NULL, 'qww', '2026-01-29 03:53:45', '1769658825_16445d98b484fdf69672.pdf', '3', 0, 0, '2026-01-29 07:39:16', 'approved', '1111-11-11', '2026-12-12', NULL, '2026-01-29 07:39:16', NULL),
-(19, '1aaaaa', 'shrek', NULL, 'we', '2026-01-29 07:01:06', '1769670066_17acee231a0ba30e770a.pdf', '3', 0, 0, '2026-01-29 07:01:15', 'approved', '2026-01-29', '2026-02-07', NULL, '2026-01-29 07:01:15', NULL),
-(20, 'more', 'more', NULL, 'asdf', '2026-01-29 07:01:56', '1769670116_13c5f42eefb5bea2dc7e.pdf', '3', 0, 0, '2026-01-30 00:45:20', 'archived', '2026-01-29', '2026-02-07', NULL, '2026-01-29 07:02:52', '2026-01-30 00:45:20'),
-(21, 'asdfgg', 'asdgasd', NULL, 'asdff', '2026-01-29 07:02:17', '1769670137_810b6486307d8b187650.pdf', '3', 0, 0, '2026-01-29 07:02:55', 'approved', '2026-01-29', '2026-02-07', NULL, '2026-01-29 07:02:55', NULL),
-(22, 'last', 'nigga', NULL, 'asd', '2026-01-29 07:02:46', '1769670166_84b4b455631c1180b595.pdf', '3', 0, 0, '2026-01-29 07:02:59', 'approved', '2026-01-29', '2026-02-13', NULL, '2026-01-29 07:02:59', NULL),
-(23, 'Testing AProval', 'lets see', NULL, 'asd', '2026-01-29 07:42:15', '1769672535_64db70a1c697dc5ca806.pdf', '3', 0, 0, '2026-01-29 07:42:29', 'approved', '2025-12-03', '2026-01-29', NULL, '2026-01-29 07:42:29', NULL),
-(24, 'Last', 'Well DOne', NULL, 'speed', '2026-01-29 07:51:26', '1769673086_7f25e26c11dfcedb0d49.pdf', '3', 0, 0, '2026-01-29 07:51:31', 'approved', '2026-01-29', '2026-01-29', NULL, NULL, NULL),
-(25, 'Research 12', 'Well Done', NULL, 'a', '2026-01-29 07:57:48', '1769673468_fb462e66f2184b1537b4.pdf', '4', 1, 0, '2026-01-30 01:49:14', 'archived', '2026-01-29', '2026-01-30', '2026-01-30 01:40:32', NULL, '2026-01-30 01:49:14'),
-(26, 'asd', 'asd', NULL, 'asd', '2026-01-29 08:10:44', '1769674244_17a97f3db3d28f2da36b.pdf', '4', 1, 0, '2026-01-30 01:49:08', 'archived', '2026-01-21', '2026-01-29', '2026-01-30 00:50:15', NULL, '2026-01-30 01:49:08'),
-(27, 'dsasa', 'fsa', NULL, 'dgfhfdjvn', '2026-01-30 01:41:53', '1769737313_fcca34f79accb080a4a6.jpg', '3', 0, 0, '2026-01-30 01:47:34', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:47:34', NULL),
-(28, 'Research 21', 'Joeschmo', NULL, 'asd', '2026-01-30 01:43:10', '1769737390_2e5b223303d15c8b242d.jpg', '3', 0, 0, '2026-01-30 01:44:27', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:44:27', NULL),
-(29, 'joe', 'joeschmo', NULL, 'joeschmo', '2026-01-30 01:49:45', '1769737785_c5da404afce05be758fe.jpg', '4', 0, 0, '2026-01-30 01:51:01', 'approved', '2026-01-30', '2026-02-01', NULL, '2026-01-30 01:51:01', NULL),
-(30, 'Research 5', 'Karlo', NULL, 'Weena', '2026-01-30 01:59:26', '1769738365_5621fe2cff5c99341d2e.jpg', '3', 0, 0, '2026-01-30 03:05:28', 'approved', '2025-05-12', '2026-01-30', NULL, '2026-01-30 03:05:28', NULL),
-(31, 'Do not Restore', 'TO check if deleted', NULL, 'Do not restore', '2026-01-30 03:09:19', '1769742559_11a551345ca4d4630fe4.jpg', '3', 0, 0, '2026-01-30 03:09:29', 'rejected', '2025-12-12', '2026-01-01', '2026-01-30 03:09:29', NULL, NULL),
-(32, 'Pending', 'Pendo', NULL, 'asd', '2026-01-30 07:35:16', '1769758516_cf3da701558aca13baf1.pdf', '3', 0, 0, '2026-01-30 08:57:12', 'approved', '2026-01-30', '2026-01-31', NULL, '2026-01-30 08:57:12', NULL),
-(33, 'Pending ni research', 'well', NULL, 'asd', '2026-01-30 08:02:32', '1769760152_64a1745d2c974b073471.pdf', '4', 0, 0, '2026-01-30 08:02:32', 'pending', '2026-01-30', '2026-01-31', NULL, NULL, NULL),
-(34, 'barbaru', 'baron', 'Arabica', 'by baron', '2026-01-30 08:39:11', '1769762351_bbc92853c72f168c673a.pdf', '4', 0, 0, '2026-02-02 03:00:16', 'pending', '2026-01-30', '2026-02-07', NULL, NULL, NULL),
-(35, 'research', 'karlo', 'Robusta', '', '2026-01-30 08:58:58', '1769763538_b41e87310950989ee606.pdf', '4', 0, 0, '2026-02-02 02:19:16', 'archived', '2026-01-30', '2026-02-07', NULL, NULL, '2026-02-02 02:19:16'),
-(36, 'Research', 'Juan', 'Liberica', NULL, '2026-02-02 02:14:25', '1769998465_41ecc3083ec2764c7ca9.pdf', '4', 0, 0, '2026-02-02 02:18:49', 'approved', NULL, NULL, NULL, '2026-02-02 02:18:49', NULL);
+(1, 'Golden Roots Issue No. 01', 'Betty T. Gayao, Jovita M. Sim, Dalen T. Meldoz', 'Sweet Potato', NULL, '2026-02-03 08:29:57', NULL, '1', 0, 0, '2026-02-03 08:29:57', 'approved', NULL, NULL, NULL, NULL, NULL),
+(2, 'Golden Roots Issue No. 04', 'D. T. Meldoz and B. T. Gayao', 'Sweet Potato', NULL, '2026-02-03 08:29:57', NULL, '1', 0, 0, '2026-02-03 08:29:57', 'approved', NULL, NULL, NULL, NULL, NULL),
+(3, 'Golden Roots Issue No. 06', 'Hilda L. Quindara and Esther T. Botangen', 'Sweet Potato', NULL, '2026-02-03 08:29:57', NULL, '1', 0, 0, '2026-02-03 08:29:57', 'approved', NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -104,36 +87,6 @@ CREATE TABLE `research_comments` (
   `comment` text NOT NULL,
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `research_comments`
---
-
-INSERT INTO `research_comments` (`id`, `research_id`, `user_id`, `user_name`, `role`, `comment`, `created_at`) VALUES
-(1, 10, 0, 'Admin', 'admin', 'well', '2026-01-29 09:14:08'),
-(2, 10, 0, 'Admin', 'admin', 'af', '2026-01-29 09:14:45'),
-(3, 12, 3, 'Super Admin', 'admin', 'what if', '2026-01-29 10:11:31'),
-(4, 12, 4, 'Juan Researcher', 'user', 'what iffff', '2026-01-29 10:12:30'),
-(5, 12, 4, 'Juan Researcher', 'user', 'Sir What iff', '2026-01-29 10:17:19'),
-(6, 15, 3, 'Super Admin', 'user', 'hello', '2026-01-29 11:12:10'),
-(7, 15, 3, 'Super Admin', 'user', 'hello', '2026-01-29 11:12:15'),
-(8, 15, 3, 'Super Admin', 'user', 'hello', '2026-01-29 11:12:15'),
-(9, 15, 3, 'Super Admin', 'user', 'hello', '2026-01-29 11:12:16'),
-(10, 12, 4, 'Juan Researcher', 'user', 'l', '2026-01-29 11:30:13'),
-(11, 12, 4, 'Juan Researcher', 'user', 'wazuup', '2026-01-29 11:33:23'),
-(12, 12, 4, 'Juan Researcher', 'user', 'test', '2026-01-29 11:33:34'),
-(13, 12, 4, 'Juan Researcher', 'user', 'tes', '2026-01-29 11:33:38'),
-(14, 15, 3, 'Super Admin', 'user', 'yes', '2026-01-29 11:34:30'),
-(15, 15, 3, 'Super Admin', 'admin', 'test', '2026-01-29 11:37:46'),
-(16, 14, 3, 'Super Admin', 'user', 'sd', '2026-01-30 09:39:43'),
-(17, 14, 3, 'Super Admin', 'user', 'ds', '2026-01-30 09:39:47'),
-(18, 14, 3, 'Super Admin', 'user', 'ddd', '2026-01-30 09:39:51'),
-(19, 25, 3, 'Super Admin', 'admin', 'g', '2026-01-30 09:40:05'),
-(20, 28, 3, 'Super Admin', 'user', 'jasfbk', '2026-01-30 09:45:21'),
-(21, 30, 3, 'Super Admin', 'user', 'boi', '2026-01-30 10:54:14'),
-(22, 30, 3, 'Super Admin', 'user', 'ivan is gae', '2026-01-30 11:10:03'),
-(23, 32, 3, 'Super Admin', 'admin', 'need revisions', '2026-01-30 16:56:58'),
-(24, 33, 4, 'Juan Dela Cruz', 'user', 'asd', '2026-02-02 10:54:29');
 
 -- --------------------------------------------------------
 
@@ -161,8 +114,9 @@ CREATE TABLE `research_details` (
 --
 
 INSERT INTO `research_details` (`id`, `research_id`, `knowledge_type`, `publication_date`, `edition`, `publisher`, `physical_description`, `isbn_issn`, `subjects`, `shelf_location`, `item_condition`, `link`) VALUES
-(1, 36, 'Research Paper', '1987-05-02', '', 'Well', '150', '12334-221', 'Sweet Potato', 'Shelf 2a', 'Good', ''),
-(2, 34, 'Research Paper', '0000-00-00', '', '', '', '', '', '', 'Good', '');
+(1, 1, 'Journal', '0000-00-00', 'Golden Roots Issue No. 1', 'Northern Philippines Root Crops Research and Training Center - BSU', '16 Pages', 'ISSN 1656-5444', 'Contribution of Sweetpotato to Income and Nutrition of Farming Households', '6b', 'Good', ''),
+(2, 2, 'Journal', '0000-00-00', 'Golden Roots Issue No. 4', 'Northern Philippines Root Crops Research and Training Center - BSU', '50 Pages', 'ISSN 1656-5444', 'Sweetpotato Recipes', '6b', 'Good', ''),
+(3, 3, 'Journal', '0000-00-00', 'Golden Roots Issue No. 6', 'Northern Philippines Root Crops Research and Training Center - BSU', '24 Pages', 'ISSN 1656-5444', 'Sweetpotato Recipes for Better Health', '6b', 'Good', '');
 
 -- --------------------------------------------------------
 
@@ -185,12 +139,19 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `email`, `password`, `created_at`, `auth_token`, `role`) VALUES
-(3, 'Super Admin', 'admin@bsu.edu.ph', '$2y$10$JtJ7rRhD70H86k35fuhb/OhbSpj4DfiBQby3y2W5cuGNZ77Rhrt36', '2026-01-28 11:20:35', 'a5e24ca103eaed8c02ed769d1762168782447591e4bdf65cfbe5662bb0e5cfbb', 'admin'),
-(4, 'Juan Dela Cruz', 'researcher@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-29 09:42:12', 'cf4efb0a11151ef01d30ccbf0b1e3c00fe3f807a74060ab89bc0450f1e55f460', 'user');
+(3, 'Super Admin', 'admin@bsu.edu.ph', '$2y$10$JtJ7rRhD70H86k35fuhb/OhbSpj4DfiBQby3y2W5cuGNZ77Rhrt36', '2026-01-28 11:20:35', 'e762f6ffeb734afa7e9fdf1998c155dccdb422b7d6003c316f2cfc8bf5fa1786', 'admin'),
+(4, 'Juan Dela Cruz', 'researcher@bsu.edu.ph', '$2y$10$DhW4Q7.TzFDP8EjZ8aGS4O8TeaFSfe2hNVoEAUK78DuW4781I1dMy', '2026-01-29 09:42:12', NULL, 'user');
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `researches`
@@ -223,22 +184,28 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `researches`
 --
 ALTER TABLE `researches`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `research_comments`
 --
 ALTER TABLE `research_comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `research_details`
 --
 ALTER TABLE `research_details`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -249,6 +216,12 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `research_details`

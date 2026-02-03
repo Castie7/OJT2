@@ -125,7 +125,7 @@ const {
           <h2 class="text-2xl font-bold tracking-wide">VISION</h2>
         </div>
         <p class="text-green-100 leading-relaxed text-lg">
-          A premier center for root crop research and development, advancing sustainable agriculture and food security in the Cordillera region and beyond.
+          A prime mover of sustainable rootcrops industry
         </p>
       </div>
 
@@ -136,11 +136,147 @@ const {
           <h2 class="text-2xl font-bold tracking-wide">MISSION</h2>
         </div>
         <p class="text-green-900 leading-relaxed text-lg font-medium">
-          To generate relevant technologies and information on root crops through rigorous research, preserving genetic diversity and empowering local farming communities.
+          To develop efficient root crops production and utilization systems
         </p>
       </div>
     </div>
+    
+    <div class="space-y-16 py-8">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="bg-green-800 text-white p-8 rounded-xl shadow-lg relative overflow-hidden group hover:shadow-2xl transition duration-300 border-b-4 border-yellow-500">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-white opacity-5 rounded-bl-full transition group-hover:scale-110 duration-500"></div>
+            <div class="flex items-center gap-3 mb-4">
+              <span class="text-3xl">🚀</span>
+              <h2 class="text-2xl font-bold tracking-wide">GOAL</h2>
+            </div>
+            <p class="text-green-50 leading-relaxed text-lg">
+              To increase productivity, intensify pro-active extension, develop diversified utilization of rootcrops, strengthen linkages, and improve organizational capacity.
+            </p>
+          </div>
 
+          <div class="bg-yellow-100 text-green-900 p-8 rounded-xl shadow-lg relative overflow-hidden group hover:shadow-2xl transition duration-300 border-b-4 border-green-800">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-green-900 opacity-10 rounded-bl-full transition group-hover:scale-110 duration-500"></div>
+            <div class="flex items-center gap-3 mb-4">
+              <span class="text-3xl">📌</span>
+              <h2 class="text-2xl font-bold tracking-wide">OBJECTIVE</h2>
+            </div>
+            <p class="text-green-900 leading-relaxed text-lg font-medium">
+              Develop a profitable and sustainable root crop production and industry thru the generation of applicable technologies and useful information from its research, training, extension, and production activities.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-4 mb-8">
+            <div class="h-1 flex-1 bg-gray-200"></div>
+            <h2 class="text-3xl font-bold text-green-900 uppercase tracking-wider text-center">Divisions</h2>
+            <div class="h-1 flex-1 bg-gray-200"></div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition duration-300 border-l-4 border-green-600 group">
+              <h3 class="text-xl font-bold text-green-800 mb-3 group-hover:text-green-600 transition">🧬 Crop Improvement</h3>
+              <ul class="space-y-2 text-gray-600 text-sm list-disc pl-4 marker:text-green-500">
+                <li>Evaluate, improve and develop varieties of root crops</li>
+                <li>Maintain promising germplasm of rootcrops</li>
+                <li>Provide clean up services of root crops’ parent materials</li>
+                <li>Provide expert services on crop improvement</li>
+              </ul>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition duration-300 border-l-4 border-green-600 group">
+              <h3 class="text-xl font-bold text-green-800 mb-3 group-hover:text-green-600 transition">🌱 Crop Management & Seed Prod.</h3>
+              <ul class="space-y-2 text-gray-600 text-sm list-disc pl-4 marker:text-green-500">
+                <li>Develop/improve production techniques and cropping systems</li>
+                <li>Integrated crop management strategies for pest control</li>
+                <li>Multiply and distribute seed board approved varieties</li>
+                <li>Institutionalize use of generation zero and rooted stem cuttings</li>
+                <li>Soil analysis and pest diagnosis</li>
+              </ul>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition duration-300 border-l-4 border-green-600 group">
+              <h3 class="text-xl font-bold text-green-800 mb-3 group-hover:text-green-600 transition">🏭 Postharvest & Processing</h3>
+              <ul class="space-y-2 text-gray-600 text-sm list-disc pl-4 marker:text-green-500">
+                <li>Develop suitable harvest and postharvest handling technologies</li>
+                <li>Expand root crops processing and utilization</li>
+                <li>Develop root crop waste management systems</li>
+                <li>Processing systems utilizing agricultural wastes</li>
+              </ul>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition duration-300 border-l-4 border-yellow-500 group">
+              <h3 class="text-xl font-bold text-green-800 mb-3 group-hover:text-yellow-600 transition">⚙️ Engineering</h3>
+              <ul class="space-y-2 text-gray-600 text-sm list-disc pl-4 marker:text-yellow-500">
+                <li>Design and develop low-cost efficient machineries</li>
+                <li>Tools and facilities development for production</li>
+                <li>Postharvest and processing equipment design</li>
+              </ul>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition duration-300 border-l-4 border-yellow-500 group">
+              <h3 class="text-xl font-bold text-green-800 mb-3 group-hover:text-yellow-600 transition">📊 Socio-Economics & Policy</h3>
+              <ul class="space-y-2 text-gray-600 text-sm list-disc pl-4 marker:text-yellow-500">
+                <li>Agro-economic database, credit and policy research</li>
+                <li>Market research and social marketing studies</li>
+                <li>Indigenous knowledge and gender studies</li>
+                <li>Consumption and nutrition impact studies</li>
+                <li>Draft policies for IP rights protection</li>
+              </ul>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition duration-300 border-l-4 border-yellow-500 group">
+              <h3 class="text-xl font-bold text-green-800 mb-3 group-hover:text-yellow-600 transition">📢 Training & Extension</h3>
+              <ul class="space-y-2 text-gray-600 text-sm list-disc pl-4 marker:text-yellow-500">
+                <li>Conduct/coordinate training and extension programs</li>
+                <li>Coordinate publication of IEC materials</li>
+                <li>Conduct conferences, symposia, and seminars</li>
+                <li>Provide library and visitor support services</li>
+                <li>Spearhead submission to refereed journals</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="bg-green-50 p-8 rounded-2xl border border-green-100">
+          <div class="text-center mb-8">
+            <span class="bg-green-200 text-green-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">Support</span>
+            <h2 class="text-3xl font-bold text-green-900 mt-2">Technical Services</h2>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-green-400 transition cursor-default">
+              <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl mb-3">🌿</div>
+              <h4 class="font-bold text-gray-800 mb-1">Planting Materials</h4>
+              <p class="text-xs text-gray-500">Tissue-cultured root/tuber plants & Basic planting materials</p>
+            </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-green-400 transition cursor-default">
+              <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl mb-3">🔬</div>
+              <h4 class="font-bold text-gray-800 mb-1">Plant Disease Clinic</h4>
+              <p class="text-xs text-gray-500">Disease diagnosis & Soil analysis for bacterial wilt</p>
+            </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-green-400 transition cursor-default">
+              <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl mb-3">🧪</div>
+              <h4 class="font-bold text-gray-800 mb-1">ELISA Testing</h4>
+              <p class="text-xs text-gray-500">DAS & NCM ELISA services</p>
+            </div>
+
+            <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center text-center hover:border-green-400 transition cursor-default">
+              <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl mb-3">🍠</div>
+              <h4 class="font-bold text-gray-800 mb-1">Specific Crops</h4>
+              <p class="text-xs text-gray-500">Potato bacterial wilt, Sweet potato viruses, Yam</p>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
   </div>
 </template>
 

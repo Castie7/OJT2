@@ -24,6 +24,15 @@ interface Comment {
   created_at: string
 }
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Change this to your Computer's IP Address
+// If you are using XAMPP, it usually looks like this:
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+
+// If you are using "php spark serve", use this instead:
+// const API_BASE_URL = 'http://192.168.60.36:8080';
+// ---------------------------------------------------------------------------
+
 export function useApproval(currentUser: User | null) {
   
   const activeTab = ref<'pending' | 'rejected'>('pending')
@@ -44,10 +53,9 @@ export function useApproval(currentUser: User | null) {
     return { 'Authorization': token || '' }
   }
 
-  // --- 1. UPDATED DATE FORMATTER (Standardized) ---
+  // --- Date Formatter ---
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'No Date'
-    // Converts "2026-02-07" -> "Feb 7, 2026"
     return new Date(dateString).toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'short', 
@@ -55,7 +63,6 @@ export function useApproval(currentUser: User | null) {
     })
   }
 
-  // Use the same logic for created_at (Aliases to the function above)
   const formatSimpleDate = formatDate 
 
   const getDaysLeft = (rejectedDate?: string) => {
@@ -73,9 +80,10 @@ export function useApproval(currentUser: User | null) {
     isLoading.value = true
     items.value = [] 
     try {
+      // ✅ FIXED: Uses API_BASE_URL instead of localhost
       const endpoint = activeTab.value === 'pending' 
-        ? 'http://localhost:8080/research/pending' 
-        : 'http://localhost:8080/research/rejected'
+        ? `${API_BASE_URL}/research/pending`
+        : `${API_BASE_URL}/research/rejected`
 
       const response = await fetch(endpoint, { headers: getHeaders() })
       if (response.ok) {
@@ -99,7 +107,8 @@ export function useApproval(currentUser: User | null) {
       else if(action === 'reject') endpoint = 'reject'
       else if(action === 'restore') endpoint = 'restore'
 
-      await fetch(`http://localhost:8080/research/${endpoint}/${id}`, { 
+      // ✅ FIXED: Uses API_BASE_URL
+      await fetch(`${API_BASE_URL}/research/${endpoint}/${id}`, { 
         method: 'POST', headers: getHeaders()
       })
       alert(`Action ${action} successful!`)
@@ -127,7 +136,8 @@ export function useApproval(currentUser: User | null) {
       const formData = new FormData() 
       formData.append('new_deadline', deadlineModal.value.newDate)
       
-      const res = await fetch(`http://localhost:8080/research/extend-deadline/${deadlineModal.value.id}`, {
+      // ✅ FIXED: Uses API_BASE_URL
+      const res = await fetch(`${API_BASE_URL}/research/extend-deadline/${deadlineModal.value.id}`, {
         method: 'POST', headers: getHeaders(), body: formData
       })
       if (res.ok) { alert("Deadline Updated!"); deadlineModal.value.show = false; fetchData(); } 
@@ -140,7 +150,8 @@ export function useApproval(currentUser: User | null) {
   const openComments = async (item: Research) => {
     commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
     try {
-      const res = await fetch(`http://localhost:8080/research/comments/${item.id}`, { headers: getHeaders() })
+      // ✅ FIXED: Uses API_BASE_URL
+      const res = await fetch(`${API_BASE_URL}/research/comments/${item.id}`, { headers: getHeaders() })
       if(res.ok) { commentModal.value.list = await res.json(); scrollToBottom() }
     } catch (e) { console.error("Error loading comments") }
   }
@@ -149,8 +160,8 @@ export function useApproval(currentUser: User | null) {
     if (isSendingComment.value || !commentModal.value.newComment.trim() || !currentUser) return
     isSendingComment.value = true 
     try {
-      // ✅ FIXED: Pointing to the correct API endpoint
-      await fetch('http://localhost:8080/api/comments', {
+      // ✅ FIXED: Uses API_BASE_URL
+      await fetch(`${API_BASE_URL}/api/comments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...getHeaders() },
         body: JSON.stringify({ 
             research_id: commentModal.value.researchId, 
@@ -160,7 +171,8 @@ export function useApproval(currentUser: User | null) {
             comment: commentModal.value.newComment 
         })
       })
-      const refreshRes = await fetch(`http://localhost:8080/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
+      // ✅ FIXED: Uses API_BASE_URL
+      const refreshRes = await fetch(`${API_BASE_URL}/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
       commentModal.value.list = await refreshRes.json() 
       commentModal.value.newComment = ''
       scrollToBottom()

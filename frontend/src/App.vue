@@ -3,6 +3,12 @@ import { ref, onMounted } from 'vue'
 import LoginForm from './components/LoginForm.vue'
 import Dashboard from './components/Dashboard.vue'
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Update this to match your backend folder
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 const currentPage = ref('dashboard') 
 const currentUser = ref(null) 
 
@@ -29,7 +35,8 @@ onMounted(async () => {
   const token = getCookie('auth_token');
   if (token) {
     try {
-      const response = await fetch('http://localhost:8080/auth/verify', {
+      // ✅ FIXED: Uses API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/auth/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: token })
@@ -54,12 +61,13 @@ const onLoginSuccess = (data) => {
 // --- 3. LOGOUT LOGIC ---
 const handleLogout = async () => {
   // 1. Get current token
-  const token = getCookie('auth_token'); // Reused helper for cleaner code
+  const token = getCookie('auth_token'); 
 
   // 2. Notify Backend
   if (token) {
     try {
-      await fetch('http://localhost:8080/auth/logout', { 
+      // ✅ FIXED: Uses API_BASE_URL
+      await fetch(`${API_BASE_URL}/auth/logout`, { 
         method: 'POST',
         headers: { 'Authorization': token }
       });

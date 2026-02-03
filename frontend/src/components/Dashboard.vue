@@ -3,7 +3,7 @@ import { toRef, ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useDashboard, type User } from '../composables/useDashboard'
 
 // Import Sub-Components
-import HomeView from '../components/HomeView.vue'
+import HomeView from '../components/Homeview.vue'
 import ResearchLibrary from '../components/ResearchLibrary.vue'
 import MyWorkspace from '../components/MyWorkspace.vue'
 import Approval from '../components/Approval.vue'
@@ -18,6 +18,12 @@ const emit = defineEmits<{
   (e: 'logout-click'): void
   (e: 'update-user', user: User): void 
 }>()
+
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Update this to match your backend folder
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
 
 // --- Core Dashboard Logic ---
 const currentUserRef = toRef(props, 'currentUser')
@@ -44,7 +50,8 @@ const unreadCount = computed(() => {
 const fetchNotifications = async () => {
   if (!props.currentUser) return
   try {
-    const response = await fetch(`http://localhost:8080/api/notifications?user_id=${props.currentUser.id}`)
+    // ✅ FIXED: Uses API_BASE_URL
+    const response = await fetch(`${API_BASE_URL}/api/notifications?user_id=${props.currentUser.id}`)
     if (response.ok) {
       notifications.value = await response.json()
     }
@@ -61,7 +68,8 @@ const toggleNotifications = async () => {
         // Optimistic update
         notifications.value.forEach(n => n.is_read = 1)
         
-        await fetch('http://localhost:8080/api/notifications/read', { 
+        // ✅ FIXED: Uses API_BASE_URL
+        await fetch(`${API_BASE_URL}/api/notifications/read`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: props.currentUser?.id })

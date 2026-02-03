@@ -1,5 +1,11 @@
 import { ref } from 'vue'
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Must match your other files
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 // Change only the type definition here:
 export function useLoginForm(emit: {
   (e: 'login-success', data: any): void;
@@ -19,7 +25,8 @@ export function useLoginForm(emit: {
     message.value = ""
     
     try {
-      const response = await fetch('http://localhost:8080/auth/login', {
+      // ✅ FIXED: Uses the correct API URL
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -34,6 +41,11 @@ export function useLoginForm(emit: {
         isSuccess.value = true
         message.value = "Login Successful!"
         
+        // Save token to cookie immediately (Optional but good practice)
+        if(data.token) {
+            document.cookie = `auth_token=${data.token}; path=/; max-age=86400; SameSite=Lax`
+        }
+
         setTimeout(() => {
           // This call remains valid
           emit('login-success', data)
@@ -45,6 +57,7 @@ export function useLoginForm(emit: {
       }
 
     } catch (error) {
+      console.error(error)
       message.value = "Server connection failed."
       isLoading.value = false
     }

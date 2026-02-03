@@ -21,6 +21,12 @@ export interface User {
   role: string
 }
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Must match your other files
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 export function useHomeView() {
   
   // --- STATE ---
@@ -31,7 +37,9 @@ export function useHomeView() {
   // --- API ---
   const fetchSliderData = async () => {
     try {
-      const response = await fetch('http://localhost:8080/research')
+      // ✅ FIXED: Uses the correct API URL
+      const response = await fetch(`${API_BASE_URL}/research`)
+      
       if (response.ok) {
         const data = await response.json()
         // Take top 5 for the slider

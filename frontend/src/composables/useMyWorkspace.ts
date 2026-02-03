@@ -1,4 +1,4 @@
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 
 export interface User {
   id: number
@@ -41,6 +41,7 @@ export function useMyWorkspace(currentUser: User | null) {
   const activeTab = ref<'submitted' | 'archived'>('submitted')
   const isModalOpen = ref(false)
   const isSubmitting = ref(false)
+  const isLoading = ref(false) // Added loading state
   const myResearches = ref<Research[]>([])
 
   // FORM STATE
@@ -72,7 +73,34 @@ export function useMyWorkspace(currentUser: User | null) {
 
   // --- ACTIONS ---
 
-  // 1. OPEN FOR NEW SUBMISSION
+  // 1. FETCH DATA (Added this!)
+  const fetchMyResearches = async () => {
+    isLoading.value = true
+    try {
+        const endpoint = activeTab.value === 'archived' 
+            ? `${API_BASE_URL}/research/my-archived`
+            : `${API_BASE_URL}/research/my-submissions`;
+
+        const response = await fetch(endpoint, { headers: getHeaders() });
+        
+        if (response.ok) {
+            myResearches.value = await response.json();
+        } else {
+            console.error("Failed to fetch data");
+        }
+    } catch (e) {
+        console.error("Network Error", e);
+    } finally {
+        isLoading.value = false;
+    }
+  }
+
+  // Watch for tab changes to reload data
+  watch(activeTab, () => {
+      fetchMyResearches();
+  });
+
+  // 2. OPEN FOR NEW SUBMISSION
   const openSubmitModal = () => {
     Object.assign(form, {
       id: null, // Null ID means Create Mode
@@ -87,7 +115,7 @@ export function useMyWorkspace(currentUser: User | null) {
     isModalOpen.value = true
   }
 
-  // 2. OPEN FOR EDITING (Pre-fill Data)
+  // 3. OPEN FOR EDITING (Pre-fill Data)
   const openEditModal = (item: Research) => {
     Object.assign(form, {
       id: item.id, // ID exists means Update Mode
@@ -106,7 +134,7 @@ export function useMyWorkspace(currentUser: User | null) {
       shelf_location: item.shelf_location || '',
       item_condition: item.item_condition || 'Good',
       link: item.link || '',
-      pdf_file: null // Reset file input (user might not want to change it)
+      pdf_file: null // Reset file input
     })
     isModalOpen.value = true
   }
@@ -171,10 +199,19 @@ export function useMyWorkspace(currentUser: User | null) {
       if (res.ok) {
         alert(form.id ? "✅ Success! Research Updated." : "✅ Success! Research Submitted.")
         isModalOpen.value = false
-        // Ideally, you should also call a refresh function here if you have one
+        fetchMyResearches() // ✅ Refresh list after submit
       } else {
-        const msg = result.messages ? JSON.stringify(result.messages) : (result.message || "Action Failed")
-        alert("❌ Error: " + msg)
+        // ✅ IMPROVED ERROR HANDLING for Duplicates
+        let msg = "Action Failed";
+        
+        if (result.messages) {
+            // Convert { title: "Error" } object to string
+            msg = Object.values(result.messages).join('\n');
+        } else if (result.message) {
+            msg = result.message;
+        }
+
+        alert("❌ Error:\n" + msg)
       }
     } catch (error) {
       console.error(error)
@@ -187,9 +224,11 @@ export function useMyWorkspace(currentUser: User | null) {
   return {
     activeTab,
     myResearches,
+    isLoading, // Export loading state
     isModalOpen,
     isSubmitting,
     form,
+    fetchMyResearches, // Export fetch function
     openSubmitModal,
     openEditModal, 
     submitResearch,

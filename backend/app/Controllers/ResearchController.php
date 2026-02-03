@@ -5,14 +5,14 @@ namespace App\Controllers;
 use App\Models\ResearchModel;
 use App\Models\ResearchDetailsModel;
 use App\Models\UserModel;
-use App\Models\NotificationModel; // <--- Notification Model
+use App\Models\NotificationModel;
 use CodeIgniter\API\ResponseTrait;
 
 class ResearchController extends BaseController
 {
     use ResponseTrait;
 
-    // --- HELPER: columns to select to avoid ID collision ---
+    // --- HELPER: columns to select ---
     private $selectString = 'researches.*, 
                              research_details.knowledge_type, 
                              research_details.publication_date, 
@@ -43,18 +43,43 @@ class ResearchController extends BaseController
         if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") die();
     }
 
-    // 1. PUBLIC INDEX (Library)
+    // --- HELPER: SMART DUPLICATE CHECKER (UPDATED FOR JOURNALS) ---
+    private function checkDuplicate($title, $isbn, $edition, $excludeId = null) {
+        $db = \Config\Database::connect();
+        $builder = $db->table('researches');
+        $builder->join('research_details', 'researches.id = research_details.research_id');
+
+        // ✅ NEW LOGIC: Composite Check
+        // We block ONLY if Title + Edition matches.
+        // We DO NOT block if just ISBN matches (because Journals share ISSN).
+        
+        $builder->where('researches.title', $title);
+        
+        if (!empty($edition)) {
+            $builder->where('research_details.edition', $edition);
+        }
+
+        if ($excludeId) {
+            $builder->where('researches.id !=', $excludeId);
+        }
+
+        if ($builder->countAllResults() > 0) {
+            return "Duplicate! This Title/Edition combination already exists.";
+        }
+
+        return false; // Safe to insert
+    }
+
+    // 1. PUBLIC INDEX
     public function index()
     {
         $this->handleCors();
         $model = new ResearchModel();
-
         $data = $model->select($this->selectString) 
                       ->join('research_details', 'researches.id = research_details.research_id', 'left')
                       ->where('researches.status', 'approved')
                       ->orderBy('researches.created_at', 'DESC')
                       ->findAll();
-
         return $this->respond($data);
     }
 
@@ -66,14 +91,12 @@ class ResearchController extends BaseController
         if (!$user) return $this->failUnauthorized('Access Denied');
 
         $model = new ResearchModel();
-
         $data = $model->select($this->selectString)
                       ->join('research_details', 'researches.id = research_details.research_id', 'left')
                       ->where('researches.uploaded_by', $user['id'])
                       ->where('researches.status !=', 'archived') 
                       ->orderBy('researches.created_at', 'DESC')
                       ->findAll();
-
         return $this->respond($data);
     }
 
@@ -85,22 +108,18 @@ class ResearchController extends BaseController
         if (!$user) return $this->failUnauthorized();
 
         $model = new ResearchModel();
-
-        // Auto-delete > 60 days
         $cutoffDate = date('Y-m-d H:i:s', strtotime('-60 days'));
+        
         $model->where('uploaded_by', $user['id'])
               ->where('status', 'archived')
-              ->where('archived_at IS NOT NULL')
               ->where('archived_at <', $cutoffDate)
               ->delete();
 
-        // Fetch
         $data = $model->select($this->selectString)
                       ->join('research_details', 'researches.id = research_details.research_id', 'left')
                       ->where('researches.uploaded_by', $user['id'])
                       ->where('researches.status', 'archived')
                       ->orderBy('researches.archived_at', 'DESC')
-                      ->orderBy('researches.updated_at', 'DESC')
                       ->findAll();
 
         return $this->respond($data);
@@ -110,22 +129,18 @@ class ResearchController extends BaseController
     {
         $this->handleCors();
         $user = $this->validateUser();
-        if (!$user || $user['role'] !== 'admin') {
-             return $this->failForbidden('Access Denied');
-        }
+        if (!$user || $user['role'] !== 'admin') return $this->failForbidden('Access Denied');
 
         $model = new ResearchModel();
-        
         $data = $model->select($this->selectString)
                       ->join('research_details', 'researches.id = research_details.research_id', 'left')
                       ->where('researches.status', 'archived')
                       ->orderBy('researches.archived_at', 'DESC')
                       ->findAll();
-                      
         return $this->respond($data);
     }
 
-    // 4. PENDING LIST (Admin Only)
+    // 4. PENDING LIST
     public function pending()
     {
         $this->handleCors();
@@ -133,13 +148,11 @@ class ResearchController extends BaseController
         if (!$user || $user['role'] !== 'admin') return $this->failForbidden('Access Denied');
 
         $model = new ResearchModel();
-        
         $data = $model->select($this->selectString)
                       ->join('research_details', 'researches.id = research_details.research_id', 'left')
                       ->where('researches.status', 'pending')
                       ->orderBy('researches.created_at', 'ASC')
                       ->findAll();
-                      
         return $this->respond($data);
     }
 
@@ -151,18 +164,14 @@ class ResearchController extends BaseController
         if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
 
         $model = new ResearchModel();
-
         $cutoffDate = date('Y-m-d H:i:s', strtotime('-30 days'));
-        $model->where('status', 'rejected')
-              ->where('rejected_at <', $cutoffDate)
-              ->delete();
+        $model->where('status', 'rejected')->where('rejected_at <', $cutoffDate)->delete();
 
         $data = $model->select($this->selectString)
                       ->join('research_details', 'researches.id = research_details.research_id', 'left')
                       ->where('researches.status', 'rejected')
                       ->orderBy('researches.rejected_at', 'DESC')
                       ->findAll();
-
         return $this->respond($data);
     }
 
@@ -179,7 +188,20 @@ class ResearchController extends BaseController
         ];
 
         if (!$this->validate($rules)) {
-            return $this->fail($this->validator->getErrors());
+            return $this->response->setJSON(['status' => 'error', 'messages' => $this->validator->getErrors()])->setStatusCode(400);
+        }
+
+        $isbn = trim($this->request->getPost('isbn_issn'));
+        $title = trim($this->request->getPost('title'));
+        $edition = trim($this->request->getPost('edition'));
+
+        // ✅ CALL SMART DUPLICATE CHECKER
+        $dupError = $this->checkDuplicate($title, $isbn, $edition);
+        if ($dupError) {
+            return $this->response->setJSON([
+                'status' => 'error', 
+                'messages' => ['duplicate' => $dupError]
+            ])->setStatusCode(400);
         }
 
         $file = $this->request->getFile('pdf_file');
@@ -190,35 +212,31 @@ class ResearchController extends BaseController
         }
 
         $researchModel = new ResearchModel();
-        
         $mainData = [
             'uploaded_by' => $user['id'],
-            'title'       => $this->request->getPost('title'),
+            'title'       => $title,
             'author'      => $this->request->getPost('author'),
             'crop_variation' => $this->request->getPost('crop_variation'),
             'status'      => 'pending',
             'file_path'   => $fileName,
             'created_at'  => date('Y-m-d H:i:s'),
         ];
-
         $newResearchId = $researchModel->insert($mainData); 
 
         $detailsModel = new ResearchDetailsModel();
-        
         $detailsData = [
             'research_id'      => $newResearchId,
             'knowledge_type'   => $this->request->getPost('knowledge_type'),
             'publication_date' => $this->request->getPost('publication_date'),
-            'edition'          => $this->request->getPost('edition'),
+            'edition'          => $edition,
             'publisher'        => $this->request->getPost('publisher'),
             'physical_description' => $this->request->getPost('physical_description'),
-            'isbn_issn'        => $this->request->getPost('isbn_issn'),
+            'isbn_issn'        => $isbn,
             'subjects'         => $this->request->getPost('subjects'),
             'shelf_location'   => $this->request->getPost('shelf_location'),
             'item_condition'   => $this->request->getPost('item_condition'),
             'link'             => $this->request->getPost('link'),
         ];
-
         $detailsModel->insert($detailsData);
 
         return $this->respond(['status' => 'success']);
@@ -228,23 +246,33 @@ class ResearchController extends BaseController
     public function update($id = null)
     {
         $this->handleCors();
-        
-        if (!$this->request->is('post')) {
-            return $this->failMethodNotAllowed('Only POST requests allowed');
-        }
+        if (!$this->request->is('post')) return $this->failMethodNotAllowed();
 
         $user = $this->validateUser();
         if (!$user) return $this->failUnauthorized();
 
         $researchModel = new ResearchModel();
-        
         $item = $researchModel->find($id);
+        
         if(!$item || ($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin')) {
              return $this->failForbidden();
         }
 
+        $isbn = trim($this->request->getPost('isbn_issn'));
+        $title = trim($this->request->getPost('title'));
+        $edition = trim($this->request->getPost('edition'));
+
+        // ✅ CALL SMART DUPLICATE CHECKER (Ignoring Self)
+        $dupError = $this->checkDuplicate($title, $isbn, $edition, $id);
+        if ($dupError) {
+            return $this->response->setJSON([
+                'status' => 'error', 
+                'messages' => ['duplicate' => $dupError]
+            ])->setStatusCode(400);
+        }
+
         $mainUpdate = [
-            'title'  => $this->request->getPost('title'),
+            'title'  => $title,
             'author' => $this->request->getPost('author'),
             'crop_variation' => $this->request->getPost('crop_variation'),
         ];
@@ -255,19 +283,17 @@ class ResearchController extends BaseController
             $file->move('public/uploads', $newName);
             $mainUpdate['file_path'] = $newName; 
         }
-
         $researchModel->update($id, $mainUpdate);
 
         $detailsModel = new ResearchDetailsModel();
         $exists = $detailsModel->where('research_id', $id)->first();
-        
         $detailsData = [
             'knowledge_type'   => $this->request->getPost('knowledge_type'),
             'publication_date' => $this->request->getPost('publication_date'),
-            'edition'          => $this->request->getPost('edition'),
+            'edition'          => $edition,
             'publisher'        => $this->request->getPost('publisher'),
             'physical_description' => $this->request->getPost('physical_description'),
-            'isbn_issn'        => $this->request->getPost('isbn_issn'),
+            'isbn_issn'        => $isbn,
             'subjects'         => $this->request->getPost('subjects'),
             'shelf_location'   => $this->request->getPost('shelf_location'),
             'item_condition'   => $this->request->getPost('item_condition'),
@@ -284,7 +310,7 @@ class ResearchController extends BaseController
         return $this->respond(['status' => 'success']);
     }
 
-    // 8. APPROVE (Updated with Notification)
+    // 8. APPROVE
     public function approve($id = null)
     {
         $this->handleCors();
@@ -292,12 +318,8 @@ class ResearchController extends BaseController
         if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
 
         $model = new ResearchModel();
-        $model->update($id, [
-            'status' => 'approved',
-            'approved_at' => date('Y-m-d H:i:s') 
-        ]);
+        $model->update($id, ['status' => 'approved', 'approved_at' => date('Y-m-d H:i:s')]);
 
-        // Notify User
         $item = $model->find($id);
         if ($item && $item['uploaded_by']) {
             $notifModel = new NotificationModel();
@@ -310,11 +332,10 @@ class ResearchController extends BaseController
                 'created_at'  => date('Y-m-d H:i:s')
             ]);
         }
-        
         return $this->respond(['status' => 'success']);
     }
 
-    // 9. REJECT (Updated with Notification)
+    // 9. REJECT
     public function reject($id = null)
     {
         $this->handleCors();
@@ -322,12 +343,8 @@ class ResearchController extends BaseController
         if (!$user || $user['role'] !== 'admin') return $this->failForbidden();
 
         $model = new ResearchModel();
-        $model->update($id, [
-            'status' => 'rejected',
-            'rejected_at' => date('Y-m-d H:i:s')
-        ]);
+        $model->update($id, ['status' => 'rejected', 'rejected_at' => date('Y-m-d H:i:s')]);
 
-        // Notify User
         $item = $model->find($id);
         if ($item && $item['uploaded_by']) {
             $notifModel = new NotificationModel();
@@ -340,7 +357,6 @@ class ResearchController extends BaseController
                 'created_at'  => date('Y-m-d H:i:s')
             ]);
         }
-        
         return $this->respond(['status' => 'success']);
     }
 
@@ -357,12 +373,7 @@ class ResearchController extends BaseController
         if ($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin') {
             return $this->failForbidden("Cannot archive others' work");
         }
-
-        $model->update($id, [
-            'status' => 'archived',
-            'archived_at' => date('Y-m-d H:i:s') 
-        ]);
-
+        $model->update($id, ['status' => 'archived', 'archived_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['status' => 'success']);
     }
 
@@ -375,21 +386,13 @@ class ResearchController extends BaseController
 
         $model = new ResearchModel();
         $item = $model->find($id);
-
-        if ($user['role'] !== 'admin' && $item['uploaded_by'] != $user['id']) {
-             return $this->failForbidden();
-        }
+        if ($user['role'] !== 'admin' && $item['uploaded_by'] != $user['id']) return $this->failForbidden();
         
-        $model->update($id, [
-            'status' => 'pending',
-            'rejected_at' => null,
-            'archived_at' => null
-        ]);
-
+        $model->update($id, ['status' => 'pending', 'rejected_at' => null, 'archived_at' => null]);
         return $this->respond(['status' => 'success']);
     }
 
-    // 12. EXTEND DEADLINE (Updated with Notification)
+    // 12. EXTEND DEADLINE
     public function extendDeadline($id = null)
     {
         $this->handleCors();
@@ -402,7 +405,6 @@ class ResearchController extends BaseController
         $model = new ResearchModel();
         $model->update($id, ['deadline_date' => $newDate]);
 
-        // Notify User
         $item = $model->find($id);
         if ($item && $item['uploaded_by']) {
             $formattedDate = date('M d, Y', strtotime($newDate));
@@ -416,7 +418,6 @@ class ResearchController extends BaseController
                 'created_at'  => date('Y-m-d H:i:s')
             ]);
         }
-        
         return $this->respond(['status' => 'success']);
     }
 
@@ -429,7 +430,7 @@ class ResearchController extends BaseController
         return $this->respond($data);
     }
 
-    // 14. ADD COMMENT (With Notification Logic)
+    // 14. ADD COMMENT
     public function addComment()
     {
         $this->handleCors();
@@ -439,7 +440,6 @@ class ResearchController extends BaseController
         $notifModel   = new NotificationModel();
         $researchModel = new ResearchModel();
         $userModel = new UserModel();
-
         $json = $this->request->getJSON();
 
         $data = [
@@ -450,18 +450,13 @@ class ResearchController extends BaseController
             'comment'     => $json->comment
         ];
 
-        // Insert Comment
         if ($commentModel->insert($data)) {
-            
-            // --- NOTIFICATION LOGIC ---
             $researchId = $json->research_id;
             $senderId   = $json->user_id;
             $role       = strtolower($json->role); 
 
-            // CASE A: Admin commented -> Notify Student
             if ($role === 'admin') {
                 $research = $researchModel->find($researchId);
-                
                 if ($research && isset($research['uploaded_by']) && $research['uploaded_by'] != $senderId) {
                     $notifModel->insert([
                         'user_id'     => $research['uploaded_by'],
@@ -472,13 +467,9 @@ class ResearchController extends BaseController
                         'created_at'  => date('Y-m-d H:i:s')
                     ]);
                 }
-            } 
-            // CASE B: Student commented -> Notify Admin
-            else {
-                // Dynamic Admin ID Lookup
+            } else {
                 $adminUser = $userModel->where('role', 'admin')->first();
                 $targetAdminId = $adminUser ? $adminUser['id'] : 1; 
-                
                 if ($senderId != $targetAdminId) {
                     $notifModel->insert([
                         'user_id'     => $targetAdminId,
@@ -490,10 +481,8 @@ class ResearchController extends BaseController
                     ]);
                 }
             }
-
             return $this->respondCreated(['status' => 'success']);
         }
-
         return $this->fail('Failed to save comment');
     }
 
@@ -501,15 +490,10 @@ class ResearchController extends BaseController
     public function stats()
     {
         $this->handleCors();
-        
         $model = new ResearchModel();
         $approved = $model->where('status', 'approved')->countAllResults();
         $pending = $model->where('status', 'pending')->countAllResults();
-
-        return $this->respond([
-            'total'   => $approved,
-            'pending' => $pending
-        ]);
+        return $this->respond(['total' => $approved, 'pending' => $pending]);
     }
 
     // USER STATS
@@ -517,13 +501,108 @@ class ResearchController extends BaseController
     {
         header("Access-Control-Allow-Origin: *");
         header("Access-Control-Allow-Headers: Authorization");
-
         if (!$userId) return $this->fail('User ID required');
-
         $model = new ResearchModel();
         $myPublished = $model->where('uploaded_by', $userId)->where('status', 'approved')->countAllResults();
         $myPending = $model->where('uploaded_by', $userId)->where('status', 'pending')->countAllResults();
+        return $this->respond(['published' => $myPublished, 'pending' => $myPending]);
+    }
 
-        return $this->respond(['published' => $myPublished, 'pending'   => $myPending]);
+    // ✅ NEW: CSV IMPORT (Mapped to Short Headers + Auto Line Ending)
+    public function importCsv()
+    {
+        $this->handleCors();
+
+        // ✅ FIX: Force PHP to detect Mac/Windows/Linux line endings
+        ini_set('auto_detect_line_endings', TRUE);
+
+        $userId = 1; // Default to Admin
+
+        $file = $this->request->getFile('csv_file');
+        if (!$file->isValid() || $file->getExtension() !== 'csv') {
+            return $this->response->setJSON(['message' => 'Invalid CSV file'])->setStatusCode(400);
+        }
+
+        $csvData = array_map('str_getcsv', file($file->getTempName()));
+        $headers = array_map('trim', $csvData[0]); 
+        array_shift($csvData); 
+
+        $count = 0;
+        $skipped = 0;
+        
+        $researchModel = new ResearchModel();
+        $detailsModel = new ResearchDetailsModel();
+
+        foreach ($csvData as $row) {
+            if (count($row) < count($headers)) continue;
+            
+            // Raw data from CSV
+            $rawData = array_combine($headers, $row);
+
+            // ✅ MAP SHORT HEADERS TO DB COLUMNS
+            $data = [
+                'title'                => $rawData['Title'] ?? 'Untitled',
+                'knowledge_type'       => $rawData['Type'] ?? 'Research Paper',
+                'author'               => $rawData['Authors'] ?? 'Unknown',
+                'publication_date'     => $rawData['Date'] ?? null,
+                'edition'              => $rawData['Publication'] ?? '', // 'Publication' maps to edition/issue in your sample
+                'publisher'            => $rawData['Publisher'] ?? '',
+                'physical_description' => $rawData['Pages'] ?? '',       // 'Pages' maps to physical desc
+                'isbn_issn'            => $rawData['ISSN'] ?? '',        // 'ISSN' maps to isbn_issn
+                'subjects'             => $rawData['Description'] ?? '', // 'Description' maps to subjects/keywords
+                'shelf_location'       => $rawData['Location'] ?? '',
+                'item_condition'       => $rawData['Condition'] ?? 'Good',
+                'crop_variation'       => $rawData['Crop'] ?? ''         // 'Crop' maps to crop_variation
+            ];
+
+            $isbn = trim($data['isbn_issn']);
+            $title = trim($data['title']);
+            $edition = trim($data['edition']);
+
+            // ✅ CALL SMART DUPLICATE CHECKER
+            $dupError = $this->checkDuplicate($title, $isbn, $edition);
+
+            if ($dupError) {
+                $skipped++;
+                continue;
+            }
+
+            // Insert into Researches
+            $mainData = [
+                'title'          => $title,
+                'author'         => $data['author'],
+                'crop_variation' => $data['crop_variation'],
+                'status'         => 'approved',
+                'uploaded_by'    => $userId,
+                'created_at'     => date('Y-m-d H:i:s')
+            ];
+
+            $newId = $researchModel->insert($mainData);
+
+            if ($newId) {
+                $detailsData = [
+                    'research_id'          => $newId,
+                    'knowledge_type'       => $data['knowledge_type'],
+                    'publication_date'     => $data['publication_date'],
+                    'edition'              => $data['edition'],
+                    'publisher'            => $data['publisher'],
+                    'physical_description' => $data['physical_description'],
+                    'isbn_issn'            => $data['isbn_issn'],
+                    'subjects'             => $data['subjects'],
+                    'shelf_location'       => $data['shelf_location'],
+                    'item_condition'       => $data['item_condition'],
+                    'link'                 => ''
+                ];
+                $detailsModel->insert($detailsData);
+                $count++;
+            }
+        }
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'count' => $count,
+            'skipped' => $skipped,
+            'message' => "Import successful. Added: $count. Skipped (Duplicates): $skipped."
+        ]);
     }
 }

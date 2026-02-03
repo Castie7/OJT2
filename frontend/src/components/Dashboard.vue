@@ -8,6 +8,7 @@ import ResearchLibrary from '../components/ResearchLibrary.vue'
 import MyWorkspace from '../components/MyWorkspace.vue'
 import Approval from '../components/Approval.vue'
 import Settings from '../components/Settings.vue' 
+import ImportCsv from '../components/ImportCsv.vue' // ✅ Imported
 
 const props = defineProps<{
   currentUser: User | null
@@ -33,6 +34,11 @@ const { currentTab, stats, updateStats, setTab } = useDashboard(currentUserRef)
 const workspaceRef = ref<any>(null)
 const approvalRef = ref<any>(null)
 
+// --- NEW: Admin Menu Logic ---
+const showAdminMenu = ref(false)
+// Close menu with a small delay so clicks register before blur
+const closeAdminMenu = () => { setTimeout(() => showAdminMenu.value = false, 200) }
+
 const handleUserUpdate = (updatedUser: User) => {
   emit('update-user', updatedUser)
 }
@@ -42,7 +48,7 @@ const showNotifications = ref(false)
 const notifications = ref<any[]>([])
 const pollingInterval = ref<any>(null)
 
-// Computed count (loose equality for 0 vs "0")
+// Computed count
 const unreadCount = computed(() => {
   return notifications.value.filter(n => n.is_read == 0).length
 })
@@ -50,7 +56,6 @@ const unreadCount = computed(() => {
 const fetchNotifications = async () => {
   if (!props.currentUser) return
   try {
-    // ✅ FIXED: Uses API_BASE_URL
     const response = await fetch(`${API_BASE_URL}/api/notifications?user_id=${props.currentUser.id}`)
     if (response.ok) {
       notifications.value = await response.json()
@@ -68,7 +73,6 @@ const toggleNotifications = async () => {
         // Optimistic update
         notifications.value.forEach(n => n.is_read = 1)
         
-        // ✅ FIXED: Uses API_BASE_URL
         await fetch(`${API_BASE_URL}/api/notifications/read`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
@@ -78,7 +82,7 @@ const toggleNotifications = async () => {
   }
 }
 
-// --- CLICK HANDLER (The New Logic) ---
+// --- CLICK HANDLER ---
 const handleNotificationClick = async (notif: any) => {
     if (!notif.research_id) return
     
@@ -87,18 +91,16 @@ const handleNotificationClick = async (notif: any) => {
     // 1. If User is Admin -> Go to Approval Tab
     if (props.currentUser?.role === 'admin') {
         setTab('approval')
-        await nextTick() // Wait for component to render
+        await nextTick() 
         if (approvalRef.value) {
-            // Call the exposed function in Approval.vue
             approvalRef.value.openNotification(notif.research_id)
         }
     } 
     // 2. If User is Student -> Go to Workspace Tab
     else {
         setTab('workspace')
-        await nextTick() // Wait for component to render
+        await nextTick() 
         if (workspaceRef.value) {
-             // Call the exposed function in MyWorkspace.vue
             workspaceRef.value.openNotification(notif.research_id)
         }
     }
@@ -150,13 +152,60 @@ onUnmounted(() => {
                 My Workspace
               </button>
               
-              <button 
-                v-if="currentUser.role === 'admin'" 
-                @click="setTab('approval')" 
-                :class="['nav-btn', currentTab === 'approval' ? 'nav-btn-active' : 'nav-btn-inactive']"
-              >
-                Approvals
-              </button>
+              <template v-if="currentUser.role === 'admin'">
+                <button 
+                  @click="setTab('approval')" 
+                  :class="['nav-btn', currentTab === 'approval' ? 'nav-btn-active' : 'nav-btn-inactive']"
+                >
+                  Approvals
+                </button>
+
+                <div class="relative group">
+                    <button 
+                        @click="showAdminMenu = !showAdminMenu" 
+                        @blur="closeAdminMenu"
+                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
+                    >
+                        Admin Tools ▾
+                    </button>
+
+                    <div v-if="showAdminMenu" class="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden text-sm z-50 animate-fade-in">
+                        <div class="py-1">
+                            
+                            <button 
+                                @click="setTab('import'); showAdminMenu = false"
+                                class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
+                            >
+                                📂 Upload Data Researches
+                            </button>
+                            
+                            <div class="border-t border-gray-100 my-1"></div>
+
+                            <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
+                                <div class="flex items-center gap-2">
+                                    <span>👥 Add/Reset Accounts</span>
+                                </div>
+                                <span class="text-[9px] uppercase font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
+                            </button>
+
+                            <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
+                                <div class="flex items-center gap-2">
+                                    <span>✏️ Edit Master List</span>
+                                </div>
+                                <span class="text-[9px] uppercase font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
+                            </button>
+
+                            <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
+                                <div class="flex items-center gap-2">
+                                    <span>📜 Activity Logs</span>
+                                </div>
+                                <span class="text-[9px] uppercase font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+              </template>
             </template>
           </div>
 
@@ -254,6 +303,11 @@ onUnmounted(() => {
         v-if="currentTab === 'approval' && currentUser && currentUser.role === 'admin'" 
         ref="approvalRef"
         :currentUser="currentUser" 
+      />
+
+      <ImportCsv 
+        v-if="currentTab === 'import' && currentUser && currentUser.role === 'admin'"
+        @upload-success="setTab('research')" 
       />
 
       <Settings 

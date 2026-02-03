@@ -34,6 +34,12 @@ export interface User {
   email: string
 }
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Must match your other files
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 export function useResearchLibrary(currentUser: User | null, emit: (event: 'update-stats', count: number) => void) {
   
   // --- STATE ---
@@ -83,9 +89,10 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
   const fetchResearches = async () => {
     isLoading.value = true
     try {
+      // ✅ FIXED: Uses API_BASE_URL
       const endpoint = showArchived.value 
-        ? 'http://localhost:8080/research/archived' 
-        : 'http://localhost:8080/research'
+        ? `${API_BASE_URL}/research/archived` 
+        : `${API_BASE_URL}/research`
 
       const token = getCookie('auth_token')
       const headers: HeadersInit = token ? { 'Authorization': token } : {}
@@ -103,6 +110,7 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
          if(showArchived.value) showToast("Access Denied to Archives", "error")
       }
     } catch (error) {
+      console.error(error)
       showToast("Failed to load data.", "error")
     } finally {
       isLoading.value = false
@@ -158,9 +166,10 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
     if (!token) { showToast("Authentication Error", "error"); return }
 
     try {
+      // ✅ FIXED: Uses API_BASE_URL
       const endpoint = confirmModal.value.action === 'Restore'
-        ? `http://localhost:8080/research/restore/${confirmModal.value.id}`
-        : `http://localhost:8080/research/archive/${confirmModal.value.id}`
+        ? `${API_BASE_URL}/research/restore/${confirmModal.value.id}`
+        : `${API_BASE_URL}/research/archive/${confirmModal.value.id}`
 
       const response = await fetch(endpoint, { 
         method: 'POST',

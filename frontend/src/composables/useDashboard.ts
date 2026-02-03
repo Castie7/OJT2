@@ -14,6 +14,12 @@ export interface Stat {
   action?: string 
 }
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Update this to match your useApproval.ts
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 export function useDashboard(currentUserRef: Ref<User | null>) { 
   
   const currentTab = ref('home')
@@ -36,7 +42,8 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     try {
         // === ADMIN LOGIC ===
         if (user.role === 'admin') {
-            const response = await fetch('http://localhost:8080/research/stats')
+            // ✅ FIXED: Uses API_BASE_URL
+            const response = await fetch(`${API_BASE_URL}/research/stats`)
             if (!response.ok) throw new Error("API Error")
             
             const data = await response.json()
@@ -49,7 +56,8 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
         } 
         // === RESEARCHER LOGIC ===
         else {
-            const response = await fetch(`http://localhost:8080/research/user-stats/${user.id}`)
+            // ✅ FIXED: Uses API_BASE_URL
+            const response = await fetch(`${API_BASE_URL}/research/user-stats/${user.id}`)
             if (!response.ok) throw new Error("API Error")
             
             const data = await response.json()
@@ -71,9 +79,6 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
      if (newUser) fetchDashboardStats()
   }, { immediate: true })
 
-  // --- THE FIX IS HERE ---
-  // We check the title. If it's "My Published Works", we ignore the update
-  // because the Library (which shows ALL works) shouldn't overwrite personal stats.
   const updateStats = (count: number) => { 
     if (stats.value.length > 0 && stats.value[0].title === 'Total Researches') {
         stats.value[0].value = count 

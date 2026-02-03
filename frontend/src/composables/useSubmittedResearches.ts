@@ -30,6 +30,12 @@ interface Comment {
   comment: string
 }
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Must match your other files
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 export function useSubmittedResearches(props: { currentUser: User | null, isArchived: boolean }) {
     
     // --- STATE ---
@@ -104,9 +110,10 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
     const fetchData = async () => {
         isLoading.value = true
         try {
+            // ✅ FIXED: Uses API_BASE_URL
             const endpoint = props.isArchived 
-                ? 'http://localhost:8080/research/my-archived' 
-                : 'http://localhost:8080/research/my-submissions'
+                ? `${API_BASE_URL}/research/my-archived` 
+                : `${API_BASE_URL}/research/my-submissions`
             
             const response = await fetch(endpoint, { headers: getHeaders() })
             if (response.ok) {
@@ -159,9 +166,10 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (!confirmModal.value.id) return
         confirmModal.value.isProcessing = true
         try {
+            // ✅ FIXED: Uses API_BASE_URL
             const endpoint = props.isArchived 
-                ? `http://localhost:8080/research/restore/${confirmModal.value.id}` 
-                : `http://localhost:8080/research/archive/${confirmModal.value.id}`
+                ? `${API_BASE_URL}/research/restore/${confirmModal.value.id}` 
+                : `${API_BASE_URL}/research/archive/${confirmModal.value.id}`
 
             const response = await fetch(endpoint, { method: 'POST', headers: getHeaders() })
             if (response.ok) {
@@ -178,8 +186,8 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
     const openComments = async (item: Research) => {
         commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
         try {
-            // GET list of comments (Remains under /research/ group)
-            const res = await fetch(`http://localhost:8080/research/comments/${item.id}`, { headers: getHeaders() })
+            // ✅ FIXED: Uses API_BASE_URL
+            const res = await fetch(`${API_BASE_URL}/research/comments/${item.id}`, { headers: getHeaders() })
             if(res.ok) { 
                 commentModal.value.list = await res.json()
                 nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight })
@@ -191,21 +199,21 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (isSendingComment.value || !commentModal.value.newComment.trim() || !props.currentUser) return
         isSendingComment.value = true
         try {
-            // ✅ FIX: Point to the new API group we created
-            await fetch('http://localhost:8080/api/comments', {
+            // ✅ FIXED: Uses API_BASE_URL
+            await fetch(`${API_BASE_URL}/api/comments`, {
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json', ...getHeaders() },
                 body: JSON.stringify({ 
                     research_id: commentModal.value.researchId, 
                     user_id: props.currentUser.id, 
                     user_name: props.currentUser.name, 
-                    role: props.currentUser.role, // Use actual role (admin/user)
+                    role: props.currentUser.role, 
                     comment: commentModal.value.newComment 
                 })
             })
             
-            // Refresh comments list
-            const refreshRes = await fetch(`http://localhost:8080/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
+            // ✅ FIXED: Uses API_BASE_URL
+            const refreshRes = await fetch(`${API_BASE_URL}/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
             commentModal.value.list = await refreshRes.json()
             commentModal.value.newComment = '' 
             nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight })
@@ -250,7 +258,8 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (editPdfFile.value) formData.append('pdf_file', editPdfFile.value)
 
         try {
-            const res = await fetch(`http://localhost:8080/research/update/${item.id}`, { method: 'POST', headers: getHeaders(), body: formData })
+            // ✅ FIXED: Uses API_BASE_URL
+            const res = await fetch(`${API_BASE_URL}/research/update/${item.id}`, { method: 'POST', headers: getHeaders(), body: formData })
             await new Promise(r => setTimeout(r, 500)) 
             if (res.ok) { 
                 alert("✅ Updated!") 

@@ -7,6 +7,12 @@ export interface User {
   role: string
 }
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Must match your other files
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 // 1. Add 'triggerLogout' to arguments
 export function useSettings(
   currentUserRef: Ref<User | null>, 
@@ -46,7 +52,8 @@ export function useSettings(
     isProfileLoading.value = true
 
     try {
-      const response = await fetch('http://localhost:8080/auth/update-profile', {
+      // ✅ FIXED: Uses API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -81,7 +88,8 @@ export function useSettings(
     isPasswordLoading.value = true
 
     try {
-      const response = await fetch('http://localhost:8080/auth/update-profile', {
+      // ✅ FIXED: Uses API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

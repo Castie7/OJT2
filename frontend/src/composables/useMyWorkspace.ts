@@ -30,6 +30,12 @@ export interface Research {
   archived_at?: string
 }
 
+// ---------------------------------------------------------------------------
+// ✅ CONFIGURATION: Update this to match your other files
+// ---------------------------------------------------------------------------
+const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
+// ---------------------------------------------------------------------------
+
 export function useMyWorkspace(currentUser: User | null) {
   
   const activeTab = ref<'submitted' | 'archived'>('submitted')
@@ -149,10 +155,10 @@ export function useMyWorkspace(currentUser: User | null) {
     if (form.pdf_file) formData.append('pdf_file', form.pdf_file)
 
     try {
-      // 3. SWITCH URL BASED ON ID
+      // ✅ FIXED: Uses API_BASE_URL
       const url = form.id 
-        ? `http://localhost:8080/research/update/${form.id}`
-        : 'http://localhost:8080/research/create'
+        ? `${API_BASE_URL}/research/update/${form.id}`
+        : `${API_BASE_URL}/research/create`
 
       const res = await fetch(url, {
         method: 'POST',
@@ -165,6 +171,7 @@ export function useMyWorkspace(currentUser: User | null) {
       if (res.ok) {
         alert(form.id ? "✅ Success! Research Updated." : "✅ Success! Research Submitted.")
         isModalOpen.value = false
+        // Ideally, you should also call a refresh function here if you have one
       } else {
         const msg = result.messages ? JSON.stringify(result.messages) : (result.message || "Action Failed")
         alert("❌ Error: " + msg)
@@ -184,7 +191,7 @@ export function useMyWorkspace(currentUser: User | null) {
     isSubmitting,
     form,
     openSubmitModal,
-    openEditModal, // <--- Exported new function
+    openEditModal, 
     submitResearch,
     handleFileChange
   }

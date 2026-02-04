@@ -26,7 +26,7 @@ class ResearchController extends BaseController
                              research_details.link';
 
     // --- SECURITY HELPER ---
-    private function validateUser() {
+    protected function validateUser() {
         $request = service('request');
         $token = $request->getHeaderLine('Authorization');
         
@@ -36,7 +36,7 @@ class ResearchController extends BaseController
         return $userModel->where('auth_token', $token)->first();
     }
 
-    private function handleCors() {
+    protected function handleCors() {
         header('Access-Control-Allow-Origin: *');
         header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With"); 
         header("Access-Control-Allow-Methods: GET, POST, OPTIONS");

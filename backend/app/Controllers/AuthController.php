@@ -189,17 +189,4 @@ class AuthController extends BaseController
     }
 
     // ------------------------------------------------------------------
-    // Helper: BRUTE FORCE CORS HANDLE
-    // ------------------------------------------------------------------
-    private function handleCors() {
-        header('Access-Control-Allow-Origin: *');
-        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-API-KEY, X-Requested-With");
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
-        
-        $method = $_SERVER['REQUEST_METHOD'];
-        if ($method == "OPTIONS") {
-            header("HTTP/1.1 200 OK");
-            exit(); 
-        }
-    }
 }

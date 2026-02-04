@@ -65,8 +65,19 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
         }
     } catch (e) {
         console.error("Stats Fetch Failed:", e)
-        stats.value[0].title = "Connection Failed"
-        stats.value[2].title = "Connection Failed"
+        
+        // ✅ FIX: Check if elements exist before assigning
+        if (stats.value[0]) {
+            stats.value[0].title = "Connection Failed"
+            stats.value[0].value = "Error"
+            stats.value[0].color = "text-red-500"
+        }
+        
+        if (stats.value[2]) {
+            stats.value[2].title = "Connection Failed"
+            stats.value[2].value = "Error"
+            stats.value[2].color = "text-red-500"
+        }
     }
   }
 
@@ -75,8 +86,11 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   }, { immediate: true })
 
   const updateStats = (count: number) => { 
-    if (stats.value.length > 0 && stats.value[0].title === 'Total Researches') {
-       stats.value[0].value = count 
+    // ✅ FIX: Assign to a variable first to ensure it's not undefined
+    const firstStat = stats.value[0]
+    
+    if (firstStat && firstStat.title === 'Total Researches') {
+       firstStat.value = count 
     }
   }
 

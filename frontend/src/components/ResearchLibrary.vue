@@ -15,8 +15,7 @@ const {
   searchQuery, selectedType, showArchived, viewMode, selectedResearch,
   isLoading, toast, confirmModal, currentPage, 
   filteredResearches, paginatedResearches, totalPages,
-  nextPage, prevPage, requestArchiveToggle, executeArchiveToggle,
-  formatSimpleDate
+  nextPage, prevPage, requestArchiveToggle, executeArchiveToggle
 } = useResearchLibrary(props.currentUser, emit)
 
 // --- Fullscreen Logic ---

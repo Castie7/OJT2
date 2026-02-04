@@ -18,7 +18,7 @@ class Cors extends BaseConfig
 
         'allowedOriginsPatterns' => [],
 
-        'supportsCredentials' => false,
+        'supportsCredentials' => true,
 
         'allowedHeaders' => ['*'], 
 

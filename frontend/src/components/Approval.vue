@@ -9,7 +9,7 @@ const props = defineProps<{
 const {
   activeTab, items, isLoading, selectedResearch, 
   currentPage, itemsPerPage, paginatedItems, totalPages, nextPage, prevPage,
-  deadlineModal, commentModal, isSendingComment, chatContainer,
+  deadlineModal, commentModal, isSendingComment,
   fetchData, handleAction, formatDate, getDaysLeft,
   openDeadlineModal, saveNewDeadline, openComments, postComment
 } = useApproval(props.currentUser)

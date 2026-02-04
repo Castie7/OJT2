@@ -51,6 +51,7 @@ export function useSettings(
       const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           user_id: user.id,
           name: profileForm.name,
@@ -87,6 +88,7 @@ export function useSettings(
       const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           user_id: user.id,
           current_password: passForm.current,

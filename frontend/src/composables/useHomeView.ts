@@ -10,6 +10,7 @@ export interface Research {
 }
 
 export interface Stat {
+  id?: string // Add unique identifier to prevent key conflicts
   title: string
   value: string | number
   color: string

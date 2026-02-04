@@ -31,7 +31,7 @@ export interface Research {
 export interface User {
   id: number
   name: string
-  role: 'admin' | 'user'
+  role: string
   email: string
 }
 

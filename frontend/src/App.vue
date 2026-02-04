@@ -34,6 +34,7 @@ onMounted(async () => {
       const response = await fetch(`${API_BASE_URL}/auth/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ token: token })
       });
       const data = await response.json();
@@ -64,7 +65,8 @@ const handleLogout = async () => {
       // ✅ FIXED: Uses API_BASE_URL
       await fetch(`${API_BASE_URL}/auth/logout`, { 
         method: 'POST',
-        headers: { 'Authorization': token }
+        headers: { 'Authorization': token },
+        credentials: 'include'
       });
     } catch (e) { console.error("Logout API failed", e); }
   }

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+ <script setup lang="ts">
 import { useHomeView, type User, type Stat } from '../composables/useHomeView'
 
 defineProps<{
@@ -97,7 +97,7 @@ const {
 
       <div class="absolute bottom-6 right-8 flex gap-2 z-30">
         <button 
-          v-for="(item, index) in recentResearches" 
+          v-for="(_, index) in recentResearches" 
           :key="index"
           @click="currentSlide = index"
           :class="`w-2 h-2 rounded-full transition-all duration-300 ${currentSlide === index ? 'w-8 bg-yellow-400' : 'bg-gray-500 hover:bg-gray-300'}`"

@@ -66,7 +66,6 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
         }
     } catch (e) {
         console.error("Stats Fetch Failed:", e)
-<<<<<<< HEAD
         
         // ✅ FIX: Check if elements exist before assigning
         if (stats.value[0]) {
@@ -80,10 +79,6 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
             stats.value[2].value = "Error"
             stats.value[2].color = "text-red-500"
         }
-=======
-        stats.value[0] = { id: 'stat-1', title: 'Connection Failed', value: '?', color: 'text-gray-400' }
-        stats.value[2] = { id: 'stat-3', title: 'Connection Failed', value: '?', color: 'text-gray-400' }
->>>>>>> dd203bd (joebama code)
     }
   }
 
@@ -92,16 +87,11 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   }, { immediate: true })
 
   const updateStats = (count: number) => { 
-<<<<<<< HEAD
     // ✅ FIX: Assign to a variable first to ensure it's not undefined
     const firstStat = stats.value[0]
     
     if (firstStat && firstStat.title === 'Total Researches') {
        firstStat.value = count 
-=======
-    if (stats.value.length > 0 && stats.value[0].title === 'Total Researches') {
-       stats.value[0].value = count 
->>>>>>> dd203bd (joebama code)
     }
   }
 

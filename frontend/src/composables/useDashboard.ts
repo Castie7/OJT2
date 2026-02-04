@@ -9,6 +9,7 @@ export interface User {
 }
 
 export interface Stat {
+  id?: string // Add unique identifier to prevent key conflicts
   title: string
   value: string | number
   color: string
@@ -21,9 +22,9 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   
   // Default Loading State
   const stats = ref<Stat[]>([
-      { title: 'Loading...', value: '...', color: 'text-gray-400' },
-      { title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
-      { title: 'Loading...', value: '...', color: 'text-gray-400' }
+      { id: 'stat-1', title: 'Loading...', value: '...', color: 'text-gray-400' },
+      { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
+      { id: 'stat-3', title: 'Loading...', value: '...', color: 'text-gray-400' }
   ])
 
   const setTab = (tab: string) => {
@@ -44,9 +45,9 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
             const data = await response.json()
             
             stats.value = [
-                { title: 'Total Researches', value: data.total, color: 'text-green-600', action: 'research' },
-                { title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' }, 
-                { title: 'Pending Reviews', value: data.pending, color: 'text-red-600', action: 'approval' }
+                { id: 'stat-1', title: 'Total Researches', value: data.total, color: 'text-green-600', action: 'research' },
+                { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' }, 
+                { id: 'stat-3', title: 'Pending Reviews', value: data.pending, color: 'text-red-600', action: 'approval' }
             ]
         } 
         // === RESEARCHER LOGIC ===
@@ -58,13 +59,14 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
             const data = await response.json()
 
             stats.value = [
-                { title: 'My Published Works', value: data.published, color: 'text-green-600', action: 'workspace' },
-                { title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
-                { title: 'My Pending Submissions', value: data.pending, color: 'text-orange-500', action: 'workspace' }
+                { id: 'stat-1', title: 'My Published Works', value: data.published, color: 'text-green-600', action: 'workspace' },
+                { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
+                { id: 'stat-3', title: 'My Pending Submissions', value: data.pending, color: 'text-orange-500', action: 'workspace' }
             ]
         }
     } catch (e) {
         console.error("Stats Fetch Failed:", e)
+<<<<<<< HEAD
         
         // ✅ FIX: Check if elements exist before assigning
         if (stats.value[0]) {
@@ -78,6 +80,10 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
             stats.value[2].value = "Error"
             stats.value[2].color = "text-red-500"
         }
+=======
+        stats.value[0] = { id: 'stat-1', title: 'Connection Failed', value: '?', color: 'text-gray-400' }
+        stats.value[2] = { id: 'stat-3', title: 'Connection Failed', value: '?', color: 'text-gray-400' }
+>>>>>>> dd203bd (joebama code)
     }
   }
 
@@ -86,11 +92,16 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   }, { immediate: true })
 
   const updateStats = (count: number) => { 
+<<<<<<< HEAD
     // ✅ FIX: Assign to a variable first to ensure it's not undefined
     const firstStat = stats.value[0]
     
     if (firstStat && firstStat.title === 'Total Researches') {
        firstStat.value = count 
+=======
+    if (stats.value.length > 0 && stats.value[0].title === 'Total Researches') {
+       stats.value[0].value = count 
+>>>>>>> dd203bd (joebama code)
     }
   }
 

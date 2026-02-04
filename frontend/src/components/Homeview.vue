@@ -28,7 +28,7 @@ const {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div 
             v-for="stat in stats" 
-            :key="stat.title" 
+            :key="stat.id || stat.title" 
             @click="stat.action ? emit('stat-click', stat.action) : null"
             :class="[
               'bg-white p-6 rounded-lg shadow border-l-4 transition-transform duration-200',

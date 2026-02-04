@@ -1,13 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { API_BASE_URL } from './apiConfig'
 import LoginForm from './components/LoginForm.vue'
 import Dashboard from './components/Dashboard.vue'
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Update this to match your backend folder
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
 
 const currentPage = ref('dashboard') 
 const currentUser = ref(null) 

@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Update this to match your backend folder
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 // Ideally, import your shared 'Research' interface here. 
 // For now, I'm using 'any', but you should replace it with your actual type.

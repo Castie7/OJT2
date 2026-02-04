@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useSubmittedResearches, type User } from '../composables/useSubmittedResearches' 
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 const props = defineProps<{
-    currentUser: User | null
-    isArchived: boolean
+  currentUser: User | null
+  isArchived: boolean
 }>()
 
 // 1. Define Emit for the parent to catch
@@ -13,23 +14,23 @@ const emit = defineEmits<{
 }>()
 
 const {
-    // State
-    myItems, // <--- Added this to search for items by ID
-    isLoading, searchQuery, 
-    selectedResearch, commentModal, isSendingComment,
-    chatContainer, confirmModal,
-    
-    // Computed
-    filteredItems, paginatedItems, currentPage, totalPages, itemsPerPage,
-    
-    // Methods
-    fetchData, nextPage, prevPage,
-    requestArchive, executeArchive, openComments, postComment,
-    
-    // Helpers
-    getDeadlineStatus, 
-    getArchiveDaysLeft,
-    formatSimpleDate
+  // State
+  myItems, // <--- Added this to search for items by ID
+  isLoading, searchQuery, 
+  selectedResearch, commentModal, isSendingComment,
+  chatContainer, confirmModal,
+  
+  // Computed
+  filteredItems, paginatedItems, currentPage, totalPages, itemsPerPage,
+  
+  // Methods
+  fetchData, nextPage, prevPage,
+  requestArchive, executeArchive, openComments, postComment,
+  
+  // Helpers
+  getDeadlineStatus, 
+  getArchiveDaysLeft,
+  formatSimpleDate
 } = useSubmittedResearches(props)
 
 // --- NEW: Handle Notification Click ---
@@ -259,7 +260,7 @@ defineExpose({ fetchData, openNotification })
                 <button @click="selectedResearch=null">&times;</button>
             </div>
             <div class="flex-1 bg-gray-100 p-4">
-                <iframe :src="`http://localhost:8080/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none"></iframe>
+                <iframe :src="`${API_BASE_URL}/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none"></iframe>
             </div>
         </div>
     </div>

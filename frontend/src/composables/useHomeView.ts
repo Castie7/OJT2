@@ -1,11 +1,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 // --- TYPE DEFINITIONS ---
 export interface Research {
   id: number
   title: string
   abstract: string
-  // Add other fields if needed for the slider
+  file_path?: string // ✅ Added for background image support
 }
 
 export interface Stat {
@@ -21,12 +22,6 @@ export interface User {
   role: string
 }
 
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Must match your other files
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
-
 export function useHomeView() {
   
   // --- STATE ---
@@ -37,7 +32,7 @@ export function useHomeView() {
   // --- API ---
   const fetchSliderData = async () => {
     try {
-      // ✅ FIXED: Uses the correct API URL
+      // ✅ Uses Centralized API_BASE_URL
       const response = await fetch(`${API_BASE_URL}/research`)
       
       if (response.ok) {

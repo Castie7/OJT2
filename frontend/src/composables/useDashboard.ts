@@ -1,4 +1,5 @@
 import { ref, watch, type Ref } from 'vue'
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 export interface User {
   id: number
@@ -13,12 +14,6 @@ export interface Stat {
   color: string
   action?: string 
 }
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Update this to match your useApproval.ts
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
 
 export function useDashboard(currentUserRef: Ref<User | null>) { 
   
@@ -42,7 +37,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     try {
         // === ADMIN LOGIC ===
         if (user.role === 'admin') {
-            // ✅ FIXED: Uses API_BASE_URL
+            // ✅ Uses Centralized API_BASE_URL
             const response = await fetch(`${API_BASE_URL}/research/stats`)
             if (!response.ok) throw new Error("API Error")
             
@@ -56,7 +51,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
         } 
         // === RESEARCHER LOGIC ===
         else {
-            // ✅ FIXED: Uses API_BASE_URL
+            // ✅ Uses Centralized API_BASE_URL
             const response = await fetch(`${API_BASE_URL}/research/user-stats/${user.id}`)
             if (!response.ok) throw new Error("API Error")
             
@@ -81,7 +76,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
 
   const updateStats = (count: number) => { 
     if (stats.value.length > 0 && stats.value[0].title === 'Total Researches') {
-        stats.value[0].value = count 
+       stats.value[0].value = count 
     }
   }
 

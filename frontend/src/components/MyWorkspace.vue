@@ -28,6 +28,7 @@ const handleViewResearch = (item: any) => {
 
 const handleSubmit = async () => {
   await submitResearch()
+  // Refresh the list after submission
   if (submissionsRef.value) {
     submissionsRef.value.fetchData()
   }
@@ -41,7 +42,7 @@ const openNotification = (id: number) => {
     }
 }
 
-// Expose the function to the parent
+// Expose the function to the parent (Dashboard.vue)
 defineExpose({ openNotification })
 </script>
 

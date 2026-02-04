@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue' // Ensure ref is imported
+import { ref } from 'vue' 
 import { useResearchLibrary, type User } from '../composables/useResearchLibrary'
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Update this to match your backend folder
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 const props = defineProps<{
   currentUser: User | null
@@ -24,7 +19,7 @@ const {
   formatSimpleDate
 } = useResearchLibrary(props.currentUser, emit)
 
-// --- NEW: Fullscreen Logic ---
+// --- Fullscreen Logic ---
 const pdfContainer = ref<HTMLElement | null>(null)
 
 const toggleFullscreen = () => {

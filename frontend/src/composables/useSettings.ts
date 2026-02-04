@@ -1,4 +1,5 @@
 import { ref, reactive, watch, type Ref } from 'vue'
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 export interface User {
   id: number
@@ -6,12 +7,6 @@ export interface User {
   email: string
   role: string
 }
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Must match your other files
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
 
 // 1. Add 'triggerLogout' to arguments
 export function useSettings(
@@ -52,7 +47,7 @@ export function useSettings(
     isProfileLoading.value = true
 
     try {
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,7 +83,7 @@ export function useSettings(
     isPasswordLoading.value = true
 
     try {
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,4 +1,5 @@
 import { ref, reactive, watch } from 'vue'
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 export interface User {
   id: number
@@ -29,12 +30,6 @@ export interface Research {
   rejected_at?: string
   archived_at?: string
 }
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Update this to match your other files
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
 
 export function useMyWorkspace(currentUser: User | null) {
   
@@ -183,7 +178,7 @@ export function useMyWorkspace(currentUser: User | null) {
     if (form.pdf_file) formData.append('pdf_file', form.pdf_file)
 
     try {
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       const url = form.id 
         ? `${API_BASE_URL}/research/update/${form.id}`
         : `${API_BASE_URL}/research/create`

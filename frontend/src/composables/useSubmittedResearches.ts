@@ -1,4 +1,5 @@
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 // --- TYPE DEFINITIONS ---
 export interface Research {
@@ -29,12 +30,6 @@ interface Comment {
   role: string
   comment: string
 }
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Must match your other files
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
 
 export function useSubmittedResearches(props: { currentUser: User | null, isArchived: boolean }) {
     
@@ -110,7 +105,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
     const fetchData = async () => {
         isLoading.value = true
         try {
-            // ✅ FIXED: Uses API_BASE_URL
+            // ✅ Uses Centralized API_BASE_URL
             const endpoint = props.isArchived 
                 ? `${API_BASE_URL}/research/my-archived` 
                 : `${API_BASE_URL}/research/my-submissions`
@@ -166,7 +161,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (!confirmModal.value.id) return
         confirmModal.value.isProcessing = true
         try {
-            // ✅ FIXED: Uses API_BASE_URL
+            // ✅ Uses Centralized API_BASE_URL
             const endpoint = props.isArchived 
                 ? `${API_BASE_URL}/research/restore/${confirmModal.value.id}` 
                 : `${API_BASE_URL}/research/archive/${confirmModal.value.id}`
@@ -186,7 +181,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
     const openComments = async (item: Research) => {
         commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
         try {
-            // ✅ FIXED: Uses API_BASE_URL
+            // ✅ Uses Centralized API_BASE_URL
             const res = await fetch(`${API_BASE_URL}/research/comments/${item.id}`, { headers: getHeaders() })
             if(res.ok) { 
                 commentModal.value.list = await res.json()
@@ -199,7 +194,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (isSendingComment.value || !commentModal.value.newComment.trim() || !props.currentUser) return
         isSendingComment.value = true
         try {
-            // ✅ FIXED: Uses API_BASE_URL
+            // ✅ Uses Centralized API_BASE_URL
             await fetch(`${API_BASE_URL}/api/comments`, {
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json', ...getHeaders() },
@@ -212,7 +207,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
                 })
             })
             
-            // ✅ FIXED: Uses API_BASE_URL
+            // ✅ Uses Centralized API_BASE_URL
             const refreshRes = await fetch(`${API_BASE_URL}/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
             commentModal.value.list = await refreshRes.json()
             commentModal.value.newComment = '' 
@@ -258,7 +253,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (editPdfFile.value) formData.append('pdf_file', editPdfFile.value)
 
         try {
-            // ✅ FIXED: Uses API_BASE_URL
+            // ✅ Uses Centralized API_BASE_URL
             const res = await fetch(`${API_BASE_URL}/research/update/${item.id}`, { method: 'POST', headers: getHeaders(), body: formData })
             await new Promise(r => setTimeout(r, 500)) 
             if (res.ok) { 

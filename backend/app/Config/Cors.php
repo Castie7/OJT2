@@ -4,51 +4,28 @@ namespace Config;
 
 use CodeIgniter\Config\BaseConfig;
 
-/**
- * Cross-Origin Resource Sharing (CORS) Configuration
- *
- * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
- */
 class Cors extends BaseConfig
 {
-    /**
-     * The default CORS configuration.
-     *
-     * @var array{
-     *      allowedOrigins: list<string>,
-     *      allowedOriginsPatterns: list<string>,
-     *      supportsCredentials: bool,
-     *      allowedHeaders: list<string>,
-     *      exposedHeaders: list<string>,
-     *      allowedMethods: list<string>,
-     *      maxAge: int,
-     *  }
-     */
     public array $default = [
-    /**
-     * Origins for the Access-Control-Allow-Origin header.
-     * This must match your Vue dev server URL.
-     */
-    'allowedOrigins' => ['http://localhost:5173'], 
+        /**
+         * --------------------------------------------------------------------------
+         * Allowed Origins
+         * --------------------------------------------------------------------------
+         * ✅ FIX: Change this to ['*'] to allow ALL devices (laptops, phones)
+         * to connect during development.
+         */
+        'allowedOrigins' => ['*'], 
 
-    'allowedOriginsPatterns' => [],
+        'allowedOriginsPatterns' => [],
 
-    'supportsCredentials' => false,
+        'supportsCredentials' => false,
 
-    /**
-     * Set headers to allow. 
-     * Using '*' is common for dev, or you can specify: ['Content-Type', 'Authorization']
-     */
-    'allowedHeaders' => ['*'], 
+        'allowedHeaders' => ['*'], 
 
-    'exposedHeaders' => [],
+        'exposedHeaders' => [],
 
-    /**
-     * Set methods to allow.
-     */
-    'allowedMethods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        'allowedMethods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 
-    'maxAge' => 7200,
+        'maxAge' => 7200,
     ];
-
 }

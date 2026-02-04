@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toRef, ref, onMounted, onUnmounted, computed, nextTick } from 'vue' 
 import { useDashboard, type User } from '../composables/useDashboard'
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Config
 
 // Import Sub-Components
 import HomeView from '../components/Homeview.vue'
@@ -8,7 +9,7 @@ import ResearchLibrary from '../components/ResearchLibrary.vue'
 import MyWorkspace from '../components/MyWorkspace.vue'
 import Approval from '../components/Approval.vue'
 import Settings from '../components/Settings.vue' 
-import ImportCsv from '../components/ImportCsv.vue' // ✅ Imported
+import ImportCsv from '../components/ImportCsv.vue' 
 
 const props = defineProps<{
   currentUser: User | null
@@ -19,12 +20,6 @@ const emit = defineEmits<{
   (e: 'logout-click'): void
   (e: 'update-user', user: User): void 
 }>()
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Update this to match your backend folder
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
 
 // --- Core Dashboard Logic ---
 const currentUserRef = toRef(props, 'currentUser')
@@ -56,6 +51,7 @@ const unreadCount = computed(() => {
 const fetchNotifications = async () => {
   if (!props.currentUser) return
   try {
+    // ✅ Uses centralized API_BASE_URL
     const response = await fetch(`${API_BASE_URL}/api/notifications?user_id=${props.currentUser.id}`)
     if (response.ok) {
       notifications.value = await response.json()
@@ -73,6 +69,7 @@ const toggleNotifications = async () => {
         // Optimistic update
         notifications.value.forEach(n => n.is_read = 1)
         
+        // ✅ Uses centralized API_BASE_URL
         await fetch(`${API_BASE_URL}/api/notifications/read`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },

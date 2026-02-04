@@ -1,10 +1,5 @@
 import { ref } from 'vue'
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Must match your other files
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 // Change only the type definition here:
 export function useLoginForm(emit: {
@@ -25,7 +20,7 @@ export function useLoginForm(emit: {
     message.value = ""
     
     try {
-      // ✅ FIXED: Uses the correct API URL
+      // ✅ Uses Centralized API_BASE_URL
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

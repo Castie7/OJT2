@@ -1,4 +1,5 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 export interface Research {
   id: number
@@ -23,15 +24,6 @@ interface Comment {
   comment: string
   created_at: string
 }
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Change this to your Computer's IP Address
-// If you are using XAMPP, it usually looks like this:
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-
-// If you are using "php spark serve", use this instead:
-// const API_BASE_URL = 'http://192.168.60.36:8080';
-// ---------------------------------------------------------------------------
 
 export function useApproval(currentUser: User | null) {
   
@@ -80,7 +72,7 @@ export function useApproval(currentUser: User | null) {
     isLoading.value = true
     items.value = [] 
     try {
-      // ✅ FIXED: Uses API_BASE_URL instead of localhost
+      // ✅ Uses Centralized API_BASE_URL
       const endpoint = activeTab.value === 'pending' 
         ? `${API_BASE_URL}/research/pending`
         : `${API_BASE_URL}/research/rejected`
@@ -107,7 +99,7 @@ export function useApproval(currentUser: User | null) {
       else if(action === 'reject') endpoint = 'reject'
       else if(action === 'restore') endpoint = 'restore'
 
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       await fetch(`${API_BASE_URL}/research/${endpoint}/${id}`, { 
         method: 'POST', headers: getHeaders()
       })
@@ -136,7 +128,7 @@ export function useApproval(currentUser: User | null) {
       const formData = new FormData() 
       formData.append('new_deadline', deadlineModal.value.newDate)
       
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       const res = await fetch(`${API_BASE_URL}/research/extend-deadline/${deadlineModal.value.id}`, {
         method: 'POST', headers: getHeaders(), body: formData
       })
@@ -150,7 +142,7 @@ export function useApproval(currentUser: User | null) {
   const openComments = async (item: Research) => {
     commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
     try {
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       const res = await fetch(`${API_BASE_URL}/research/comments/${item.id}`, { headers: getHeaders() })
       if(res.ok) { commentModal.value.list = await res.json(); scrollToBottom() }
     } catch (e) { console.error("Error loading comments") }
@@ -160,7 +152,7 @@ export function useApproval(currentUser: User | null) {
     if (isSendingComment.value || !commentModal.value.newComment.trim() || !currentUser) return
     isSendingComment.value = true 
     try {
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       await fetch(`${API_BASE_URL}/api/comments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...getHeaders() },
         body: JSON.stringify({ 
@@ -171,7 +163,7 @@ export function useApproval(currentUser: User | null) {
             comment: commentModal.value.newComment 
         })
       })
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       const refreshRes = await fetch(`${API_BASE_URL}/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
       commentModal.value.list = await refreshRes.json() 
       commentModal.value.newComment = ''

@@ -1,4 +1,5 @@
 import { ref, computed, watch, onMounted } from 'vue'
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 // --- 1. UPDATED INTERFACE (Matches your DB) ---
 export interface Research {
@@ -33,12 +34,6 @@ export interface User {
   role: 'admin' | 'user'
   email: string
 }
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Must match your other files
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
 
 export function useResearchLibrary(currentUser: User | null, emit: (event: 'update-stats', count: number) => void) {
   
@@ -89,7 +84,7 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
   const fetchResearches = async () => {
     isLoading.value = true
     try {
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       const endpoint = showArchived.value 
         ? `${API_BASE_URL}/research/archived` 
         : `${API_BASE_URL}/research`
@@ -166,7 +161,7 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
     if (!token) { showToast("Authentication Error", "error"); return }
 
     try {
-      // ✅ FIXED: Uses API_BASE_URL
+      // ✅ Uses Centralized API_BASE_URL
       const endpoint = confirmModal.value.action === 'Restore'
         ? `${API_BASE_URL}/research/restore/${confirmModal.value.id}`
         : `${API_BASE_URL}/research/archive/${confirmModal.value.id}`

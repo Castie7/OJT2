@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-
-// ---------------------------------------------------------------------------
-// ✅ CONFIGURATION: Update this to match your backend folder
-// ---------------------------------------------------------------------------
-const API_BASE_URL = 'http://192.168.60.36/OJT2/backend/public';
-// ---------------------------------------------------------------------------
+import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
 
 const emit = defineEmits<{
   (e: 'upload-success'): void
@@ -153,6 +148,7 @@ const uploadCsv = async () => {
     try {
         const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1]
 
+        // ✅ Uses centralized API_BASE_URL
         const response = await fetch(`${API_BASE_URL}/research/import-csv`, {
             method: 'POST',
             headers: { 'Authorization': token || '' },

@@ -1,12 +1,17 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import basicSsl from '@vitejs/plugin-basic-ssl' // ✅ 1. Import the plugin
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    basicSsl() // ✅ 2. Add it to the plugins list
+  ],
   server: {
-    host: true,        // 1. Exposes the server to your Wi-Fi network (0.0.0.0)
-    port: 5173,        // 2. Ensures the port stays consistent
-    strictPort: true,  // 3. Prevents Vite from switching ports if 5173 is busy
+    host: true,        // Exposes to Network (0.0.0.0)
+    port: 5173,        // Keeps port consistent
+    strictPort: true,  // Prevents port switching
+    // https: true     // (Optional) The plugin handles this automatically now
   },
 })

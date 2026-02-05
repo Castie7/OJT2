@@ -16,7 +16,7 @@ class App extends BaseConfig
      *
      * E.g., http://example.com/
      */
-    public string $baseURL = 'http://192.168.60.36/OJT2/public/';
+    public $baseURL = 'https://192.168.60.23/OJT2/backend/public/';
 
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.

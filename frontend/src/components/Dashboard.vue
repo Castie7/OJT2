@@ -9,7 +9,9 @@ import ResearchLibrary from '../components/ResearchLibrary.vue'
 import MyWorkspace from '../components/MyWorkspace.vue'
 import Approval from '../components/Approval.vue'
 import Settings from '../components/Settings.vue' 
-import ImportCsv from '../components/ImportCsv.vue' 
+import ImportCsv from '../components/ImportCsv.vue'
+// ✅ NEW: Import User Management
+import UserManagement from '../components/UserManagement.vue'
 
 const props = defineProps<{
   currentUser: User | null
@@ -51,7 +53,6 @@ const unreadCount = computed(() => {
 const fetchNotifications = async () => {
   if (!props.currentUser) return
   try {
-    // ✅ Uses centralized API_BASE_URL
     const response = await fetch(`${API_BASE_URL}/api/notifications?user_id=${props.currentUser.id}`)
     if (response.ok) {
       notifications.value = await response.json()
@@ -69,7 +70,6 @@ const toggleNotifications = async () => {
         // Optimistic update
         notifications.value.forEach(n => n.is_read = 1)
         
-        // ✅ Uses centralized API_BASE_URL
         await fetch(`${API_BASE_URL}/api/notifications/read`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
@@ -161,7 +161,7 @@ onUnmounted(() => {
                     <button 
                         @click="showAdminMenu = !showAdminMenu" 
                         @blur="closeAdminMenu"
-                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
+                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || currentTab === 'users' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
                     >
                         Admin Tools ▾
                     </button>
@@ -178,11 +178,13 @@ onUnmounted(() => {
                             
                             <div class="border-t border-gray-100 my-1"></div>
 
-                            <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
+                            <button 
+                                @click="setTab('users'); showAdminMenu = false" 
+                                class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
+                            >
                                 <div class="flex items-center gap-2">
-                                    <span>👥 Add/Reset Accounts</span>
+                                    <span>👥 User Management</span>
                                 </div>
-                                <span class="text-[9px] uppercase font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
                             </button>
 
                             <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
@@ -305,6 +307,10 @@ onUnmounted(() => {
       <ImportCsv 
         v-if="currentTab === 'import' && currentUser && currentUser.role === 'admin'"
         @upload-success="setTab('research')" 
+      />
+
+      <UserManagement 
+        v-if="currentTab === 'users' && currentUser && currentUser.role === 'admin'"
       />
 
       <Settings 

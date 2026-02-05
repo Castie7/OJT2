@@ -91,8 +91,6 @@ class AuthController extends BaseController
     // ------------------------------------------------------------------
     // 3. LOGOUT (Destroy Token)
     // ------------------------------------------------------------------
-    // ... inside AuthController class ...
-
     public function logout()
     {
         // 1. Handle CORS
@@ -118,7 +116,9 @@ class AuthController extends BaseController
         return $this->respond(['status' => 'success', 'message' => 'Logged out successfully']);
     }
 
-    // POST /auth/update-profile
+    // ------------------------------------------------------------------
+    // 4. UPDATE PROFILE
+    // ------------------------------------------------------------------
     public function updateProfile()
     {
         // 1. CORS & Preflight (Standard Setup)
@@ -190,4 +190,56 @@ class AuthController extends BaseController
     }
 
     // ------------------------------------------------------------------
+    // 5. REGISTER (Add New User)
+    // ------------------------------------------------------------------
+    public function register()
+    {
+        // 1. Handle CORS Manually
+        header("Access-Control-Allow-Origin: *");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+        header("Access-Control-Allow-Methods: POST, OPTIONS");
+        
+        if ($this->request->getMethod() === 'options') {
+            die();
+        }
+
+        // 2. Get JSON data
+        $json = $this->request->getJSON();
+
+        if (!$json) {
+            return $this->fail('No data provided', 400);
+        }
+
+        // 3. Validate Required Fields
+        if (!isset($json->email) || !isset($json->password) || !isset($json->name)) {
+            return $this->fail('Missing required fields (name, email, password)', 400);
+        }
+
+        $userModel = new UserModel();
+
+        // 4. Check if email already exists
+        if ($userModel->where('email', $json->email)->first()) {
+            return $this->failResourceExists('Email already in use');
+        }
+
+        // 5. Prepare Data
+        $data = [
+            'name'     => $json->name,
+            'email'    => $json->email,
+            'password' => password_hash($json->password, PASSWORD_DEFAULT), // 🔒 Hash Password
+            'role'     => $json->role ?? 'user', // Default to 'user' if not provided
+        ];
+
+        // 6. Insert into Database
+        try {
+            $userModel->insert($data);
+            
+            return $this->respondCreated([
+                'status'  => 'success',
+                'message' => 'User added successfully'
+            ]);
+        } catch (\Exception $e) {
+            return $this->failServerError('Failed to create user: ' . $e->getMessage());
+        }
+    }
 }

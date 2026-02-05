@@ -8,5 +8,13 @@ class UserModel extends Model
 {
     protected $table = 'users';
     protected $primaryKey = 'id';
-    protected $allowedFields = ['name', 'email', 'password', 'auth_token'];
+    
+    // ✅ FIX: Added 'role' here. 
+    // Without this, the role selected in Vue won't be saved!
+    protected $allowedFields = ['name', 'email', 'password', 'role', 'auth_token'];
+
+    // Optional: Use this if your table has 'created_at' and 'updated_at' columns
+    protected $useTimestamps = true;
+    protected $createdField  = 'created_at';
+    protected $updatedField  = 'updated_at';
 }

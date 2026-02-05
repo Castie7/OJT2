@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef, ref, onMounted, onUnmounted, computed, nextTick } from 'vue' 
+import { toRef, ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue' 
 import { useDashboard, type User } from '../composables/useDashboard'
 import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Config
 
@@ -9,9 +9,7 @@ import ResearchLibrary from '../components/ResearchLibrary.vue'
 import MyWorkspace from '../components/MyWorkspace.vue'
 import Approval from '../components/Approval.vue'
 import Settings from '../components/Settings.vue' 
-import ImportCsv from '../components/ImportCsv.vue'
-// ✅ NEW: Import User Management
-import UserManagement from '../components/UserManagement.vue'
+import ImportCsv from '../components/ImportCsv.vue' 
 
 const props = defineProps<{
   currentUser: User | null
@@ -45,6 +43,46 @@ const showNotifications = ref(false)
 const notifications = ref<any[]>([])
 const pollingInterval = ref<any>(null)
 
+// --- Notification sound (Web Audio API) ---
+let audioCtx: AudioContext | null = null
+const ensureAudioContext = () => {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)() } catch (e) { audioCtx = null }
+  }
+  return audioCtx
+}
+
+// Play a short "ding" sound. If `count` > 1, schedule multiple quick dings.
+const playNotificationSound = (count = 1) => {
+  const ctx = ensureAudioContext()
+  if (!ctx) return
+
+  // Resume suspended contexts (autoplay policy) if needed
+  if (ctx.state === 'suspended') {
+    void ctx.resume().catch(() => {})
+  }
+
+  const now = ctx.currentTime
+  const spacing = 0.18 // seconds between dings
+
+  for (let i = 0; i < count; i++) {
+    const o = ctx.createOscillator()
+    const g = ctx.createGain()
+    o.type = 'sine'
+    o.frequency.value = 1000
+    o.connect(g)
+    g.connect(ctx.destination)
+
+    const start = now + i * spacing
+    g.gain.setValueAtTime(0, start)
+    g.gain.linearRampToValueAtTime(0.28, start + 0.004)
+    g.gain.exponentialRampToValueAtTime(0.001, start + 0.14)
+
+    o.start(start)
+    o.stop(start + 0.16)
+  }
+}
+
 // Computed count
 const unreadCount = computed(() => {
   return notifications.value.filter(n => n.is_read == 0).length
@@ -53,6 +91,7 @@ const unreadCount = computed(() => {
 const fetchNotifications = async () => {
   if (!props.currentUser) return
   try {
+    // ✅ Uses centralized API_BASE_URL
     const response = await fetch(`${API_BASE_URL}/api/notifications?user_id=${props.currentUser.id}`)
     if (response.ok) {
       notifications.value = await response.json()
@@ -62,6 +101,21 @@ const fetchNotifications = async () => {
   }
 }
 
+// Track previous unread to detect increases (and play once per new notification)
+const prevUnread = ref<number>(0)
+const initialized = ref(false)
+
+watch(unreadCount, (newVal, oldVal) => {
+  if (!initialized.value) return
+
+  const prev = (typeof oldVal === 'number') ? oldVal : prevUnread.value || 0
+  const diff = newVal - prev
+  if (diff > 0) {
+    playNotificationSound(diff)
+  }
+  prevUnread.value = newVal
+})
+
 const toggleNotifications = async () => {
   showNotifications.value = !showNotifications.value
   
@@ -70,6 +124,7 @@ const toggleNotifications = async () => {
         // Optimistic update
         notifications.value.forEach(n => n.is_read = 1)
         
+        // ✅ Uses centralized API_BASE_URL
         await fetch(`${API_BASE_URL}/api/notifications/read`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
@@ -115,7 +170,11 @@ const formatTimeAgo = (dateString: string) => {
 }
 
 onMounted(() => {
-  fetchNotifications()
+  // Initial fetch then mark initialized to avoid firing sound on first load
+  fetchNotifications().then(() => {
+    prevUnread.value = unreadCount.value
+    initialized.value = true
+  })
   pollingInterval.value = setInterval(fetchNotifications, 10000)
 })
 
@@ -161,7 +220,7 @@ onUnmounted(() => {
                     <button 
                         @click="showAdminMenu = !showAdminMenu" 
                         @blur="closeAdminMenu"
-                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || currentTab === 'users' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
+                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
                     >
                         Admin Tools ▾
                     </button>
@@ -178,13 +237,11 @@ onUnmounted(() => {
                             
                             <div class="border-t border-gray-100 my-1"></div>
 
-                            <button 
-                                @click="setTab('users'); showAdminMenu = false" 
-                                class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
-                            >
+                            <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
                                 <div class="flex items-center gap-2">
-                                    <span>👥 User Management</span>
+                                    <span>👥 Add/Reset Accounts</span>
                                 </div>
+                                <span class="text-[9px] uppercase font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
                             </button>
 
                             <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
@@ -307,10 +364,6 @@ onUnmounted(() => {
       <ImportCsv 
         v-if="currentTab === 'import' && currentUser && currentUser.role === 'admin'"
         @upload-success="setTab('research')" 
-      />
-
-      <UserManagement 
-        v-if="currentTab === 'users' && currentUser && currentUser.role === 'admin'"
       />
 
       <Settings 

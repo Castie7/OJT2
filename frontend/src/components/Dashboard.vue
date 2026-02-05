@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { toRef, ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue' 
+import { toRef } from 'vue' 
 import { useDashboard, type User } from '../composables/useDashboard'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Config
 
 // Import Sub-Components
 import HomeView from '../components/Homeview.vue'
@@ -10,6 +9,7 @@ import MyWorkspace from '../components/MyWorkspace.vue'
 import Approval from '../components/Approval.vue'
 import Settings from '../components/Settings.vue' 
 import ImportCsv from '../components/ImportCsv.vue' 
+import UserManagement from '../components/UserManagement.vue'
 
 const props = defineProps<{
   currentUser: User | null
@@ -21,166 +21,21 @@ const emit = defineEmits<{
   (e: 'update-user', user: User): void 
 }>()
 
-// --- Core Dashboard Logic ---
+// --- Initialize Dashboard Logic ---
 const currentUserRef = toRef(props, 'currentUser')
-const { currentTab, stats, updateStats, setTab } = useDashboard(currentUserRef)
 
-// --- Component Refs (To access methods inside children) ---
-const workspaceRef = ref<any>(null)
-const approvalRef = ref<any>(null)
-
-// --- NEW: Admin Menu Logic ---
-const showAdminMenu = ref(false)
-// Close menu with a small delay so clicks register before blur
-const closeAdminMenu = () => { setTimeout(() => showAdminMenu.value = false, 200) }
+const { 
+  // State
+  currentTab, stats, workspaceRef, approvalRef, 
+  showAdminMenu, showNotifications, notifications, unreadCount,
+  // Actions
+  updateStats, setTab, closeAdminMenu, 
+  toggleNotifications, handleNotificationClick, formatTimeAgo
+} = useDashboard(currentUserRef)
 
 const handleUserUpdate = (updatedUser: User) => {
   emit('update-user', updatedUser)
 }
-
-// --- Notification Logic ---
-const showNotifications = ref(false)
-const notifications = ref<any[]>([])
-const pollingInterval = ref<any>(null)
-
-// --- Notification sound (Web Audio API) ---
-let audioCtx: AudioContext | null = null
-const ensureAudioContext = () => {
-  if (!audioCtx) {
-    try { audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)() } catch (e) { audioCtx = null }
-  }
-  return audioCtx
-}
-
-// Play a short "ding" sound. If `count` > 1, schedule multiple quick dings.
-const playNotificationSound = (count = 1) => {
-  const ctx = ensureAudioContext()
-  if (!ctx) return
-
-  // Resume suspended contexts (autoplay policy) if needed
-  if (ctx.state === 'suspended') {
-    void ctx.resume().catch(() => {})
-  }
-
-  const now = ctx.currentTime
-  const spacing = 0.18 // seconds between dings
-
-  for (let i = 0; i < count; i++) {
-    const o = ctx.createOscillator()
-    const g = ctx.createGain()
-    o.type = 'sine'
-    o.frequency.value = 1000
-    o.connect(g)
-    g.connect(ctx.destination)
-
-    const start = now + i * spacing
-    g.gain.setValueAtTime(0, start)
-    g.gain.linearRampToValueAtTime(0.28, start + 0.004)
-    g.gain.exponentialRampToValueAtTime(0.001, start + 0.14)
-
-    o.start(start)
-    o.stop(start + 0.16)
-  }
-}
-
-// Computed count
-const unreadCount = computed(() => {
-  return notifications.value.filter(n => n.is_read == 0).length
-})
-
-const fetchNotifications = async () => {
-  if (!props.currentUser) return
-  try {
-    // ✅ Uses centralized API_BASE_URL
-    const response = await fetch(`${API_BASE_URL}/api/notifications?user_id=${props.currentUser.id}`)
-    if (response.ok) {
-      notifications.value = await response.json()
-    }
-  } catch (error) {
-    console.error("Failed to fetch notifications", error)
-  }
-}
-
-// Track previous unread to detect increases (and play once per new notification)
-const prevUnread = ref<number>(0)
-const initialized = ref(false)
-
-watch(unreadCount, (newVal, oldVal) => {
-  if (!initialized.value) return
-
-  const prev = (typeof oldVal === 'number') ? oldVal : prevUnread.value || 0
-  const diff = newVal - prev
-  if (diff > 0) {
-    playNotificationSound(diff)
-  }
-  prevUnread.value = newVal
-})
-
-const toggleNotifications = async () => {
-  showNotifications.value = !showNotifications.value
-  
-  if (showNotifications.value && unreadCount.value > 0) {
-    try {
-        // Optimistic update
-        notifications.value.forEach(n => n.is_read = 1)
-        
-        // ✅ Uses centralized API_BASE_URL
-        await fetch(`${API_BASE_URL}/api/notifications/read`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: props.currentUser?.id })
-        })
-    } catch (e) { console.error(e) }
-  }
-}
-
-// --- CLICK HANDLER ---
-const handleNotificationClick = async (notif: any) => {
-    if (!notif.research_id) return
-    
-    showNotifications.value = false // Close dropdown
-
-    // 1. If User is Admin -> Go to Approval Tab
-    if (props.currentUser?.role === 'admin') {
-        setTab('approval')
-        await nextTick() 
-        if (approvalRef.value) {
-            approvalRef.value.openNotification(notif.research_id)
-        }
-    } 
-    // 2. If User is Student -> Go to Workspace Tab
-    else {
-        setTab('workspace')
-        await nextTick() 
-        if (workspaceRef.value) {
-            workspaceRef.value.openNotification(notif.research_id)
-        }
-    }
-}
-
-const formatTimeAgo = (dateString: string) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-  
-  if (diffInSeconds < 60) return 'Just now'
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
-  return date.toLocaleDateString()
-}
-
-onMounted(() => {
-  // Initial fetch then mark initialized to avoid firing sound on first load
-  fetchNotifications().then(() => {
-    prevUnread.value = unreadCount.value
-    initialized.value = true
-  })
-  pollingInterval.value = setInterval(fetchNotifications, 10000)
-})
-
-onUnmounted(() => {
-  if (pollingInterval.value) clearInterval(pollingInterval.value)
-})
 </script>
 
 <template>
@@ -220,14 +75,13 @@ onUnmounted(() => {
                     <button 
                         @click="showAdminMenu = !showAdminMenu" 
                         @blur="closeAdminMenu"
-                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
+                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || currentTab === 'users' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
                     >
                         Admin Tools ▾
                     </button>
 
                     <div v-if="showAdminMenu" class="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden text-sm z-50 animate-fade-in">
                         <div class="py-1">
-                            
                             <button 
                                 @click="setTab('import'); showAdminMenu = false"
                                 class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
@@ -237,11 +91,11 @@ onUnmounted(() => {
                             
                             <div class="border-t border-gray-100 my-1"></div>
 
-                            <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
-                                <div class="flex items-center gap-2">
-                                    <span>👥 Add/Reset Accounts</span>
-                                </div>
-                                <span class="text-[9px] uppercase font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
+                            <button 
+                                @click="setTab('users'); showAdminMenu = false"
+                                class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
+                            >
+                                👥 Add/Reset Accounts
                             </button>
 
                             <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
@@ -366,6 +220,10 @@ onUnmounted(() => {
         @upload-success="setTab('research')" 
       />
 
+      <UserManagement 
+        v-if="currentTab === 'users' && currentUser && currentUser.role === 'admin'"
+      />
+
       <Settings 
         v-if="currentTab === 'settings'"
         :currentUser="currentUser"
@@ -378,21 +236,3 @@ onUnmounted(() => {
 </template>
 
 <style scoped src="../assets/styles/Dashboard.css"></style>
-
-<style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1; 
-  border-radius: 4px;
-}
-</style>

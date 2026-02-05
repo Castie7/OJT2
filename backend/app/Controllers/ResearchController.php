@@ -239,6 +239,27 @@ class ResearchController extends BaseController
         ];
         $detailsModel->insert($detailsData);
 
+        // =========================================================
+        // ✅ FIX: NOTIFY ALL ADMINS (Loop through all admin users)
+        // =========================================================
+        $userModel = new UserModel();
+        $notifModel = new NotificationModel();
+        
+        // Find everyone with role 'admin'
+        $admins = $userModel->where('role', 'admin')->findAll();
+        
+        foreach ($admins as $admin) {
+            $notifModel->insert([
+                'user_id'     => $admin['id'], // Recipient (Admin)
+                'sender_id'   => $user['id'],  // Sender (Student)
+                'research_id' => $newResearchId,
+                'message'     => "New Submission: " . $title,
+                'is_read'     => 0,
+                'created_at'  => date('Y-m-d H:i:s')
+            ]);
+        }
+        // =========================================================
+
         return $this->respond(['status' => 'success']);
     }
 
@@ -468,17 +489,20 @@ class ResearchController extends BaseController
                     ]);
                 }
             } else {
-                $adminUser = $userModel->where('role', 'admin')->first();
-                $targetAdminId = $adminUser ? $adminUser['id'] : 1; 
-                if ($senderId != $targetAdminId) {
-                    $notifModel->insert([
-                        'user_id'     => $targetAdminId,
-                        'sender_id'   => $senderId,
-                        'research_id' => $researchId,
-                        'message'     => "New comment by {$json->user_name}",
-                        'is_read'     => 0,
-                        'created_at'  => date('Y-m-d H:i:s')
-                    ]);
+                // If student comments, notify ALL admins
+                $admins = $userModel->where('role', 'admin')->findAll();
+                foreach ($admins as $admin) {
+                     // Don't notify self if admin is somehow commenting as a student (rare edge case)
+                     if ($admin['id'] != $senderId) {
+                        $notifModel->insert([
+                            'user_id'     => $admin['id'],
+                            'sender_id'   => $senderId,
+                            'research_id' => $researchId,
+                            'message'     => "New comment by {$json->user_name}",
+                            'is_read'     => 0,
+                            'created_at'  => date('Y-m-d H:i:s')
+                        ]);
+                     }
                 }
             }
             return $this->respondCreated(['status' => 'success']);

@@ -1,7 +1,6 @@
-
 /* src/assets/styles/Dashboard.css */
 
-/* Navigation Bar Container */
+/* --- 1. Navigation Bar Container --- */
 .nav-container {
   max-width: 80rem; /* max-w-7xl */
   margin: 0 auto;
@@ -11,7 +10,7 @@
 @media (min-width: 640px) { .nav-container { padding: 0 1.5rem; } }
 @media (min-width: 1024px) { .nav-container { padding: 0 2rem; } }
 
-/* Logo Styles */
+/* --- 2. Logo Styles --- */
 .nav-logo-img {
   height: 3.75rem; /* h-15 */
   width: auto;
@@ -23,7 +22,7 @@
   transform: scale(1.05);
 }
 
-/* Navigation Links/Buttons */
+/* --- 3. Navigation Links/Buttons --- */
 .nav-btn {
   padding: 0.5rem 0.75rem; /* px-3 py-2 */
   border-radius: 0.375rem; /* rounded-md */
@@ -46,7 +45,7 @@
   background-color: #15803d; /* hover:bg-green-700 */
 }
 
-/* Action Buttons */
+/* --- 4. Action Buttons --- */
 .btn-logout {
   background-color: #dc2626; /* bg-red-600 */
   color: white;
@@ -91,4 +90,24 @@
 
 .btn-settings:hover {
     background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* --- 5. Animations (Moved from Dashboard.vue) --- */
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 6. Custom Scrollbar (Moved from Dashboard.vue) --- */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; 
+  border-radius: 4px;
 }

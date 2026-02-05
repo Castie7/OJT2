@@ -282,17 +282,3 @@ defineExpose({ fetchData, openNotification })
 </template>
 
 <style scoped src="../assets/styles/SubmittedResearches.css"></style>
-
-<style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-
-.message-enter-active { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.message-leave-active { transition: all 0.3s ease-in; }
-.message-enter-from { opacity: 0; transform: translateY(20px) scale(0.95); }
-.message-leave-to { opacity: 0; transform: translateY(-20px); }
-.message-move { transition: transform 0.4s ease; }
-
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-</style>

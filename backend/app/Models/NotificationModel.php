@@ -8,7 +8,13 @@ class NotificationModel extends Model
 {
     protected $table            = 'notifications';
     protected $primaryKey       = 'id';
+    
+    // ✅ Allowed Fields: Matches your controller logic
     protected $allowedFields    = ['user_id', 'sender_id', 'research_id', 'message', 'is_read', 'created_at'];
+    
     protected $returnType       = 'array';
-    protected $useTimestamps    = false; // We set created_at manually or via DB default
+    
+    // ⚠️ CRITICAL: Must be FALSE because your table has no 'updated_at' column.
+    // The controller manually sets 'created_at', which works perfectly with this.
+    protected $useTimestamps    = false; 
 }

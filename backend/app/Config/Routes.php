@@ -6,15 +6,21 @@ use CodeIgniter\Router\RouteCollection;
 $routes->get('/', 'Home::index');
 
 // --- AUTH ROUTES ---
-// ❌ REMOVED 'options'. Only use 'post' or 'get'.
 $routes->post('auth/login', 'AuthController::login');
 $routes->post('auth/verify', 'AuthController::verify');
 $routes->post('auth/logout', 'AuthController::logout');
 $routes->post('auth/update-profile', 'AuthController::updateProfile');
+$routes->post('auth/register', 'AuthController::register'); // ✅ Enables "Add User"
+
+// --- ADMIN ROUTES (New) ---
+// This connects your User Management page to the AdminController
+$routes->group('admin', function($routes) {
+    $routes->get('users', 'AdminController::index');            // Fetch User List
+    $routes->post('reset-password', 'AdminController::resetPassword'); // Reset User Password
+});
 
 // --- API ROUTES ---
 $routes->group('api', function($routes) {
-    // ❌ REMOVED 'options' here too
     $routes->get('notifications', 'NotificationController::index');
     $routes->post('notifications/read', 'NotificationController::markAsRead');
     $routes->post('comments', 'ResearchController::addComment');
@@ -27,7 +33,6 @@ $routes->group('research', function($routes) {
     $routes->get('user-stats/(:num)', 'ResearchController::userStats/$1');
     $routes->get('stats', 'ResearchController::stats');
     
-
     // Lists
     $routes->get('/', 'ResearchController::index'); 
     $routes->get('archived', 'ResearchController::archived'); 
@@ -47,7 +52,7 @@ $routes->group('research', function($routes) {
     $routes->post('extend-deadline/(:num)', 'ResearchController::extendDeadline/$1');
     $routes->post('archive/(:num)', 'ResearchController::archive/$1'); 
     $routes->post('restore/(:num)', 'ResearchController::restore/$1');
-    $routes->post('import-csv', 'ResearchController::importCsv'); // <--- ADD THIS
+    $routes->post('import-csv', 'ResearchController::importCsv'); 
 });
 
 // --------------------------------------------------------------------

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useSubmittedResearches, type User } from '../composables/useSubmittedResearches' 
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+
+// ✅ USE THE ENV VARIABLE
+// This automatically grabs the URL from your .env file
+const ASSET_URL = import.meta.env.VITE_BACKEND_URL
 
 const props = defineProps<{
   currentUser: User | null
@@ -15,7 +18,7 @@ const emit = defineEmits<{
 
 const {
   // State
-  myItems, // <--- Added this to search for items by ID
+  myItems, 
   isLoading, searchQuery, 
   selectedResearch, commentModal, isSendingComment,
   chatContainer, confirmModal,
@@ -33,7 +36,7 @@ const {
   formatSimpleDate
 } = useSubmittedResearches(props)
 
-// --- NEW: Handle Notification Click ---
+// --- Handle Notification Click ---
 const openNotification = async (researchId: number) => {
   // 1. Ensure data is loaded
   if (myItems.value.length === 0) {
@@ -134,8 +137,8 @@ defineExpose({ fetchData, openNotification })
 
               <td class="px-6 py-4 text-right flex justify-end gap-2">
                 <button v-if="item.status === 'approved' && !isArchived" @click.stop="selectedResearch = item" class="text-xs px-3 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 transition">View PDF</button>
+                
                 <template v-else>
-                  
                   <button 
                     v-if="!isArchived" 
                     @click.stop="emit('edit', item)" 
@@ -253,26 +256,38 @@ defineExpose({ fetchData, openNotification })
       </div>
     </Transition>
     
-    <div v-if="selectedResearch" class="modal-overlay">
-        <div class="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
-            <div class="bg-green-800 text-white p-4 flex justify-between">
-                <h2>{{ selectedResearch.title }}</h2>
-                <button @click="selectedResearch=null">&times;</button>
+    <div v-if="selectedResearch" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm p-4" @click.self="selectedResearch=null">
+        <div class="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="bg-green-800 text-white p-4 flex justify-between items-center">
+                <h2 class="font-bold text-lg">{{ selectedResearch.title }}</h2>
+                <button @click="selectedResearch=null" class="text-2xl font-bold hover:text-gray-300">&times;</button>
             </div>
-            <div class="flex-1 bg-gray-100 p-4">
-                <iframe :src="`${API_BASE_URL}/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none"></iframe>
+            <div class="flex-1 bg-gray-100 p-4 relative">
+                <iframe 
+                  :src="`${ASSET_URL}/uploads/${selectedResearch.file_path}`" 
+                  class="w-full h-full border-none bg-white rounded shadow-sm"
+                  title="PDF Viewer"
+                ></iframe>
             </div>
         </div>
     </div>
     
     <Transition name="pop">
-      <div v-if="confirmModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-        <div class="bg-white rounded-2xl p-6 text-center">
-          <h3>{{ confirmModal.title }}</h3>
-          <p class="text-sm text-gray-500 mb-4">{{ confirmModal.subtext }}</p>
-          <div class="flex gap-3 justify-center mt-4">
-            <button @click="confirmModal.show=false" class="px-4 py-2 bg-gray-100 rounded" :disabled="confirmModal.isProcessing">Cancel</button>
-            <button @click="executeArchive" class="px-4 py-2 bg-green-600 text-white rounded" :disabled="confirmModal.isProcessing">Yes</button>
+      <div v-if="confirmModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 text-center w-full max-w-sm shadow-2xl transform transition-all">
+          <div class="mb-4 text-5xl">{{ isArchived ? '♻️' : '🗑️' }}</div>
+          <h3 class="text-xl font-bold text-gray-900 mb-2">{{ confirmModal.title }}</h3>
+          <p class="text-gray-500 text-sm mb-6">{{ confirmModal.subtext }}</p>
+          <div class="flex gap-3 justify-center">
+            <button @click="confirmModal.show=false" class="px-5 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition" :disabled="confirmModal.isProcessing">Cancel</button>
+            <button 
+                @click="executeArchive" 
+                class="px-5 py-2 text-white font-bold rounded-lg shadow-lg transition" 
+                :class="isArchived ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'"
+                :disabled="confirmModal.isProcessing"
+            >
+                Yes, {{ isArchived ? 'Restore' : 'Archive' }}
+            </button>
           </div>
         </div>
       </div>

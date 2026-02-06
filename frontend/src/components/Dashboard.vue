@@ -22,15 +22,27 @@ const emit = defineEmits<{
 }>()
 
 // --- Initialize Dashboard Logic ---
+// We convert props to a ref so the composable can react to changes (e.g. login/logout)
 const currentUserRef = toRef(props, 'currentUser')
 
 const { 
   // State
-  currentTab, stats, workspaceRef, approvalRef, 
-  showAdminMenu, showNotifications, notifications, unreadCount,
+  currentTab, 
+  stats, 
+  workspaceRef, 
+  approvalRef, 
+  showAdminMenu, 
+  showNotifications, 
+  notifications, 
+  unreadCount,
+  
   // Actions
-  updateStats, setTab, closeAdminMenu, 
-  toggleNotifications, handleNotificationClick, formatTimeAgo
+  updateStats, 
+  setTab, 
+  closeAdminMenu, 
+  toggleNotifications, 
+  handleNotificationClick, 
+  formatTimeAgo
 } = useDashboard(currentUserRef)
 
 const handleUserUpdate = (updatedUser: User) => {
@@ -97,21 +109,6 @@ const handleUserUpdate = (updatedUser: User) => {
                             >
                                 👥 Add/Reset Accounts
                             </button>
-
-                            <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
-                                <div class="flex items-center gap-2">
-                                    <span>✏️ Edit Master List</span>
-                                </div>
-                                <span class="text-[9px] uppercase font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
-                            </button>
-
-                            <button disabled class="w-full text-left px-4 py-3 text-gray-400 cursor-not-allowed flex justify-between items-center hover:bg-gray-50">
-                                <div class="flex items-center gap-2">
-                                    <span>📜 Activity Logs</span>
-                                </div>
-                                <span class="text-[9px] uppercase font-bold bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
-                            </button>
-
                         </div>
                     </div>
                 </div>

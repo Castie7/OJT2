@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue' 
 import { useResearchLibrary, type User } from '../composables/useResearchLibrary'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+
+// ✅ USE THE ENV VARIABLE
+// This automatically grabs the URL from your .env file
+// Example: https://192.168.60.70/OJT2/backend/public
+const ASSET_URL = import.meta.env.VITE_BACKEND_URL
 
 const props = defineProps<{
   currentUser: User | null
@@ -229,7 +233,11 @@ const toggleFullscreen = () => {
                       </div>
                       
                       <div ref="pdfContainer" class="w-full bg-black rounded overflow-hidden shadow-lg h-[500px]">
-                         <iframe :src="`${API_BASE_URL}/uploads/${selectedResearch.file_path}`" class="w-full h-full border-none bg-white" title="PDF Preview"></iframe>
+                          <iframe 
+                             :src="`${ASSET_URL}/uploads/${selectedResearch.file_path}`" 
+                             class="w-full h-full border-none bg-white" 
+                             title="PDF Preview">
+                          </iframe>
                       </div>
                    </div>
 

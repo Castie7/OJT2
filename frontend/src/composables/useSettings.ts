@@ -1,5 +1,5 @@
 import { ref, reactive, watch, type Ref } from 'vue'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+import api from '../services/api' // ✅ Switch to Secure API Service
 
 export interface User {
   id: number
@@ -47,29 +47,29 @@ export function useSettings(
     isProfileLoading.value = true
 
     try {
-      // ✅ Uses Centralized API_BASE_URL
-      const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      // ✅ Use api.post()
+      // Automatically handles Base URL, CSRF Token, and Cookies
+      const response = await api.post('/auth/update-profile', {
           user_id: user.id,
           name: profileForm.name,
           email: profileForm.email
-        })
       })
 
-      const res = await response.json()
-      
-      if (response.ok) {
+      if (response.data.status === 'success') {
         alert("✅ Profile updated successfully! The page will now refresh.")
-        // FORCE PAGE RELOAD
+        // FORCE PAGE RELOAD to reflect changes in session
         window.location.reload()
       } else {
-        alert("❌ " + (res.message || "Failed"))
+        alert("❌ " + (response.data.message || "Failed"))
       }
-    } catch (e) { alert("Server Error") } 
-    finally { isProfileLoading.value = false }
+
+    } catch (error: any) {
+       console.error(error)
+       const msg = error.response?.data?.message || "Server Error"
+       alert("❌ " + msg)
+    } finally { 
+       isProfileLoading.value = false 
+    }
   }
 
   // --- ACTION 2: CHANGE PASSWORD -> LOGOUT ---
@@ -84,29 +84,28 @@ export function useSettings(
     isPasswordLoading.value = true
 
     try {
-      // ✅ Uses Centralized API_BASE_URL
-      const response = await fetch(`${API_BASE_URL}/auth/update-profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      // ✅ Use api.post()
+      const response = await api.post('/auth/update-profile', {
           user_id: user.id,
           current_password: passForm.current,
           new_password: passForm.new
-        })
       })
 
-      const res = await response.json()
-      
-      if (response.ok) {
+      if (response.data.status === 'success') {
         alert("✅ Password changed successfully! Please login again.")
         // TRIGGER LOGOUT
         triggerLogout()
       } else {
-        alert("❌ " + (res.message || "Failed"))
+        alert("❌ " + (response.data.message || "Failed"))
       }
-    } catch (e) { alert("Server Error") } 
-    finally { isPasswordLoading.value = false }
+
+    } catch (error: any) {
+       console.error(error)
+       const msg = error.response?.data?.message || "Server Error"
+       alert("❌ " + msg)
+    } finally { 
+       isPasswordLoading.value = false 
+    }
   }
 
   return { 

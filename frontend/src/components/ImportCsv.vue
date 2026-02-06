@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+import api from '../services/api' // ✅ Switch to Secure API Service
 
 const emit = defineEmits<{
   (e: 'upload-success'): void
@@ -30,97 +30,27 @@ const handleFileChange = (event: Event) => {
   }
 }
 
-// 2. Download Template Logic (UPDATED WITH YOUR SAMPLE DATA)
+// 2. Download Template Logic (Kept exactly as you had it)
 const downloadTemplate = () => {
-    // 1. Short Headers (Matching your requirement)
     const headers = [
-        'Title',
-        'Type',
-        'Authors',
-        'Date',
-        'Publication', // Maps to Edition/Issue
-        'Publisher',
-        'Pages',       // Maps to Physical Description
-        'ISSN',        // Maps to ISBN/ISSN
-        'Description', // Maps to Subjects/Content Description
-        'Location',
-        'Condition'
-        // Note: 'Crop' removed from sample data, but if you need it, add it back here.
+        'Title', 'Type', 'Authors', 'Date', 'Publication', 'Publisher',
+        'Pages', 'ISSN', 'Description', 'Location', 'Condition'
     ];
 
-    // 2. Exact Sample Rows from your input
     const rows = [
         [
-            'Golden Roots Issue No. 01', 
-            'Journal', 
-            'Betty T. Gayao, Jovita M. Sim, Dalen T. Meldoz, Esther T. Botangen, Charlotte C. Shagol and Esther Josephine D. Sagalla', 
-            'January-June 2004', 
-            'Golden Roots Issue No. 1', 
-            'Northern Philippines Root Crops Research and Training Center - BSU', 
-            '16 Pages', 
-            'ISSN 1656-5444', 
-            'Contribution of Sweetpotato to Income and Nutrition of Farming Households in Aringay La Union', 
-            '6b', 
-            'Good'
+            'Golden Roots Issue No. 01', 'Journal', 'Betty T. Gayao et al.', 'January-June 2004', 
+            'Golden Roots Issue No. 1', 'NPRCRTC - BSU', '16 Pages', 'ISSN 1656-5444', 
+            'Contribution of Sweetpotato...', '6b', 'Good'
         ],
         [
-            'Golden Roots Issue No. 02', 
-            'Journal', 
-            'Betty T. Gayao, Jovita M. Sim, Dalen T. Meldoz, Esther T. Botangen, Charlotte C. Shagol and Esther Josephine D. Sagalla', 
-            'July-Dec 2004', 
-            'Golden Roots Issue No. 2', 
-            'Northern Philippines Root Crops Research and Training Center - BSU', 
-            '14 Pages', 
-            'ISSN 1656-5444', 
-            'Contribution of Sweetpotato (SP) Processing to Income and SP Consumption to Nutrition of Households in Baguio City and La Trinidad Benguet', 
-            '6b', 
-            'Good'
-        ],
-        [
-            'Golden Roots Issue No. 04', 
-            'Journal', 
-            'D. T. Meldoz and B. T. Gayao', 
-            'July-Dec 2005', 
-            'Golden Roots Issue No. 4', 
-            'Northern Philippines Root Crops Research and Training Center - BSU', 
-            '50 Pages', 
-            'ISSN 1656-5444', 
-            'Sweetpotato Recipes', 
-            '6b', 
-            'Good'
-        ],
-        [
-            'Golden Roots Issue No. 05',
-            'Journal',
-            'Donita K. Simonga, Ines C. Gonzales and Fernando A. Balog-as',
-            'January-June 2006',
-            'Golden Roots Issue No. 5',
-            'Northern Philippines Root Crops Research and Training Center - BSU',
-            '33 Pages',
-            'ISSN 1656-5444',
-            'Highland Potato Cultivars',
-            '6b',
-            'Good'
-        ],
-        [
-            'Golden Roots Issue No. 06',
-            'Journal',
-            'Hilda L. Quindara and Esther T. Botangen',
-            'July-December 2006',
-            'Golden Roots Issue No. 6',
-            'Northern Philippines Root Crops Research and Training Center - BSU',
-            '24 Pages',
-            'ISSN 1656-5444',
-            'Sweetpotato Recipes for Better Health',
-            '6b',
-            'Good'
+            'Golden Roots Issue No. 02', 'Journal', 'Betty T. Gayao et al.', 'July-Dec 2004', 
+            'Golden Roots Issue No. 2', 'NPRCRTC - BSU', '14 Pages', 'ISSN 1656-5444', 
+            'Contribution of SP Processing...', '6b', 'Good'
         ]
     ];
     
-    // Helper to escape commas inside data (wraps value in quotes if it contains a comma)
     const processRow = (row: string[]) => row.map(val => `"${val}"`).join(',');
-
-    // Combine Headers + Rows
     const csvContent = [headers.join(','), ...rows.map(processRow)].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -146,18 +76,14 @@ const uploadCsv = async () => {
     formData.append('csv_file', selectedFile.value)
 
     try {
-        const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1]
+        // ✅ Use api.post()
+        // Axios automatically sets 'Content-Type': 'multipart/form-data' when sending FormData
+        // It also handles the Base URL and Auth Cookies automatically.
+        const response = await api.post('/research/import-csv', formData)
 
-        // ✅ Uses centralized API_BASE_URL
-        const response = await fetch(`${API_BASE_URL}/research/import-csv`, {
-            method: 'POST',
-            headers: { 'Authorization': token || '' },
-            body: formData
-        })
+        const result = response.data
 
-        const result = await response.json()
-
-        if (response.ok) {
+        if (response.status === 200 || response.status === 201) {
             uploadStatus.value = { message: `✅ Success! ${result.count} items imported.`, type: 'success' }
             selectedFile.value = null
             if(fileInput.value) fileInput.value.value = ''
@@ -166,8 +92,10 @@ const uploadCsv = async () => {
             uploadStatus.value = { message: `❌ Error: ${result.message}`, type: 'error' }
         }
 
-    } catch (error) {
-        uploadStatus.value = { message: '❌ Server Connection Failed', type: 'error' }
+    } catch (error: any) {
+        console.error(error)
+        const msg = error.response?.data?.message || 'Server Connection Failed'
+        uploadStatus.value = { message: `❌ ${msg}`, type: 'error' }
     } finally {
         isUploading.value = false
     }

@@ -1,17 +1,31 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import basicSsl from '@vitejs/plugin-basic-ssl' // ✅ 1. Import the plugin
+import fs from 'fs' // ✅ Import Node's file system module
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
-    basicSsl() // ✅ 2. Add it to the plugins list
+    // basicSsl() ❌ REMOVED: We use your custom mkcert files instead
   ],
   server: {
-    host: true,        // Exposes to Network (0.0.0.0)
+    host: true,        // ✅ Exposes to Network (0.0.0.0) so phone can connect
     port: 5173,        // Keeps port consistent
-    strictPort: true,  // Prevents port switching
-    // https: true     // (Optional) The plugin handles this automatically now
+    strictPort: true,  // Prevents port switching if 5173 is busy
+    
+    // ✅ USE YOUR TRUSTED CERTIFICATES
+    https: {
+      key: fs.readFileSync('./localhost-key.pem'),
+      cert: fs.readFileSync('./localhost.pem'),
+    },
+
+    // Optional: Proxy API requests to backend to avoid CORS issues locally
+    proxy: {
+      '/api': {
+        target: 'https://localhost', // or your backend URL
+        secure: false, // Accept backend's self-signed certs
+        changeOrigin: true
+      }
+    }
   },
 })

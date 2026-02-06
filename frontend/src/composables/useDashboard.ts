@@ -1,5 +1,5 @@
 import { ref, watch, computed, onMounted, onUnmounted, nextTick, type Ref } from 'vue'
-import { API_BASE_URL } from '../apiConfig'
+import api from '../services/api' // ✅ Switched to Secure API
 
 export interface User {
   id: number
@@ -22,6 +22,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   const currentTab = ref('home')
   
   // Child Component Refs (To access methods inside children)
+  // We use 'any' here for simplicity, or you could define the specific Component type
   const workspaceRef = ref<any>(null)
   const approvalRef = ref<any>(null)
 
@@ -53,39 +54,29 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     if (!user) return
 
     try {
+        let response;
+        // ✅ SECURE API CALLS (Cookies attached automatically)
         if (user.role === 'admin') {
-            const response = await fetch(`${API_BASE_URL}/research/stats`)
-            if (!response.ok) throw new Error("API Error")
-            const data = await response.json()
+            response = await api.get('/research/stats')
             
             stats.value = [
-                { id: 'stat-1', title: 'Total Researches', value: data.total, color: 'text-green-600', action: 'research' },
+                { id: 'stat-1', title: 'Total Researches', value: response.data.total, color: 'text-green-600', action: 'research' },
                 { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' }, 
-                { id: 'stat-3', title: 'Pending Reviews', value: data.pending, color: 'text-red-600', action: 'approval' }
+                { id: 'stat-3', title: 'Pending Reviews', value: response.data.pending, color: 'text-red-600', action: 'approval' }
             ]
         } else {
-            const response = await fetch(`${API_BASE_URL}/research/user-stats/${user.id}`)
-            if (!response.ok) throw new Error("API Error")
-            const data = await response.json()
-
+            response = await api.get(`/research/user-stats/${user.id}`)
+            
             stats.value = [
-                { id: 'stat-1', title: 'My Published Works', value: data.published, color: 'text-green-600', action: 'workspace' },
+                { id: 'stat-1', title: 'My Published Works', value: response.data.published, color: 'text-green-600', action: 'workspace' },
                 { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
-                { id: 'stat-3', title: 'My Pending Submissions', value: data.pending, color: 'text-orange-500', action: 'workspace' }
+                { id: 'stat-3', title: 'My Pending Submissions', value: response.data.pending, color: 'text-orange-500', action: 'workspace' }
             ]
         }
     } catch (e) {
         console.error("Stats Fetch Failed:", e)
-        if (stats.value[0]) {
-            stats.value[0].title = "Connection Failed"
-            stats.value[0].value = "Error"
-            stats.value[0].color = "text-red-500"
-        }
-        if (stats.value[2]) {
-            stats.value[2].title = "Connection Failed"
-            stats.value[2].value = "Error"
-            stats.value[2].color = "text-red-500"
-        }
+        stats.value[0] = { ...stats.value[0], title: "Connection Failed", value: "Error", color: "text-red-500" }
+        stats.value[2] = { ...stats.value[2], title: "Connection Failed", value: "Error", color: "text-red-500" }
     }
   }
 
@@ -139,10 +130,9 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     const user = currentUserRef.value
     if (!user) return
     try {
-        const response = await fetch(`${API_BASE_URL}/api/notifications?user_id=${user.id}`)
-        if (response.ok) {
-            notifications.value = await response.json()
-        }
+        // ✅ Secure API Call
+        const response = await api.get(`/api/notifications?user_id=${user.id}`)
+        notifications.value = response.data
     } catch (error) {
         console.error("Failed to fetch notifications", error)
     }
@@ -157,17 +147,17 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
             // Optimistic update
             notifications.value.forEach(n => n.is_read = 1)
             
-            await fetch(`${API_BASE_URL}/api/notifications/read`, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: user.id })
-            })
+            // ✅ Secure POST (Sends CSRF Token automatically)
+            await api.post('/api/notifications/read', { user_id: user.id })
         } catch (e) { console.error(e) }
     }
   }
 
   const handleNotificationClick = async (notif: any) => {
-    if (!notif.research_id) return
+    // Determine the ID: 'research_id' is standard, fallback to 'reference_id' if needed
+    const targetId = notif.research_id || notif.reference_id
+    if (!targetId) return
+
     showNotifications.value = false // Close dropdown
     const user = currentUserRef.value
 
@@ -176,7 +166,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
         setTab('approval')
         await nextTick() 
         if (approvalRef.value) {
-            approvalRef.value.openNotification(notif.research_id)
+            approvalRef.value.openNotification(targetId)
         }
     } 
     // 2. If User is Student -> Go to Workspace Tab
@@ -184,7 +174,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
         setTab('workspace')
         await nextTick() 
         if (workspaceRef.value) {
-            workspaceRef.value.openNotification(notif.research_id)
+            workspaceRef.value.openNotification(targetId)
         }
     }
   }
@@ -202,7 +192,6 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
 
   // --- 6. WATCHERS & LIFECYCLE ---
 
-  // Watch for User Changes to fetch stats
   watch(currentUserRef, (newUser) => {
      if (newUser) {
         fetchDashboardStats()
@@ -213,7 +202,6 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
      }
   }, { immediate: true })
 
-  // Watch for Notification Count (Sound Effect)
   watch(unreadCount, (newVal, oldVal) => {
     if (!initialized.value) return
     const prev = (typeof oldVal === 'number') ? oldVal : prevUnread.value || 0
@@ -225,7 +213,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   })
 
   onMounted(() => {
-    // Poll for notifications every 10 seconds
+    // Poll every 10 seconds
     pollingInterval.value = setInterval(fetchNotifications, 10000)
   })
 
@@ -233,25 +221,8 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     if (pollingInterval.value) clearInterval(pollingInterval.value)
   })
 
-  // --- RETURN EVERYTHING ---
   return { 
-    // State
-    currentTab, 
-    stats, 
-    workspaceRef, 
-    approvalRef,
-    showAdminMenu,
-    showNotifications,
-    notifications,
-    unreadCount,
-
-    // Actions
-    setTab, 
-    updateStats, 
-    fetchDashboardStats,
-    closeAdminMenu,
-    toggleNotifications,
-    handleNotificationClick,
-    formatTimeAgo
+    currentTab, stats, workspaceRef, approvalRef, showAdminMenu, showNotifications, notifications, unreadCount,
+    setTab, updateStats, fetchDashboardStats, closeAdminMenu, toggleNotifications, handleNotificationClick, formatTimeAgo
   }
 }

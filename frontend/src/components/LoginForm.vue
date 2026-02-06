@@ -8,6 +8,7 @@ const emit = defineEmits<{
 }>()
 
 // 2. Use Composable
+// (Logic regarding API calls, CSRF tokens, and state is handled inside this composable)
 const { 
   email, 
   password, 
@@ -31,8 +32,8 @@ const {
       <div class="p-8">
         
         <div class="text-center mb-8">
-          <div class="h-20 w-20 bg-green-100 rounded-full mx-auto flex items-center justify-center shadow-inner mb-4 border-2 border-yellow-400">
-            <span class="text-4xl">🌿</span>
+          <div class="h-20 w-20 bg-green-100 rounded-full mx-auto flex items-center justify-center shadow-inner mb-4 border-2 border-yellow-400 overflow-hidden">
+             <img src="/logo.png" alt="Logo" class="h-16 w-auto object-contain" />
           </div>
           <h2 class="text-3xl font-bold text-green-900 tracking-tight">Research Portal</h2>
           <p class="text-sm text-green-600 font-medium uppercase tracking-wide mt-1">BSU RootCrops Research</p>

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+
+// ✅ USE THE ENV VARIABLE
+// This automatically grabs the URL from your .env file
+const ASSET_URL = import.meta.env.VITE_BACKEND_URL
 
 // Ideally, import your shared 'Research' interface here. 
 // For now, I'm using 'any', but you should replace it with your actual type.
@@ -45,6 +48,7 @@ const toggleFullscreen = () => {
         </div>
 
         <div class="flex-1 overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
+           
            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
              
              <div class="bg-white p-5 rounded-lg border shadow-sm space-y-3">
@@ -56,9 +60,9 @@ const toggleFullscreen = () => {
                     <span class="text-gray-500">ISBN/ISSN:</span> <span class="col-span-2 font-mono text-gray-600">{{ research.isbn_issn || '-' }}</span>
                     <span class="text-gray-500">Description:</span> <span class="col-span-2">{{ research.physical_description || '-' }}</span>
                  </div>
-              </div>
+             </div>
 
-              <div class="bg-white p-5 rounded-lg border shadow-sm space-y-3">
+             <div class="bg-white p-5 rounded-lg border shadow-sm space-y-3">
                  <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">📍 Location & Topic</h3>
                  <div class="grid grid-cols-3 gap-2 text-sm">
                     <span class="text-gray-500">Shelf Loc:</span> <span class="col-span-2 font-mono font-bold text-green-700 text-lg">{{ research.shelf_location || 'Unknown' }}</span>
@@ -66,13 +70,14 @@ const toggleFullscreen = () => {
                     <span class="text-gray-500">Crop:</span> <span class="col-span-2 text-amber-600 font-medium">{{ research.crop_variation || 'General' }}</span>
                     <span class="text-gray-500">Subjects:</span> <span class="col-span-2 italic text-gray-600">{{ research.subjects || 'No keywords' }}</span>
                  </div>
-              </div>
+             </div>
            </div>
 
            <div v-if="research.file_path || research.link" class="bg-blue-50 p-4 rounded-lg border border-blue-100">
               <h3 class="font-bold text-blue-900 mb-3 flex items-center gap-2">🌐 Digital Access</h3>
               
               <div class="flex flex-wrap gap-4">
+                
                 <div v-if="research.file_path" class="w-full">
                    <div class="flex justify-between items-center mb-2">
                       <p class="text-xs text-blue-600 font-bold uppercase">Attached Document:</p>
@@ -80,10 +85,16 @@ const toggleFullscreen = () => {
                         ⛶ Full Screen
                       </button>
                    </div>
+                   
                    <div ref="pdfContainer" class="w-full bg-black rounded overflow-hidden shadow-lg h-[500px]">
-                      <iframe :src="`${API_BASE_URL}/uploads/${research.file_path}`" class="w-full h-full border-none bg-white" title="PDF Preview"></iframe>
+                      <iframe 
+                        :src="`${ASSET_URL}/uploads/${research.file_path}`" 
+                        class="w-full h-full border-none bg-white" 
+                        title="PDF Preview">
+                      </iframe>
                    </div>
                 </div>
+
                 <div v-if="research.link" class="w-full mt-2">
                    <a :href="research.link" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow hover:bg-blue-700 transition">
                       <span>🔗 Open External Link / Website</span>
@@ -91,6 +102,7 @@ const toggleFullscreen = () => {
                 </div>
               </div>
            </div>
+           
            <div v-else class="text-center py-8 text-gray-400 italic bg-white rounded border border-dashed">
               No digital copy available for this item.
            </div>

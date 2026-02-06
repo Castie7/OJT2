@@ -1,6 +1,7 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+import api from '../services/api' // ✅ Switch to Secure API Service
 
+// --- TYPES ---
 export interface Research {
   id: number
   title: string
@@ -27,6 +28,7 @@ interface Comment {
 
 export function useApproval(currentUser: User | null) {
   
+  // --- STATE ---
   const activeTab = ref<'pending' | 'rejected'>('pending')
   const items = ref<Research[]>([])
   const isLoading = ref(false)
@@ -35,17 +37,16 @@ export function useApproval(currentUser: User | null) {
   const currentPage = ref(1)
   const itemsPerPage = 10
 
+  // Modals
   const deadlineModal = ref({ show: false, id: null as number | null, title: '', currentDate: '', newDate: '' })
   const commentModal = ref({ show: false, researchId: null as number | null, title: '', list: [] as Comment[], newComment: '' })
   const isSendingComment = ref(false)
   const chatContainer = ref<HTMLElement | null>(null)
 
-  const getHeaders = () => {
-    const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1]
-    return { 'Authorization': token || '' }
-  }
+  // --- HELPERS ---
+  
+  // (Removed getHeaders() because api.ts handles it automatically)
 
-  // --- Date Formatter ---
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'No Date'
     return new Date(dateString).toLocaleDateString('en-US', { 
@@ -68,22 +69,27 @@ export function useApproval(currentUser: User | null) {
     return diffDays > 0 ? diffDays : 0
   }
 
+  // --- API ACTIONS ---
+
   const fetchData = async () => {
     isLoading.value = true
     items.value = [] 
     try {
-      // ✅ Uses Centralized API_BASE_URL
+      // ✅ Use api.get()
+      // The service handles the Base URL automatically
       const endpoint = activeTab.value === 'pending' 
-        ? `${API_BASE_URL}/research/pending`
-        : `${API_BASE_URL}/research/rejected`
+        ? '/research/pending'
+        : '/research/rejected'
 
-      const response = await fetch(endpoint, { headers: getHeaders() })
-      if (response.ok) {
-        items.value = await response.json()
-        currentPage.value = 1 
-      }
-    } catch (error) { console.error("Error fetching data:", error) } 
-    finally { isLoading.value = false }
+      const response = await api.get(endpoint)
+      items.value = response.data
+      currentPage.value = 1 
+      
+    } catch (error) { 
+      console.error("Error fetching data:", error) 
+    } finally { 
+      isLoading.value = false 
+    }
   }
 
   const handleAction = async (id: number, action: 'approve' | 'reject' | 'restore') => {
@@ -99,13 +105,14 @@ export function useApproval(currentUser: User | null) {
       else if(action === 'reject') endpoint = 'reject'
       else if(action === 'restore') endpoint = 'restore'
 
-      // ✅ Uses Centralized API_BASE_URL
-      await fetch(`${API_BASE_URL}/research/${endpoint}/${id}`, { 
-        method: 'POST', headers: getHeaders()
-      })
+      // ✅ Use api.post()
+      await api.post(`/research/${endpoint}/${id}`)
+      
       alert(`Action ${action} successful!`)
       fetchData() 
-    } catch (error) { alert("Action failed") }
+    } catch (error) { 
+      alert("Action failed") 
+    }
   }
 
   const paginatedItems = computed(() => {
@@ -118,58 +125,68 @@ export function useApproval(currentUser: User | null) {
   const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
   const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
 
+  // --- DEADLINE LOGIC ---
   const openDeadlineModal = (item: Research) => {
     deadlineModal.value = { show: true, id: item.id, title: item.title, currentDate: item.deadline_date, newDate: item.deadline_date }
   }
 
   const saveNewDeadline = async () => {
-    if (!deadlineModal.value.newDate) return
+    if (!deadlineModal.value.newDate || !deadlineModal.value.id) return
     try {
       const formData = new FormData() 
       formData.append('new_deadline', deadlineModal.value.newDate)
       
-      // ✅ Uses Centralized API_BASE_URL
-      const res = await fetch(`${API_BASE_URL}/research/extend-deadline/${deadlineModal.value.id}`, {
-        method: 'POST', headers: getHeaders(), body: formData
-      })
-      if (res.ok) { alert("Deadline Updated!"); deadlineModal.value.show = false; fetchData(); } 
-      else { alert("Failed to update.") }
-    } catch (e) { alert("Server Error") }
+      // ✅ Use api.post() with FormData
+      await api.post(`/research/extend-deadline/${deadlineModal.value.id}`, formData)
+      
+      alert("Deadline Updated!")
+      deadlineModal.value.show = false
+      fetchData()
+    } catch (e) { 
+      alert("Server Error: Failed to update deadline.") 
+    }
   }
 
+  // --- COMMENTS LOGIC ---
   const scrollToBottom = () => { nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight }) }
 
   const openComments = async (item: Research) => {
     commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
     try {
-      // ✅ Uses Centralized API_BASE_URL
-      const res = await fetch(`${API_BASE_URL}/research/comments/${item.id}`, { headers: getHeaders() })
-      if(res.ok) { commentModal.value.list = await res.json(); scrollToBottom() }
-    } catch (e) { console.error("Error loading comments") }
+      // ✅ Use api.get()
+      const res = await api.get(`/research/comments/${item.id}`)
+      commentModal.value.list = res.data
+      scrollToBottom()
+    } catch (e) { 
+      console.error("Error loading comments") 
+    }
   }
 
   const postComment = async () => {
     if (isSendingComment.value || !commentModal.value.newComment.trim() || !currentUser) return
     isSendingComment.value = true 
     try {
-      // ✅ Uses Centralized API_BASE_URL
-      await fetch(`${API_BASE_URL}/api/comments`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...getHeaders() },
-        body: JSON.stringify({ 
-            research_id: commentModal.value.researchId, 
-            user_id: currentUser.id, 
-            user_name: currentUser.name, 
-            role: 'admin', 
-            comment: commentModal.value.newComment 
-        })
+      // ✅ Use api.post()
+      // Automatically adds JSON headers and CSRF token
+      await api.post('/api/comments', { 
+          research_id: commentModal.value.researchId, 
+          user_id: currentUser.id, 
+          user_name: currentUser.name, 
+          role: 'admin', 
+          comment: commentModal.value.newComment 
       })
-      // ✅ Uses Centralized API_BASE_URL
-      const refreshRes = await fetch(`${API_BASE_URL}/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
-      commentModal.value.list = await refreshRes.json() 
+
+      // Refresh comments
+      const refreshRes = await api.get(`/research/comments/${commentModal.value.researchId}`)
+      commentModal.value.list = refreshRes.data 
       commentModal.value.newComment = ''
       scrollToBottom()
-    } catch (e: any) { alert("Failed: " + e.message) } 
-    finally { isSendingComment.value = false }
+      
+    } catch (e: any) { 
+      alert("Failed: " + (e.response?.data?.message || e.message)) 
+    } finally { 
+      isSendingComment.value = false 
+    }
   }
 
   onMounted(() => fetchData())

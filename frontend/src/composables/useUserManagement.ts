@@ -1,11 +1,10 @@
 import { ref, reactive, onMounted } from 'vue'
-import { API_BASE_URL } from '../apiConfig'
+import api from '../services/api' // ✅ Switch to Secure central API
 
 export interface User {
   id: number
   name: string
   email: string
-  // ✅ FIX 1: Update type definition to match database
   role: 'admin' | 'user' 
   created_at: string
 }
@@ -23,15 +22,8 @@ export function useUserManagement() {
     name: '',
     email: '',
     password: '',
-    // ✅ FIX 2: Change default from 'student' to 'user'
     role: 'user' as 'admin' | 'user' 
   })
-
-  // --- HELPERS ---
-  const getHeaders = () => {
-    const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1]
-    return { 'Authorization': token || '' }
-  }
 
   // --- ACTIONS ---
 
@@ -39,10 +31,9 @@ export function useUserManagement() {
   const fetchUsers = async () => {
     isLoading.value = true
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/users`, { headers: getHeaders() })
-      if (response.ok) {
-        users.value = await response.json()
-      }
+      // ✅ Axios automatically handles baseURL and auth cookies
+      const response = await api.get('/admin/users')
+      users.value = response.data
     } catch (error) {
       console.error("Fetch error:", error)
     } finally {
@@ -59,32 +50,30 @@ export function useUserManagement() {
 
     isSubmitting.value = true
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getHeaders() },
-        body: JSON.stringify(form)
+      // ✅ Uses central API POST with CSRF protection
+      const response = await api.post('/auth/register', {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role
       })
 
-      const result = await response.json()
-
-      if (response.ok) {
+      if (response.data.status === 'success' || response.status === 200) {
         alert("✅ User added successfully!")
         
         // Reset Form
         form.name = ''
         form.email = ''
         form.password = ''
-        form.role = 'user' // ✅ FIX 3: Reset to 'user' (not student)
+        form.role = 'user'
         
         showAddForm.value = false
         fetchUsers() // Refresh list
-      } else {
-        alert("❌ Error: " + (result.message || "Failed to create user"))
       }
-    } catch (error) {
-      // 💡 Tip: This alerts you if the error persists
+    } catch (error: any) {
       console.error(error)
-      alert("❌ Server Error: Likely due to Database/Role mismatch. Check console logs.") 
+      const msg = error.response?.data?.message || "Failed to create user"
+      alert("❌ Error: " + msg) 
     } finally {
       isSubmitting.value = false
     }
@@ -101,19 +90,18 @@ export function useUserManagement() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getHeaders() },
-        body: JSON.stringify({ user_id: userId, new_password: newPass })
+      // ✅ Endpoints updated to use the secure axios instance
+      const response = await api.post('/admin/reset-password', { 
+        user_id: userId, 
+        new_password: newPass 
       })
 
-      if (response.ok) {
+      if (response.status === 200) {
         alert(`✅ Password for ${userName} has been reset.`)
-      } else {
-        alert("❌ Failed to reset password.")
       }
-    } catch (error) {
-      alert("❌ Server Connection Error")
+    } catch (error: any) {
+      console.error(error)
+      alert("❌ Failed to reset password. Check admin permissions.")
     }
   }
 

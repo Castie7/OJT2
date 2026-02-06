@@ -4,7 +4,13 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "types": ["vite/client"],
 
-    /* Linting */
+    /* ✅ ADDED: Path Aliases Configuration */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    /* Linting (Preserved your settings) */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

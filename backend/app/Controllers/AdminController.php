@@ -13,20 +13,22 @@ class AdminController extends BaseController
     // GET /admin/users
     public function index()
     {
-        // 1. Handle CORS
-        header("Access-Control-Allow-Origin: *");
-        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-        header("Access-Control-Allow-Methods: GET, OPTIONS");
-
-        if ($this->request->getMethod() === 'options') {
-            die();
+        // 🔒 SECURITY CHECK: Strict Admin Only
+        // We check the session because we are using cookies
+        if (session()->get('role') !== 'admin') {
+             return $this->failForbidden('Access Denied: Admins only.');
         }
+
+        // ❌ REMOVED: Manual CORS headers
+        // The Global App\Filters\Cors handles this safely now.
 
         // 2. Fetch Users
         $userModel = new UserModel();
         
         // Select specific fields (security best practice: don't send passwords)
-        $users = $userModel->select('id, name, email, role, created_at')->findAll();
+        $users = $userModel->select('id, name, email, role, created_at')
+                           ->orderBy('created_at', 'DESC')
+                           ->findAll();
 
         return $this->respond($users);
     }
@@ -34,14 +36,12 @@ class AdminController extends BaseController
     // POST /admin/reset-password
     public function resetPassword()
     {
-        // 1. Handle CORS
-        header("Access-Control-Allow-Origin: *");
-        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-        header("Access-Control-Allow-Methods: POST, OPTIONS");
-        
-        if ($this->request->getMethod() === 'options') {
-            die();
+        // 🔒 SECURITY CHECK
+        if (session()->get('role') !== 'admin') {
+             return $this->failForbidden('Access Denied');
         }
+
+        // ❌ REMOVED: Manual CORS headers
 
         $json = $this->request->getJSON();
         
@@ -50,6 +50,12 @@ class AdminController extends BaseController
         }
 
         $userModel = new UserModel();
+        
+        // Verify user exists first
+        if (!$userModel->find($json->user_id)) {
+            return $this->failNotFound('User not found');
+        }
+
         $userModel->update($json->user_id, [
             'password' => password_hash($json->new_password, PASSWORD_DEFAULT)
         ]);

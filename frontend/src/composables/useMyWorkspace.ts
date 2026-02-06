@@ -1,5 +1,5 @@
 import { ref, reactive, watch } from 'vue'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+import api from '../services/api' // ✅ Switch to Secure API Service
 
 export interface User {
   id: number
@@ -36,7 +36,7 @@ export function useMyWorkspace(currentUser: User | null) {
   const activeTab = ref<'submitted' | 'archived'>('submitted')
   const isModalOpen = ref(false)
   const isSubmitting = ref(false)
-  const isLoading = ref(false) // Added loading state
+  const isLoading = ref(false) 
   const myResearches = ref<Research[]>([])
 
   // FORM STATE
@@ -60,31 +60,22 @@ export function useMyWorkspace(currentUser: User | null) {
     pdf_file: null as File | null
   })
 
-  // --- HELPERS ---
-  const getHeaders = () => {
-    const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1]
-    return { 'Authorization': token || '' }
-  }
-
   // --- ACTIONS ---
 
-  // 1. FETCH DATA (Added this!)
+  // 1. FETCH DATA
   const fetchMyResearches = async () => {
     isLoading.value = true
     try {
+        // ✅ Use api.get()
         const endpoint = activeTab.value === 'archived' 
-            ? `${API_BASE_URL}/research/my-archived`
-            : `${API_BASE_URL}/research/my-submissions`;
+            ? '/research/my-archived'
+            : '/research/my-submissions';
 
-        const response = await fetch(endpoint, { headers: getHeaders() });
+        const response = await api.get(endpoint);
+        myResearches.value = response.data;
         
-        if (response.ok) {
-            myResearches.value = await response.json();
-        } else {
-            console.error("Failed to fetch data");
-        }
     } catch (e) {
-        console.error("Network Error", e);
+        console.error("Failed to fetch data", e);
     } finally {
         isLoading.value = false;
     }
@@ -98,7 +89,7 @@ export function useMyWorkspace(currentUser: User | null) {
   // 2. OPEN FOR NEW SUBMISSION
   const openSubmitModal = () => {
     Object.assign(form, {
-      id: null, // Null ID means Create Mode
+      id: null, 
       title: '', author: '', crop_variation: '', 
       start_date: '', deadline_date: '',
       knowledge_type: 'Research Paper',
@@ -110,10 +101,10 @@ export function useMyWorkspace(currentUser: User | null) {
     isModalOpen.value = true
   }
 
-  // 3. OPEN FOR EDITING (Pre-fill Data)
+  // 3. OPEN FOR EDITING
   const openEditModal = (item: Research) => {
     Object.assign(form, {
-      id: item.id, // ID exists means Update Mode
+      id: item.id, 
       title: item.title,
       author: item.author,
       crop_variation: item.crop_variation || '',
@@ -129,7 +120,7 @@ export function useMyWorkspace(currentUser: User | null) {
       shelf_location: item.shelf_location || '',
       item_condition: item.item_condition || 'Good',
       link: item.link || '',
-      pdf_file: null // Reset file input
+      pdf_file: null 
     })
     isModalOpen.value = true
   }
@@ -151,9 +142,9 @@ export function useMyWorkspace(currentUser: User | null) {
     form.pdf_file = file
   }
 
-  const submitResearch = async () => {
-    if (!form.title.trim()) { alert("⚠️ Title is required."); return }
-    if (!form.author.trim()) { alert("⚠️ Author is required."); return }
+  const submitResearch = async (): Promise<boolean> => {
+    if (!form.title.trim()) { alert("⚠️ Title is required."); return false }
+    if (!form.author.trim()) { alert("⚠️ Author is required."); return false }
 
     isSubmitting.value = true
     const formData = new FormData()
@@ -178,39 +169,30 @@ export function useMyWorkspace(currentUser: User | null) {
     if (form.pdf_file) formData.append('pdf_file', form.pdf_file)
 
     try {
-      // ✅ Uses Centralized API_BASE_URL
+      // ✅ Use api.post()
       const url = form.id 
-        ? `${API_BASE_URL}/research/update/${form.id}`
-        : `${API_BASE_URL}/research/create`
+        ? `/research/update/${form.id}`
+        : `/research/create`
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: formData
-      })
+      await api.post(url, formData)
       
-      const result = await res.json()
+      alert(form.id ? "✅ Success! Research Updated." : "✅ Success! Research Submitted.")
+      isModalOpen.value = false
+      return true // Indicate success
 
-      if (res.ok) {
-        alert(form.id ? "✅ Success! Research Updated." : "✅ Success! Research Submitted.")
-        isModalOpen.value = false
-        fetchMyResearches() // ✅ Refresh list after submit
-      } else {
-        // ✅ IMPROVED ERROR HANDLING for Duplicates
-        let msg = "Action Failed";
-        
-        if (result.messages) {
-            // Convert { title: "Error" } object to string
-            msg = Object.values(result.messages).join('\n');
-        } else if (result.message) {
-            msg = result.message;
-        }
-
-        alert("❌ Error:\n" + msg)
-      }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert("❌ Server Error.")
+      
+      // ✅ Improved Error Handling
+      let msg = "Action Failed";
+      if (error.response?.data?.messages) {
+          msg = Object.values(error.response.data.messages).join('\n');
+      } else if (error.response?.data?.message) {
+          msg = error.response.data.message;
+      }
+
+      alert("❌ Error:\n" + msg)
+      return false // Indicate failure
     } finally {
       isSubmitting.value = false
     }
@@ -219,11 +201,11 @@ export function useMyWorkspace(currentUser: User | null) {
   return {
     activeTab,
     myResearches,
-    isLoading, // Export loading state
+    isLoading, 
     isModalOpen,
     isSubmitting,
     form,
-    fetchMyResearches, // Export fetch function
+    fetchMyResearches, 
     openSubmitModal,
     openEditModal, 
     submitResearch,

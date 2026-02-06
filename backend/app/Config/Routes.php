@@ -3,17 +3,43 @@
 use CodeIgniter\Router\RouteCollection;
 
 /** @var RouteCollection $routes */
+
+// --------------------------------------------------------------------
+// 1. GLOBAL OPTIONS HANDLER (CORS PREFLIGHT) - MUST BE FIRST
+// --------------------------------------------------------------------
+// This intercepts the browser's "Check" before sending data.
+$routes->options('(:any)', function() {
+    $response = service('response');
+    
+    // ✅ FIX: Use your specific Frontend IP, NOT '*'
+    $response->setHeader('Access-Control-Allow-Origin', 'https://192.168.60.70:5173');
+    
+    // ✅ FIX: Allow Cookies/Credentials
+    $response->setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    $response->setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    $response->setHeader('Access-Control-Allow-Headers', 'X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, Authorization, X-CSRF-TOKEN');
+    
+    return $response->setStatusCode(200);
+});
+
+// --------------------------------------------------------------------
+// 2. APP ROUTES
+// --------------------------------------------------------------------
+
 $routes->get('/', 'Home::index');
 
 // --- AUTH ROUTES ---
 $routes->post('auth/login', 'AuthController::login');
-$routes->post('auth/verify', 'AuthController::verify');
+
+// ✅ CHANGED: Set to 'get' because App.vue fetches this on load
+$routes->get('auth/verify', 'AuthController::verify'); 
+
 $routes->post('auth/logout', 'AuthController::logout');
 $routes->post('auth/update-profile', 'AuthController::updateProfile');
-$routes->post('auth/register', 'AuthController::register'); // ✅ Enables "Add User"
+$routes->post('auth/register', 'AuthController::register');
 
-// --- ADMIN ROUTES (New) ---
-// This connects your User Management page to the AdminController
+// --- ADMIN ROUTES ---
 $routes->group('admin', function($routes) {
     $routes->get('users', 'AdminController::index');            // Fetch User List
     $routes->post('reset-password', 'AdminController::resetPassword'); // Reset User Password
@@ -53,16 +79,4 @@ $routes->group('research', function($routes) {
     $routes->post('archive/(:num)', 'ResearchController::archive/$1'); 
     $routes->post('restore/(:num)', 'ResearchController::restore/$1');
     $routes->post('import-csv', 'ResearchController::importCsv'); 
-});
-
-// --------------------------------------------------------------------
-// ✅ THE CATCH-ALL (This MUST be the only place handling OPTIONS)
-// --------------------------------------------------------------------
-$routes->options('(:any)', function() {
-    $response = service('response');
-    $response->setHeader('Access-Control-Allow-Origin', '*');
-    $response->setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
-    $response->setHeader('Access-Control-Allow-Headers', 'X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, Authorization');
-    
-    return $response->setStatusCode(200);
 });

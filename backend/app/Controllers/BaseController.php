@@ -12,9 +12,7 @@ use Psr\Log\LoggerInterface;
  * and performing functions that are needed by all your controllers.
  *
  * Extend this class in any new controllers:
- * ```
- *     class Home extends BaseController
- * ```
+ * class Home extends BaseController
  *
  * For security, be sure to declare any new methods as protected or private.
  */
@@ -34,26 +32,16 @@ abstract class BaseController extends Controller
     {
         // Load here all helpers you want to be available in your controllers that extend BaseController.
         // Caution: Do not put the this below the parent::initController() call below.
-        // $this->helpers = ['form', 'url'];
+        $this->helpers = ['form', 'url']; // ✅ Added commonly used helpers
 
         // Caution: Do not edit this line.
         parent::initController($request, $response, $logger);
 
         // Preload any models, libraries, etc, here.
-        // $this->session = service('session');
+        // $this->session = \Config\Services::session();
     }
-
-    /**
-     * CORS Helper - Sets CORS headers for API responses
-     */
-    protected function handleCors()
-    {
-        if (isset($_SERVER['HTTP_ORIGIN'])) {
-            header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
-            header('Access-Control-Allow-Credentials: true');
-        }
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
-        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-        header('Access-Control-Max-Age: 86400');
-    }
+    
+    // ❌ REMOVED: handleCors()
+    // We deleted this method to prevent it from conflicting with 
+    // the global App\Filters\Cors.php which now handles security safely.
 }

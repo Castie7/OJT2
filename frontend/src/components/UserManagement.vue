@@ -1,12 +1,11 @@
 <script setup lang="ts">
-// ✅ Import Logic from Composables
+// ✅ Logic is now moved to Composable
 import { useUserManagement } from '../composables/useUserManagement'
-
 
 // Initialize Logic
 const { 
   users, isLoading, isSubmitting, showAddForm, form, 
-  fetchUsers, addUser, resetPassword 
+  addUser, resetPassword 
 } = useUserManagement()
 </script>
 
@@ -33,14 +32,14 @@ const {
         </div>
 
         <div class="um-input-group">
-          <label class="um-label">Password</label>
-          <input v-model="form.password" type="password" class="um-input" placeholder="Initial Password" />
+          <label class="um-label">Initial Password</label>
+          <input v-model="form.password" type="password" class="um-input" placeholder="••••••••" />
         </div>
 
         <div class="um-input-group">
           <label class="um-label">Role</label>
           <select v-model="form.role" class="um-select">
-            <option value="user">User</option>
+            <option value="user">User (Student/Faculty)</option>
             <option value="admin">Admin</option>
           </select>
         </div>
@@ -67,7 +66,9 @@ const {
         </thead>
         <tbody>
           <tr v-if="isLoading">
-            <td colspan="5" style="text-align: center; padding: 20px;">Loading users...</td>
+            <td colspan="5" style="text-align: center; padding: 20px;">
+              <span class="animate-pulse">Loading user directory...</span>
+            </td>
           </tr>
 
           <tr v-else-if="users.length === 0">
@@ -76,7 +77,7 @@ const {
 
           <tr v-else v-for="user in users" :key="user.id">
             <td>#{{ user.id }}</td>
-            <td style="font-weight: 500;">{{ user.name }}</td>
+            <td style="font-weight: 600; color: #1a202c;">{{ user.name }}</td>
             <td>{{ user.email }}</td>
             <td>
               <span :class="['um-badge', `role-${user.role}`]">

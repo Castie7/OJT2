@@ -19,6 +19,8 @@ const {
   handleFileChange
 } = useMyWorkspace(props.currentUser)
 
+// Reference to the child component (the list of researches)
+// This allows us to call methods inside SubmittedResearches.vue
 const submissionsRef = ref<InstanceType<typeof SubmittedResearches> | null>(null)
 const selectedResearch = ref(null)
 
@@ -27,22 +29,25 @@ const handleViewResearch = (item: any) => {
 }
 
 const handleSubmit = async () => {
-  await submitResearch()
-  // Refresh the list after submission
-  if (submissionsRef.value) {
-    submissionsRef.value.fetchData()
+  const success = await submitResearch()
+  if (success) {
+      // Refresh the list after a successful submission
+      if (submissionsRef.value) {
+        submissionsRef.value.fetchData()
+      }
   }
 }
 
-// --- NEW: Handle Notification Click from Dashboard ---
+// --- HANDLE NOTIFICATION CLICKS ---
+// This is called by Dashboard.vue when a user clicks a notification
 const openNotification = (id: number) => {
-    // Pass the ID down to the inner component (SubmittedResearches.vue)
+    // Pass the ID down to the inner component to open the comments
     if (submissionsRef.value) {
         submissionsRef.value.openNotification(id)
     }
 }
 
-// Expose the function to the parent (Dashboard.vue)
+// Expose this function to the parent (Dashboard.vue)
 defineExpose({ openNotification })
 </script>
 

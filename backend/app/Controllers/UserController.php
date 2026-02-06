@@ -9,32 +9,35 @@ class UserController extends ResourceController
 {
     use \CodeIgniter\API\ResponseTrait;
 
-    private function handleCors() {
-        header('Access-Control-Allow-Origin: *');
-        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-        if ($_SERVER['REQUEST_METHOD'] == "OPTIONS") {
-            header("HTTP/1.1 200 OK");
-            exit();
-        }
-    }
+    // ❌ REMOVED: handleCors()
+    // Your App\Filters\Cors.php handles this globally.
+    // Keeping "Access-Control-Allow-Origin: *" here breaks the Secure Cookie login.
 
     public function index()
     {
-        $this->handleCors();
+        // 🔒 SECURITY CHECK: Admins Only
+        if (session()->get('role') !== 'admin') {
+             return $this->failForbidden('Access Denied: Admins only.');
+        }
 
         $role = $this->request->getGet('role');
-
         $model = new UserModel();
+        
         try {
             if ($role) {
-                $data = $model->where('role', $role)->select('id, name, role')->findAll();
+                // Return users filtered by role
+                $data = $model->where('role', $role)
+                              ->select('id, name, email, role, created_at') // Added useful fields
+                              ->findAll();
             } else {
-                $data = $model->select('id, name, role')->findAll();
+                // Return all users
+                $data = $model->select('id, name, email, role, created_at')
+                              ->findAll();
             }
             return $this->respond($data);
+            
         } catch (\Exception $e) {
-            return $this->fail($e->getMessage());
+            return $this->failServerError($e->getMessage());
         }
     }
 }

@@ -1,26 +1,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+import api from '../services/api' // ✅ Switch to your secure Axios instance
 
 // --- TYPE DEFINITIONS ---
 export interface Research {
   id: number
   title: string
   abstract: string
-  file_path?: string // ✅ Added for background image support
-}
-
-export interface Stat {
-  id?: string // Add unique identifier to prevent key conflicts
-  title: string
-  value: string | number
-  color: string
-  action?: string 
-}
-
-export interface User {
-  id: number
-  name: string
-  role: string
+  file_path?: string 
 }
 
 export function useHomeView() {
@@ -33,16 +19,16 @@ export function useHomeView() {
   // --- API ---
   const fetchSliderData = async () => {
     try {
-      // ✅ Uses Centralized API_BASE_URL
-      const response = await fetch(`${API_BASE_URL}/research`)
+      // ✅ Use api.get() instead of fetch()
+      // No need for "API_BASE_URL" - the service handles it.
+      const response = await api.get('/research')
       
-      if (response.ok) {
-        const data = await response.json()
-        // Take top 5 for the slider
-        recentResearches.value = data.slice(0, 5)
-      }
+      // Axios returns data directly in .data
+      // Take top 5 for the slider
+      recentResearches.value = response.data.slice(0, 5)
+      
     } catch (e) {
-      console.error("Failed to load slider data")
+      console.error("Failed to load slider data", e)
     }
   }
 

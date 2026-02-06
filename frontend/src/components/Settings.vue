@@ -4,15 +4,17 @@ import { useSettings, type User } from '../composables/useSettings'
 
 const props = defineProps<{ currentUser: User | null }>()
 
-// 1. Define the new emit
+// 1. Define Emits
 const emit = defineEmits<{ 
   (e: 'update-user', user: User): void
   (e: 'trigger-logout'): void 
 }>()
 
+// Create a reactive reference to the prop so the composable can watch it
 const currentUserRef = toRef(props, 'currentUser') 
 
-// 2. Pass the logout callback
+// 2. Use Composable
+// We pass callbacks so the composable can trigger parent events
 const { 
   profileForm, passForm, 
   isProfileLoading, isPasswordLoading,
@@ -20,8 +22,8 @@ const {
   showCurrentPass, showNewPass
 } = useSettings(
     currentUserRef, 
-    (u) => emit('update-user', u), // Update Callback
-    () => emit('trigger-logout')   // Logout Callback
+    (u) => emit('update-user', u), // Success Callback: Update Parent State
+    () => emit('trigger-logout')   // Success Callback: Logout User
 )
 </script>
 
@@ -77,8 +79,8 @@ const {
 
     <div class="settings-card border-t-4 border-t-yellow-500">
       <div class="settings-header">
-         <h3 class="text-xl font-bold text-gray-800">🔒 Security Zone</h3>
-         <p class="text-sm text-gray-500">Update your password securely.</p>
+          <h3 class="text-xl font-bold text-gray-800">🔒 Security Zone</h3>
+          <p class="text-sm text-gray-500">Update your password securely.</p>
       </div>
       
       <div class="settings-body">

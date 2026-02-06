@@ -1,11 +1,34 @@
-// src/apiConfig.ts
+// src/services/api.ts
 
-// 1. Get the IP address or hostname from the browser's current URL
-const currentHost = window.location.hostname;
+import axios, { type InternalAxiosRequestConfig } from 'axios';
 
-// 2. Define your Backend path
-const BACKEND_PATH = '/OJT2/backend/public';
+const api = axios.create({
+  baseURL: 'https://192.168.60.70/OJT2/backend/public/index.php',
+  withCredentials: true, 
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+});
 
-// 3. Construct the dynamic URL
-// 🔒 UPDATED: Changed 'http' to 'https' to match your secure backend
-export const API_BASE_URL = `https://${currentHost}${BACKEND_PATH}`;
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  
+  // 1. Try to get token from Cookie
+  const match = document.cookie.match(new RegExp('(^| )csrf_cookie_name=([^;]+)'));
+  let token = match ? match[2] : null;
+
+  // 2. Fallback: Check LocalStorage if cookie is blocked
+  if (!token) {
+    token = localStorage.getItem('csrf_token_backup');
+  }
+
+  if (token && config.headers) {
+    config.headers['X-CSRF-TOKEN'] = token;
+  }
+
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+export default api;

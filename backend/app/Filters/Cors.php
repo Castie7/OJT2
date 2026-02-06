@@ -1,25 +1,36 @@
 <?php namespace App\Filters;
 
+use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
-use CodeIgniter\Filters\FilterInterface;
 
 class Cors implements FilterInterface
 {
     public function before(RequestInterface $request, $arguments = null)
     {
-        header("Access-Control-Allow-Origin: *");
+        // ---------------------------------------------------------------------
+        // 1. DEFINE ALLOWED ORIGIN
+        // ---------------------------------------------------------------------
+        // This must match your Vite frontend URL exactly.
+        $origin = 'https://192.168.60.70:5173';
+
+        // ---------------------------------------------------------------------
+        // 2. SET HEADERS MANUALLY
+        // ---------------------------------------------------------------------
+        // We use raw header() calls to ensure they are sent regardless of what CI4 does later.
+        header("Access-Control-Allow-Origin: {$origin}");
         header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
-        header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, Authorization");
-        
+        header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, Authorization, X-CSRF-TOKEN");
+        header("Access-Control-Allow-Credentials: true"); // Required for Cookies
+        header("Access-Control-Max-Age: 3600"); // Cache this permission for 1 hour (Speed boost)
+
         // ---------------------------------------------------------------------
-        // ✅ FIX: Use "strtoupper" to ensure we catch 'OPTIONS' or 'options'
+        // 3. HANDLE PREFLIGHT (OPTIONS)
         // ---------------------------------------------------------------------
-        $method = strtoupper($_SERVER['REQUEST_METHOD']);
-        
-        if ($method === 'OPTIONS') {
+        // If this is an OPTIONS request, exit immediately so CSRF doesn't block it.
+        if ($request->getMethod(true) === 'OPTIONS') {
             header("HTTP/1.1 200 OK");
-            exit(); // KILL THE SCRIPT. Do not let CodeIgniter continue.
+            exit(); 
         }
     }
 

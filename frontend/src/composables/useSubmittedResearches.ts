@@ -1,5 +1,5 @@
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+import api from '../services/api' // ✅ Secure API Service
 
 // --- TYPE DEFINITIONS ---
 export interface Research {
@@ -66,11 +66,6 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
     })
 
     // --- HELPERS ---
-    const getHeaders = () => {
-        const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1]
-        return { 'Authorization': token || '' }
-    }
-
     const getDeadlineStatus = (deadline?: string) => {
         if (!deadline) return null
         const today = new Date()
@@ -105,19 +100,22 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
     const fetchData = async () => {
         isLoading.value = true
         try {
-            // ✅ Uses Centralized API_BASE_URL
+            // ✅ Use api.get()
+            // The service handles Base URL and Cookies automatically
             const endpoint = props.isArchived 
-                ? `${API_BASE_URL}/research/my-archived` 
-                : `${API_BASE_URL}/research/my-submissions`
+                ? '/research/my-archived' 
+                : '/research/my-submissions'
             
-            const response = await fetch(endpoint, { headers: getHeaders() })
-            if (response.ok) {
-                myItems.value = await response.json()
-                currentPage.value = 1 
-                searchQuery.value = ''
-            }
-        } catch (error) { console.error("Error fetching items:", error) } 
-        finally { isLoading.value = false }
+            const response = await api.get(endpoint)
+            myItems.value = response.data
+            currentPage.value = 1 
+            searchQuery.value = ''
+            
+        } catch (error) { 
+            console.error("Error fetching items:", error) 
+        } finally { 
+            isLoading.value = false 
+        }
     }
 
     // --- SEARCH & PAGINATION ---
@@ -161,32 +159,31 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (!confirmModal.value.id) return
         confirmModal.value.isProcessing = true
         try {
-            // ✅ Uses Centralized API_BASE_URL
+            // ✅ Use api.post()
             const endpoint = props.isArchived 
-                ? `${API_BASE_URL}/research/restore/${confirmModal.value.id}` 
-                : `${API_BASE_URL}/research/archive/${confirmModal.value.id}`
+                ? `/research/restore/${confirmModal.value.id}` 
+                : `/research/archive/${confirmModal.value.id}`
 
-            const response = await fetch(endpoint, { method: 'POST', headers: getHeaders() })
-            if (response.ok) {
-                confirmModal.value.show = false
-                fetchData() 
-            } else {
-                alert("Action Failed.")
-            }
-        } catch (e) { alert("Network Error") } 
-        finally { confirmModal.value.isProcessing = false }
+            await api.post(endpoint)
+            
+            confirmModal.value.show = false
+            fetchData() 
+            
+        } catch (e) { 
+            alert("Action Failed.") 
+        } finally { 
+            confirmModal.value.isProcessing = false 
+        }
     }
 
     // --- COMMENTS ---
     const openComments = async (item: Research) => {
         commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
         try {
-            // ✅ Uses Centralized API_BASE_URL
-            const res = await fetch(`${API_BASE_URL}/research/comments/${item.id}`, { headers: getHeaders() })
-            if(res.ok) { 
-                commentModal.value.list = await res.json()
-                nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight })
-            }
+            // ✅ Use api.get()
+            const res = await api.get(`/research/comments/${item.id}`)
+            commentModal.value.list = res.data
+            nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight })
         } catch (e) {}
     }
 
@@ -194,26 +191,26 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (isSendingComment.value || !commentModal.value.newComment.trim() || !props.currentUser) return
         isSendingComment.value = true
         try {
-            // ✅ Uses Centralized API_BASE_URL
-            await fetch(`${API_BASE_URL}/api/comments`, {
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json', ...getHeaders() },
-                body: JSON.stringify({ 
-                    research_id: commentModal.value.researchId, 
-                    user_id: props.currentUser.id, 
-                    user_name: props.currentUser.name, 
-                    role: props.currentUser.role, 
-                    comment: commentModal.value.newComment 
-                })
+            // ✅ Use api.post()
+            // CSRF token is attached automatically by interceptor
+            await api.post('/api/comments', { 
+                research_id: commentModal.value.researchId, 
+                user_id: props.currentUser.id, 
+                user_name: props.currentUser.name, 
+                role: props.currentUser.role, 
+                comment: commentModal.value.newComment 
             })
             
-            // ✅ Uses Centralized API_BASE_URL
-            const refreshRes = await fetch(`${API_BASE_URL}/research/comments/${commentModal.value.researchId}`, { headers: getHeaders() })
-            commentModal.value.list = await refreshRes.json()
+            // Refresh comments
+            const refreshRes = await api.get(`/research/comments/${commentModal.value.researchId}`)
+            commentModal.value.list = refreshRes.data
             commentModal.value.newComment = '' 
             nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight })
-        } catch (e: any) { alert("Failed: " + e.message) } 
-        finally { isSendingComment.value = false }
+        } catch (e: any) { 
+            alert("Failed: " + (e.response?.data?.message || e.message)) 
+        } finally { 
+            isSendingComment.value = false 
+        }
     }
 
     // --- EDIT LOGIC ---
@@ -253,16 +250,19 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         if (editPdfFile.value) formData.append('pdf_file', editPdfFile.value)
 
         try {
-            // ✅ Uses Centralized API_BASE_URL
-            const res = await fetch(`${API_BASE_URL}/research/update/${item.id}`, { method: 'POST', headers: getHeaders(), body: formData })
-            await new Promise(r => setTimeout(r, 500)) 
-            if (res.ok) { 
-                alert("✅ Updated!") 
-                editingItem.value = null 
-                fetchData() 
-            } else { alert("Update Failed") }
-        } catch (e) { alert("Server Error") } 
-        finally { isSaving.value = false }
+            // ✅ Use api.post() for FormData
+            // Axios handles multipart/form-data automatically when passed FormData
+            await api.post(`/research/update/${item.id}`, formData)
+            
+            alert("✅ Updated!") 
+            editingItem.value = null 
+            fetchData() 
+            
+        } catch (e) { 
+            alert("Server Error") 
+        } finally { 
+            isSaving.value = false 
+        }
     }
 
     return {

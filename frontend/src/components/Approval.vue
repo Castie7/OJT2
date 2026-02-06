@@ -9,7 +9,7 @@ const props = defineProps<{
 const {
   activeTab, items, isLoading, selectedResearch, 
   currentPage, itemsPerPage, paginatedItems, totalPages, nextPage, prevPage,
-  deadlineModal, commentModal, isSendingComment,
+  deadlineModal, commentModal, isSendingComment, chatContainer,
   fetchData, handleAction, formatDate, getDaysLeft,
   openDeadlineModal, saveNewDeadline, openComments, postComment
 } = useApproval(props.currentUser)
@@ -28,13 +28,17 @@ const openNotification = async (researchId: number) => {
   if (targetItem) {
     openComments(targetItem)
   } else {
-    // If not found in 'pending', you might want to switch to 'rejected' logic here
-    // But for now, this handles the standard flow
-    console.warn("Research item not found in current list.")
+    // Optional: Switch tabs if not found in pending
+    if (activeTab.value === 'pending') {
+         activeTab.value = 'rejected'
+         await fetchData()
+         const rejectedItem = items.value.find(i => i.id === researchId)
+         if (rejectedItem) openComments(rejectedItem)
+    }
   }
 }
 
-// Expose this function so Dashboard.vue can call it
+// Expose this function so Dashboard.vue can call it via ref
 defineExpose({ openNotification })
 </script>
 
@@ -66,7 +70,7 @@ defineExpose({ openNotification })
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition" @click="selectedResearch = item">
+            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition cursor-pointer" @click="selectedResearch = item">
               <td class="px-6 py-4">
                 <div class="font-bold text-gray-900">{{ item.title }}</div>
                 <div class="text-sm text-gray-500">By: {{ item.author }}</div>
@@ -123,7 +127,6 @@ defineExpose({ openNotification })
     
     <Transition name="fade">
       <div v-if="commentModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        
         <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col h-[600px] overflow-hidden transform transition-all">
           
           <div class="bg-white border-b px-6 py-4 flex justify-between items-center z-10">
@@ -131,10 +134,7 @@ defineExpose({ openNotification })
               <h3 class="font-bold text-gray-800 text-lg">Feedback & Review</h3>
               <p class="text-xs text-gray-500 truncate max-w-[250px]">Submission: {{ commentModal.title }}</p>
             </div>
-            <button 
-              @click="commentModal.show = false" 
-              class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-red-500 transition-colors"
-            >
+            <button @click="commentModal.show = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-red-500 transition-colors">
               <span class="text-xl leading-none">&times;</span>
             </button>
           </div>
@@ -203,7 +203,7 @@ defineExpose({ openNotification })
         </div>
       </div>
     </Transition>
-    </div>
+  </div>
 </template>
 
 <style scoped src="../assets/styles/Approval.css"></style>

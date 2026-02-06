@@ -1,7 +1,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
-import { API_BASE_URL } from '../apiConfig' // ✅ Imported Central Configuration
+import api from '../services/api' // ✅ Uses Secure API Service
 
-// --- 1. UPDATED INTERFACE (Matches your DB) ---
+// --- 1. SHARED INTERFACES ---
 export interface Research {
   id: number
   title: string
@@ -41,7 +41,7 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
   const researches = ref<Research[]>([])
   
   const searchQuery = ref('')
-  const selectedType = ref('') // <--- NEW: For the Dropdown Filter (Default: All)
+  const selectedType = ref('') // Dropdown Filter
   
   const showArchived = ref(false)
   const viewMode = ref<'list' | 'grid'>('list')
@@ -68,13 +68,6 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
     setTimeout(() => { toast.value.show = false }, 3000)
   }
 
-  const getCookie = (name: string): string | null => {
-    const value = `; ${document.cookie}`
-    const parts = value.split(`; ${name}=`)
-    if (parts.length === 2) return parts.pop()?.split(';').shift() || null
-    return null
-  }
-
   const formatSimpleDate = (dateStr?: string) => {
     if (!dateStr) return 'N/A'
     return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
@@ -84,38 +77,37 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
   const fetchResearches = async () => {
     isLoading.value = true
     try {
-      // ✅ Uses Centralized API_BASE_URL
+      // ✅ Use api.get()
+      // The secure service handles Base URL and Cookies automatically.
       const endpoint = showArchived.value 
-        ? `${API_BASE_URL}/research/archived` 
-        : `${API_BASE_URL}/research`
+        ? '/research/archived' 
+        : '/research'
 
-      const token = getCookie('auth_token')
-      const headers: HeadersInit = token ? { 'Authorization': token } : {}
-
-      const response = await fetch(endpoint, { headers })
+      const response = await api.get(endpoint)
       
-      if (response.ok) {
-        const data: Research[] = await response.json()
-        researches.value = data
-        
-        if (!showArchived.value) {
-          emit('update-stats', data.length)
-        }
-      } else {
-         if(showArchived.value) showToast("Access Denied to Archives", "error")
+      researches.value = response.data
+      
+      if (!showArchived.value) {
+        emit('update-stats', researches.value.length)
       }
-    } catch (error) {
+
+    } catch (error: any) {
       console.error(error)
-      showToast("Failed to load data.", "error")
+      // Check for specific error codes if needed
+      if (showArchived.value && error.response?.status === 403) {
+          showToast("Access Denied to Archives", "error")
+      } else {
+          showToast("Failed to load data.", "error")
+      }
     } finally {
       isLoading.value = false
     }
   }
 
-  // --- 2. UPDATED FILTERING LOGIC ---
+  // --- FILTERING LOGIC ---
   const filteredResearches = computed(() => {
     return researches.value.filter(item => {
-      // A. Search Query (Expanded to include ISBN and Subjects)
+      // A. Search Query (Title, Author, ISBN, Subjects)
       const q = searchQuery.value.toLowerCase()
       const matchesSearch = 
         item.title.toLowerCase().includes(q) || 
@@ -124,7 +116,6 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
         (item.subjects && item.subjects.toLowerCase().includes(q))
 
       // B. Knowledge Type Filter
-      // If selectedType is empty string, we return true (match all)
       const matchesType = selectedType.value === '' || item.knowledge_type === selectedType.value
 
       return matchesSearch && matchesType
@@ -157,40 +148,35 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
   const executeArchiveToggle = async () => {
     if (!confirmModal.value.id) return
     
-    const token = getCookie('auth_token')
-    if (!token) { showToast("Authentication Error", "error"); return }
-
     try {
-      // ✅ Uses Centralized API_BASE_URL
+      // ✅ Use api.post()
+      // CSRF headers are automatically handled by the api.ts interceptor
       const endpoint = confirmModal.value.action === 'Restore'
-        ? `${API_BASE_URL}/research/restore/${confirmModal.value.id}`
-        : `${API_BASE_URL}/research/archive/${confirmModal.value.id}`
+        ? `/research/restore/${confirmModal.value.id}`
+        : `/research/archive/${confirmModal.value.id}`
 
-      const response = await fetch(endpoint, { 
-        method: 'POST',
-        headers: { 'Authorization': token } 
-      })
+      await api.post(endpoint)
       
-      if (response.ok) {
-          fetchResearches() 
-          showToast(`Item ${confirmModal.value.action}d successfully!`, "success")
-          confirmModal.value.show = false
-      } else {
-          const err = await response.json()
-          showToast("Failed: " + (err.message || "Access Denied"), "error")
-      }
-    } catch (error) { showToast("Error updating status", "error") }
+      fetchResearches() 
+      showToast(`Item ${confirmModal.value.action}d successfully!`, "success")
+      confirmModal.value.show = false
+
+    } catch (error: any) {
+       console.error(error)
+       const msg = error.response?.data?.message || "Error updating status"
+       showToast("Failed: " + msg, "error")
+    }
   }
 
   // --- WATCHERS ---
   
-  // Watch for endpoint changes (Active vs Archived)
+  // Reload when switching between Active/Archived
   watch(showArchived, () => {
     currentPage.value = 1
     fetchResearches()
   })
 
-  // Watch for local filter changes to reset pagination
+  // Reset pagination on filter change
   watch([searchQuery, selectedType], () => {
     currentPage.value = 1
   })
@@ -203,7 +189,7 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
     // State
     researches, 
     searchQuery, 
-    selectedType, // <--- EXPORTED THIS
+    selectedType, 
     showArchived, 
     viewMode, 
     selectedResearch,

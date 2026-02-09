@@ -36,7 +36,7 @@ class Cookie extends BaseConfig
      * --------------------------------------------------------------------------
      * Cookie Domain
      * --------------------------------------------------------------------------
-     * Leave blank to allow it on the current domain (192.168.60.70).
+     * Leave blank to allow it on the current domain (192.168.60.56).
      */
     public string $domain = '';
 

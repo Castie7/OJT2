@@ -9,7 +9,7 @@ class ResearchModel extends Model
     protected $table            = 'researches';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
-    protected $returnType       = 'array';
+    protected $returnType       = \App\Entities\Research::class;
     protected $useSoftDeletes   = false; // Ensure this is false for our custom logic
 
     // UPDATE THIS ARRAY TO INCLUDE ALL NEW COLUMNS

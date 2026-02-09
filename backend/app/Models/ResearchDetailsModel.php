@@ -8,6 +8,7 @@ class ResearchDetailsModel extends Model
 {
     protected $table            = 'research_details';
     protected $primaryKey       = 'id';
+    protected $returnType       = \App\Entities\ResearchDetail::class;
     protected $allowedFields    = [
         'research_id', 
         'knowledge_type', 

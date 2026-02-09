@@ -3,8 +3,8 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://192.168.60.70/OJT2/backend/public/index.php',
-  withCredentials: true, 
+  baseURL: import.meta.env.VITE_BACKEND_URL + '/index.php',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -12,7 +12,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  
+
   // 1. Try to get token from Cookie
   const match = document.cookie.match(new RegExp('(^| )csrf_cookie_name=([^;]+)'));
   let token = match ? match[2] : null;

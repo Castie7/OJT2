@@ -15,8 +15,30 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-// Fullscreen Logic extracted here since it belongs to the PDF viewer
-const pdfContainer = ref<HTMLElement | null>(null)
+// Helper to handle both string dates and Backend-returned DateTime objects
+const formatDate = (date: any) => {
+  if (!date) return '-'
+  
+  let dateStr = date
+  // If it's a DateTime object produced by PHP/CodeIgniter
+  if (typeof date === 'object' && date.date) {
+    dateStr = date.date
+  }
+  
+  try {
+    const d = new Date(dateStr)
+    // Check if valid date
+    if (isNaN(d.getTime())) return dateStr
+
+    return d.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    })
+  } catch (e) {
+    return dateStr
+  }
+}
 
 const toggleFullscreen = () => {
   if (!pdfContainer.value) return
@@ -56,7 +78,7 @@ const toggleFullscreen = () => {
                  <div class="grid grid-cols-3 gap-2 text-sm">
                     <span class="text-gray-500">Publisher:</span> <span class="col-span-2 font-medium">{{ research.publisher || '-' }}</span>
                     <span class="text-gray-500">Edition:</span> <span class="col-span-2">{{ research.edition || '-' }}</span>
-                    <span class="text-gray-500">Date:</span> <span class="col-span-2">{{ research.publication_date || '-' }}</span>
+                    <span class="text-gray-500">Date:</span> <span class="col-span-2">{{ formatDate(research.publication_date) }}</span>
                     <span class="text-gray-500">ISBN/ISSN:</span> <span class="col-span-2 font-mono text-gray-600">{{ research.isbn_issn || '-' }}</span>
                     <span class="text-gray-500">Description:</span> <span class="col-span-2">{{ research.physical_description || '-' }}</span>
                  </div>

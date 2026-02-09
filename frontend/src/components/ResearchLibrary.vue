@@ -4,7 +4,7 @@ import { useResearchLibrary, type User } from '../composables/useResearchLibrary
 
 // ✅ USE THE ENV VARIABLE
 // This automatically grabs the URL from your .env file
-// Example: https://192.168.60.70/OJT2/backend/public
+// Example: https://YOUR_IP/OJT2/backend/public
 const ASSET_URL = import.meta.env.VITE_BACKEND_URL
 
 const props = defineProps<{
@@ -21,6 +21,31 @@ const {
   filteredResearches, paginatedResearches, totalPages,
   nextPage, prevPage, requestArchiveToggle, executeArchiveToggle
 } = useResearchLibrary(props.currentUser, emit)
+
+// Helper to handle both string dates and Backend-returned DateTime objects
+const formatDate = (date: any) => {
+  if (!date) return '-'
+  
+  let dateStr = date
+  // If it's a DateTime object produced by PHP/CodeIgniter
+  if (typeof date === 'object' && date.date) {
+    dateStr = date.date
+  }
+  
+  try {
+    const d = new Date(dateStr)
+    // Check if valid date
+    if (isNaN(d.getTime())) return dateStr
+
+    return d.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    })
+  } catch (e) {
+    return dateStr
+  }
+}
 
 // --- Fullscreen Logic ---
 const pdfContainer = ref<HTMLElement | null>(null)
@@ -202,7 +227,7 @@ const toggleFullscreen = () => {
                    <div class="grid grid-cols-3 gap-2 text-sm">
                       <span class="text-gray-500">Publisher:</span> <span class="col-span-2 font-medium">{{ selectedResearch.publisher || '-' }}</span>
                       <span class="text-gray-500">Edition:</span> <span class="col-span-2">{{ selectedResearch.edition || '-' }}</span>
-                      <span class="text-gray-500">Date:</span> <span class="col-span-2">{{ selectedResearch.publication_date || '-' }}</span>
+                      <span class="text-gray-500">Date:</span> <span class="col-span-2">{{ formatDate(selectedResearch.publication_date) }}</span>
                       <span class="text-gray-500">ISBN/ISSN:</span> <span class="col-span-2 font-mono text-gray-600">{{ selectedResearch.isbn_issn || '-' }}</span>
                       <span class="text-gray-500">Description:</span> <span class="col-span-2">{{ selectedResearch.physical_description || '-' }}</span>
                    </div>

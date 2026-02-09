@@ -12,7 +12,7 @@ class Cors implements FilterInterface
         // 1. DEFINE ALLOWED ORIGIN
         // ---------------------------------------------------------------------
         // This must match your Vite frontend URL exactly.
-        $origin = 'https://192.168.60.70:5173';
+        $origin = 'https://192.168.60.56:5173';
 
         // ---------------------------------------------------------------------
         // 2. SET HEADERS MANUALLY

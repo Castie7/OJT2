@@ -10,6 +10,7 @@ import Approval from '../components/Approval.vue'
 import Settings from '../components/Settings.vue' 
 import ImportCsv from '../components/ImportCsv.vue' 
 import UserManagement from '../components/UserManagement.vue'
+import AdminLogs from '../components/AdminLogs.vue'
 
 const props = defineProps<{
   currentUser: User | null
@@ -108,6 +109,15 @@ const handleUserUpdate = (updatedUser: User) => {
                                 class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
                             >
                                 👥 Add/Reset Accounts
+                            </button>
+
+                            <div class="border-t border-gray-100 my-1"></div>
+
+                            <button 
+                                @click="setTab('logs'); showAdminMenu = false"
+                                class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
+                            >
+                                📜 System Logs
                             </button>
                         </div>
                     </div>
@@ -219,6 +229,10 @@ const handleUserUpdate = (updatedUser: User) => {
 
       <UserManagement 
         v-if="currentTab === 'users' && currentUser && currentUser.role === 'admin'"
+      />
+      
+      <AdminLogs 
+        v-if="currentTab === 'logs' && currentUser && currentUser.role === 'admin'"
       />
 
       <Settings 

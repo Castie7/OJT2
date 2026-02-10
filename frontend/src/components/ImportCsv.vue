@@ -33,20 +33,20 @@ const handleFileChange = (event: Event) => {
 // 2. Download Template Logic (Kept exactly as you had it)
 const downloadTemplate = () => {
     const headers = [
-        'Title', 'Type', 'Authors', 'Date', 'Publication', 'Publisher',
-        'Pages', 'ISSN', 'Description', 'Location', 'Condition'
+        'Title', 'Author', 'Type', 'Date', 'Edition', 'Publisher',
+        'Pages', 'ISBN/ISSN', 'Subjects', 'Location', 'Condition', 'Crop'
     ];
 
     const rows = [
         [
-            'Golden Roots Issue No. 01', 'Journal', 'Betty T. Gayao et al.', 'January-June 2004', 
-            'Golden Roots Issue No. 1', 'NPRCRTC - BSU', '16 Pages', 'ISSN 1656-5444', 
-            'Contribution of Sweetpotato...', '6b', 'Good'
+            'Golden Roots Issue No. 01', 'Betty T. Gayao et al.', 'Journal', '2004-01-01', 
+            'Vol. 1', 'NPRCRTC - BSU', '16 Pages', 'ISSN 1656-5444', 
+            'Sweetpotato processing, Rootcrops', 'Shelf 6b', 'Good', 'Sweetpotato'
         ],
         [
-            'Golden Roots Issue No. 02', 'Journal', 'Betty T. Gayao et al.', 'July-Dec 2004', 
-            'Golden Roots Issue No. 2', 'NPRCRTC - BSU', '14 Pages', 'ISSN 1656-5444', 
-            'Contribution of SP Processing...', '6b', 'Good'
+            'Varietal Improvement of Rootcrops', 'Juan Dela Cruz', 'Thesis', '2023-05-15', 
+            '1st Edition', 'BSU', '120 Leaves', 'N/A', 
+            'Breeding, Genetics', 'Thesis Section', 'Good', 'Cassava'
         ]
     ];
     

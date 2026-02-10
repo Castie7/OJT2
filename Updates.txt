@@ -46,3 +46,7 @@ Ver 2.2
 - updated db
 - Research library added catalog and location for more information
 
+Ver 3.0
+Run that command to reset
+php spark db:seed Migrate
+

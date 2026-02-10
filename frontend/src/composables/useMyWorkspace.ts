@@ -32,11 +32,11 @@ export interface Research {
 }
 
 export function useMyWorkspace(currentUser: User | null) {
-  
+
   const activeTab = ref<'submitted' | 'archived'>('submitted')
   const isModalOpen = ref(false)
   const isSubmitting = ref(false)
-  const isLoading = ref(false) 
+  const isLoading = ref(false)
   const myResearches = ref<Research[]>([])
 
   // FORM STATE
@@ -47,7 +47,7 @@ export function useMyWorkspace(currentUser: User | null) {
     crop_variation: '',
     start_date: '',
     deadline_date: '',
-    knowledge_type: 'Research Paper', 
+    knowledge_type: [] as string[],
     publication_date: '',
     edition: '',
     publisher: '',
@@ -55,7 +55,7 @@ export function useMyWorkspace(currentUser: User | null) {
     isbn_issn: '',
     subjects: '',
     shelf_location: '',
-    item_condition: 'Good', 
+    item_condition: 'Good',
     link: '',
     pdf_file: null as File | null
   })
@@ -66,33 +66,33 @@ export function useMyWorkspace(currentUser: User | null) {
   const fetchMyResearches = async () => {
     isLoading.value = true
     try {
-        // ✅ Use api.get()
-        const endpoint = activeTab.value === 'archived' 
-            ? '/research/my-archived'
-            : '/research/my-submissions';
+      // ✅ Use api.get()
+      const endpoint = activeTab.value === 'archived'
+        ? '/research/my-archived'
+        : '/research/my-submissions';
 
-        const response = await api.get(endpoint);
-        myResearches.value = response.data;
-        
+      const response = await api.get(endpoint);
+      myResearches.value = response.data;
+
     } catch (e) {
-        console.error("Failed to fetch data", e);
+      console.error("Failed to fetch data", e);
     } finally {
-        isLoading.value = false;
+      isLoading.value = false;
     }
   }
 
   // Watch for tab changes to reload data
   watch(activeTab, () => {
-      fetchMyResearches();
+    fetchMyResearches();
   });
 
   // 2. OPEN FOR NEW SUBMISSION
   const openSubmitModal = () => {
     Object.assign(form, {
-      id: null, 
-      title: '', author: '', crop_variation: '', 
+      id: null,
+      title: '', author: '', crop_variation: '',
       start_date: '', deadline_date: '',
-      knowledge_type: 'Research Paper',
+      knowledge_type: [],
       publication_date: '', edition: '', publisher: '',
       physical_description: '', isbn_issn: '', subjects: '',
       shelf_location: '', item_condition: 'Good', link: '',
@@ -104,13 +104,13 @@ export function useMyWorkspace(currentUser: User | null) {
   // 3. OPEN FOR EDITING
   const openEditModal = (item: Research) => {
     Object.assign(form, {
-      id: item.id, 
+      id: item.id,
       title: item.title,
       author: item.author,
       crop_variation: item.crop_variation || '',
       start_date: item.start_date || '',
       deadline_date: item.deadline_date || '',
-      knowledge_type: item.knowledge_type || 'Research Paper',
+      knowledge_type: item.knowledge_type ? item.knowledge_type.split(',').map(s => s.trim()) : [],
       publication_date: item.publication_date || '',
       edition: item.edition || '',
       publisher: item.publisher || '',
@@ -120,7 +120,7 @@ export function useMyWorkspace(currentUser: User | null) {
       shelf_location: item.shelf_location || '',
       item_condition: item.item_condition || 'Good',
       link: item.link || '',
-      pdf_file: null 
+      pdf_file: null
     })
     isModalOpen.value = true
   }
@@ -135,7 +135,7 @@ export function useMyWorkspace(currentUser: User | null) {
 
     if (!allowedExtensions.includes(fileExtension)) {
       alert("❌ Invalid File!\nPlease upload a PDF or an Image.")
-      target.value = '' 
+      target.value = ''
       form.pdf_file = null
       return
     }
@@ -155,7 +155,10 @@ export function useMyWorkspace(currentUser: User | null) {
     formData.append('crop_variation', form.crop_variation)
     formData.append('start_date', form.start_date)
     formData.append('deadline_date', form.deadline_date)
-    formData.append('knowledge_type', form.knowledge_type)
+
+    // Join array to string for backend
+    const kType = Array.isArray(form.knowledge_type) ? form.knowledge_type.join(', ') : form.knowledge_type;
+    formData.append('knowledge_type', kType)
     formData.append('publication_date', form.publication_date)
     formData.append('edition', form.edition)
     formData.append('publisher', form.publisher)
@@ -165,30 +168,30 @@ export function useMyWorkspace(currentUser: User | null) {
     formData.append('shelf_location', form.shelf_location)
     formData.append('item_condition', form.item_condition)
     formData.append('link', form.link)
-    
+
     if (form.pdf_file) formData.append('pdf_file', form.pdf_file)
 
     try {
       // ✅ Use api.post()
-      const url = form.id 
+      const url = form.id
         ? `/research/update/${form.id}`
         : `/research/create`
 
       await api.post(url, formData)
-      
+
       alert(form.id ? "✅ Success! Research Updated." : "✅ Success! Research Submitted.")
       isModalOpen.value = false
       return true // Indicate success
 
     } catch (error: any) {
       console.error(error)
-      
+
       // ✅ Improved Error Handling
       let msg = "Action Failed";
       if (error.response?.data?.messages) {
-          msg = Object.values(error.response.data.messages).join('\n');
+        msg = Object.values(error.response.data.messages).join('\n');
       } else if (error.response?.data?.message) {
-          msg = error.response.data.message;
+        msg = error.response.data.message;
       }
 
       alert("❌ Error:\n" + msg)
@@ -201,13 +204,13 @@ export function useMyWorkspace(currentUser: User | null) {
   return {
     activeTab,
     myResearches,
-    isLoading, 
+    isLoading,
     isModalOpen,
     isSubmitting,
     form,
-    fetchMyResearches, 
+    fetchMyResearches,
     openSubmitModal,
-    openEditModal, 
+    openEditModal,
     submitResearch,
     handleFileChange
   }

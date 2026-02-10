@@ -17,6 +17,7 @@ class ResearchController extends BaseController
     {
         $this->researchService = new ResearchService();
         $this->authService = new AuthService();
+        helper('activity'); // Load Helper
     }
 
     // --- SECURITY HELPER ---
@@ -122,6 +123,10 @@ class ResearchController extends BaseController
         try {
             // File is optional/handled by service (safe to pass invalid/null)
             $this->researchService->createResearch($user->id, $input, $this->request->getFile('pdf_file'));
+            
+            // LOG
+            log_activity($user->id, $user->name, $user->role, 'CREATE_RESEARCH', "Created research: " . ($input['title'] ?? 'Untitled'));
+
             return $this->respond(['status' => 'success']);
         } catch (\Exception $e) {
             return $this->failServerError($e->getMessage());
@@ -158,6 +163,10 @@ class ResearchController extends BaseController
 
         try {
             $this->researchService->updateResearch($id, $user->id, $user->role, $input, $this->request->getFile('pdf_file'));
+            
+            // LOG
+            log_activity($user->id, $user->name, $user->role, 'UPDATE_RESEARCH', "Updated research ID: $id (" . ($input['title'] ?? '') . ")");
+
             return $this->respond(['status' => 'success']);
         } catch (\Exception $e) {
             if ($e->getCode() == 403) return $this->failForbidden();
@@ -172,6 +181,9 @@ class ResearchController extends BaseController
         if (!$user || $user->role !== 'admin') return $this->failForbidden();
 
         $this->researchService->setStatus($id, 'approved', $user->id, "🎉 Your research '%s' has been APPROVED!");
+        
+        log_activity($user->id, $user->name, $user->role, 'APPROVE_RESEARCH', "Approved research ID: $id");
+
         return $this->respond(['status' => 'success']);
     }
 
@@ -182,6 +194,9 @@ class ResearchController extends BaseController
         if (!$user || $user->role !== 'admin') return $this->failForbidden();
 
         $this->researchService->setStatus($id, 'rejected', $user->id, "⚠️ Your research '%s' was returned for revision.");
+        
+        log_activity($user->id, $user->name, $user->role, 'REJECT_RESEARCH', "Rejected research ID: $id");
+
         return $this->respond(['status' => 'success']);
     }
 
@@ -239,6 +254,9 @@ class ResearchController extends BaseController
         // I'll add a TODO or just fix `ResearchService::setStatus` later.
         
         $this->researchService->setStatus($id, 'archived', $user->id, "Your research '%s' has been archived.");
+        
+        log_activity($user->id, $user->name, $user->role, 'ARCHIVE_RESEARCH', "Archived research ID: $id");
+
         return $this->respond(['status' => 'success']);
     }
 
@@ -312,8 +330,13 @@ class ResearchController extends BaseController
     public function importCsv()
     {
         $file = $this->request->getFile('csv_file');
+        
+        if (!$file) {
+            return $this->response->setJSON(['message' => 'No CSV file uploaded'])->setStatusCode(400);
+        }
+
         if (!$file->isValid() || $file->getExtension() !== 'csv') {
-            return $this->response->setJSON(['message' => 'Invalid CSV file'])->setStatusCode(400);
+            return $this->response->setJSON(['message' => 'Invalid or empty CSV file'])->setStatusCode(400);
         }
 
         try {

@@ -99,13 +99,28 @@ defineExpose({ openNotification })
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type <span class="text-red-500">*</span></label>
-                    <select v-model="form.knowledge_type" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white">
-                      <option>Research Paper</option>
-                      <option>Book</option>
-                      <option>Journal</option>
-                      <option>IEC Material</option>
-                      <option>Thesis</option>
-                    </select>
+                    <div class="flex flex-col gap-2 p-2 border rounded bg-white max-h-32 overflow-y-auto">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" v-model="form.knowledge_type" value="Research Paper" class="accent-green-600">
+                            <span class="text-sm">Research Paper</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" v-model="form.knowledge_type" value="Book" class="accent-green-600">
+                            <span class="text-sm">Book</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" v-model="form.knowledge_type" value="Journal" class="accent-green-600">
+                            <span class="text-sm">Journal</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" v-model="form.knowledge_type" value="IEC Material" class="accent-green-600">
+                            <span class="text-sm">IEC Material</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" v-model="form.knowledge_type" value="Thesis" class="accent-green-600">
+                            <span class="text-sm">Thesis</span>
+                        </label>
+                    </div>
                  </div>
                  <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Crop Variation (Optional)</label>

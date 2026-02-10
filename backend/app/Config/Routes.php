@@ -51,6 +51,13 @@ $routes->group('api', function($routes) {
     $routes->get('notifications', 'NotificationController::index');
     $routes->post('notifications/read', 'NotificationController::markAsRead');
     $routes->post('comments', 'ResearchController::addComment');
+    
+    // --- ADMIN LOGS ---
+    $routes->group('logs', function($routes) {
+        $routes->get('export', 'Admin\LogController::export'); // ✅ Export CSV
+        $routes->get('/', 'Admin\LogController::index');       // List files
+        $routes->get('(:segment)', 'Admin\LogController::show/$1'); // View file
+    });
 });
 
 // --- RESEARCH ROUTES ---

@@ -14,6 +14,7 @@ class AuthController extends BaseController
     public function __construct()
     {
         $this->authService = new AuthService();
+        helper('activity'); // Load Logging Helper
     }
 
     // ------------------------------------------------------------------
@@ -29,6 +30,9 @@ class AuthController extends BaseController
             $user = $this->authService->login($email, $password);
 
             if ($user) {
+                // LOG ACTIVITY
+                log_activity($user->id, $user->name, $user->role, 'LOGIN', "User logged in via email: $email");
+
                 return $this->respond([
                     'status'     => 'success',
                     'message'    => 'Login Successful!',
@@ -40,6 +44,8 @@ class AuthController extends BaseController
                     'csrf_token' => csrf_hash() 
                 ]);
             } else {
+                // Optional: Log failed attempts?
+                // log_activity(null, 'Guest', 'guest', 'LOGIN_FAILED', "Failed login attempt for: $email");
                 return $this->failUnauthorized('Invalid email or password');
             }
         } catch (\Throwable $e) {
@@ -74,6 +80,15 @@ class AuthController extends BaseController
     // ------------------------------------------------------------------
     public function logout()
     {
+        // Get user before destroying session
+        $userId = session()->get('id');
+        $userName = session()->get('name');
+        $role = session()->get('role');
+
+        if ($userId) {
+            log_activity($userId, $userName, $role, 'LOGOUT', 'User logged out');
+        }
+
         $this->authService->logout();
         return $this->respond(['status' => 'success', 'message' => 'Logged out successfully']);
     }
@@ -99,6 +114,9 @@ class AuthController extends BaseController
             $currentUserRole = session()->get('role');
 
             $updatedUser = $this->authService->updateProfile($json->user_id, $json, $currentUserId, $currentUserRole);
+
+            // LOG ACTIVITY
+            log_activity($currentUserId, session()->get('name'), $currentUserRole, 'UPDATE_PROFILE', "Updated profile for user ID: {$json->user_id}");
 
             return $this->respond([
                 'status' => 'success',
@@ -129,6 +147,19 @@ class AuthController extends BaseController
 
         try {
             $this->authService->register($json);
+            
+            // LOG ACTIVITY (Who registered? The admin usually, or self-register via public?) 
+            // If admin endpoint:
+            $adminId = session()->get('id');
+            $adminName = session()->get('name');
+            $adminRole = session()->get('role');
+            
+            if ($adminId) {
+                 log_activity($adminId, $adminName, $adminRole, 'REGISTER_USER', "Registered new user: " . ($json->email ?? 'unknown'));
+            } else {
+                 log_activity(null, 'Guest', 'guest', 'REGISTER_USER', "Public registration: " . ($json->email ?? 'unknown'));
+            }
+
             return $this->respondCreated([
                 'status'  => 'success',
                 'message' => 'User added successfully'

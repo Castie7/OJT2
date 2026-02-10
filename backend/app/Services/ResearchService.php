@@ -186,9 +186,15 @@ class ResearchService extends BaseService
         
         $newResearchId = $this->researchModel->insert($mainData); 
 
+        // Create Logic
+        $knowledgeType = $data['knowledge_type'];
+        if (is_array($knowledgeType)) {
+            $knowledgeType = implode(', ', $knowledgeType);
+        }
+
         $detailsData = [
             'research_id'      => $newResearchId,
-            'knowledge_type'   => $data['knowledge_type'],
+            'knowledge_type'   => $knowledgeType,
             'publication_date' => $data['publication_date'],
             'edition'          => $data['edition'],
             'publisher'        => $data['publisher'],
@@ -228,10 +234,6 @@ class ResearchService extends BaseService
     {
         $item = $this->researchModel->find($id);
         
-        // Entity access: $item->uploaded_by (if Entity) or $item['uploaded_by'] if Array?
-        // We switched ResearchModel to return Entity. So $item is Entity.
-        // Entity properties are accessed via ->
-        
         if(!$item || ($item->uploaded_by != $userId && $userRole !== 'admin')) {
              throw new \Exception("Generic Forbidden", 403);
         }
@@ -252,8 +254,14 @@ class ResearchService extends BaseService
         $this->researchModel->update($id, $mainUpdate);
 
         $exists = $this->detailsModel->where('research_id', $id)->first();
+        
+        $knowledgeType = $data['knowledge_type'];
+        if (is_array($knowledgeType)) {
+            $knowledgeType = implode(', ', $knowledgeType);
+        }
+
         $detailsData = [
-            'knowledge_type'   => $data['knowledge_type'],
+            'knowledge_type'   => $knowledgeType,
             'publication_date' => $data['publication_date'],
             'edition'          => $data['edition'],
             'publisher'        => $data['publisher'],
@@ -389,13 +397,13 @@ class ResearchService extends BaseService
             $data = [
                 'title'                => $rawData['Title'] ?? 'Untitled',
                 'knowledge_type'       => $rawData['Type'] ?? 'Research Paper',
-                'author'               => $rawData['Authors'] ?? 'Unknown',
+                'author'               => $rawData['Author'] ?? $rawData['Authors'] ?? 'Unknown',
                 'publication_date'     => $rawData['Date'] ?? null,
-                'edition'              => $rawData['Publication'] ?? '', 
+                'edition'              => $rawData['Edition'] ?? $rawData['Publication'] ?? '', 
                 'publisher'            => $rawData['Publisher'] ?? '',
                 'physical_description' => $rawData['Pages'] ?? '',       
-                'isbn_issn'            => $rawData['ISSN'] ?? '',        
-                'subjects'             => $rawData['Description'] ?? '', 
+                'isbn_issn'            => $rawData['ISBN/ISSN'] ?? $rawData['ISSN'] ?? $rawData['ISBN'] ?? '',        
+                'subjects'             => $rawData['Subjects'] ?? $rawData['Description'] ?? '', 
                 'shelf_location'       => $rawData['Location'] ?? '',
                 'item_condition'       => $rawData['Condition'] ?? 'Good',
                 'crop_variation'       => $rawData['Crop'] ?? ''         

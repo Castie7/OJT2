@@ -164,7 +164,9 @@ class AuthController extends BaseController
                 'status'  => 'success',
                 'message' => 'User added successfully'
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            log_message('error', '[Register] Error: ' . $e->getMessage());
+            
             // Handle specific codes if needed
              if ($e->getCode() == 409) {
                  return $this->failResourceExists($e->getMessage());

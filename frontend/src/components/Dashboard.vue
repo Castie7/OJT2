@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef } from 'vue' 
+import { toRef, ref } from 'vue' 
 import { useDashboard, type User } from '../composables/useDashboard'
 
 // Import Sub-Components
@@ -22,9 +22,13 @@ const emit = defineEmits<{
   (e: 'update-user', user: User): void 
 }>()
 
-// --- Initialize Dashboard Logic ---
-// We convert props to a ref so the composable can react to changes (e.g. login/logout)
+// Mobile Menu State
+const showMobileMenu = ref(false)
+
+// ... Initialize Dashboard Logic ...
 const currentUserRef = toRef(props, 'currentUser')
+// ... rest of script ...
+
 
 const { 
   // State
@@ -59,10 +63,19 @@ const handleUserUpdate = (updatedUser: User) => {
         <div class="flex items-center justify-between h-16">
           
           <div class="flex items-center gap-3">
+            <!-- Mobile Menu Button -->
+            <button @click="showMobileMenu = !showMobileMenu" class="md:hidden p-2 rounded-md hover:bg-green-700 focus:outline-none">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path v-if="!showMobileMenu" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
             <img src="/logo.png" alt="BSU Logo" class="nav-logo-img" />
             <span class="font-bold text-xl tracking-wide hidden sm:block">BSU RootCrops</span>
           </div>
 
+          <!-- Desktop Navigation -->
           <div class="hidden md:flex ml-10 space-x-4">
             <button @click="setTab('home')" :class="['nav-btn', currentTab === 'home' ? 'nav-btn-active' : 'nav-btn-inactive']">
               Home
@@ -126,6 +139,7 @@ const handleUserUpdate = (updatedUser: User) => {
             </template>
           </div>
 
+          <!-- User Profile & Actions -->
           <div>
             <div v-if="currentUser" class="flex items-center gap-4">
               <span class="text-sm font-light hidden sm:block">Welcome, {{ currentUser.name }}</span>
@@ -177,19 +191,72 @@ const handleUserUpdate = (updatedUser: User) => {
                 </div>
               </div>
 
-              <button @click="setTab('settings')" class="btn-settings" title="Settings">
-                ⚙️
-              </button>
+              <!-- Desktop Settings/Logout -->
+              <div class="hidden md:flex gap-2">
+                <button @click="setTab('settings')" class="btn-settings" title="Settings">
+                  ⚙️
+                </button>
 
-              <button @click="$emit('logout-click')" class="btn-logout">
-                Logout
-              </button>
+                <button @click="$emit('logout-click')" class="btn-logout">
+                  Logout
+                </button>
+              </div>
             </div>
             
-            <button v-else @click="$emit('login-click')" class="btn-login">
+            <!-- Desktop Login -->
+            <button v-else @click="$emit('login-click')" class="btn-login hidden md:flex">
                Login
             </button>
           </div>
+        </div>
+
+        <!-- Mobile Menu (Dropdown) -->
+        <div v-if="showMobileMenu" class="md:hidden pb-4 pt-2 border-t border-green-700">
+            <button @click="setTab('home'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'home' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+              Home
+            </button>
+            <button @click="setTab('research'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'research' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+              Research Library
+            </button>
+            
+            <template v-if="currentUser">
+              <button @click="setTab('workspace'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'workspace' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                My Workspace
+              </button>
+              
+              <template v-if="currentUser.role === 'admin'">
+                <button @click="setTab('approval'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'approval' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                  Approvals
+                </button>
+                
+                <div class="pl-4 mt-2 mb-2 border-l-2 border-green-600">
+                    <p class="text-xs text-green-300 px-3 uppercase font-bold mb-1">Admin Tools</p>
+                    <button @click="setTab('import'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'import' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                        📂 Upload Data
+                    </button>
+                    <button @click="setTab('users'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'users' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                        👥 Users
+                    </button>
+                    <button @click="setTab('logs'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'logs' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                        📜 Logs
+                    </button>
+                </div>
+              </template>
+
+              <div class="border-t border-green-700 my-2 pt-2">
+                 <button @click="setTab('settings'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'settings' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                  ⚙️ Settings
+                 </button>
+                 <button @click="$emit('logout-click'); showMobileMenu = false" class="w-full text-left px-3 py-2 rounded-md font-medium text-red-100 hover:bg-red-600 hover:text-white mt-1">
+                  Logout
+                 </button>
+              </div>
+            </template>
+            <template v-else>
+               <button @click="$emit('login-click'); showMobileMenu = false" class="w-full text-left px-3 py-2 rounded-md font-medium bg-yellow-500 text-green-900 hover:bg-yellow-600 mt-2">
+                  Login
+               </button>
+            </template>
         </div>
       </div>
     </nav>

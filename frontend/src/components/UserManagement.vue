@@ -39,8 +39,8 @@ const {
         <div class="um-input-group">
           <label class="um-label">Role</label>
           <select v-model="form.role" class="um-select">
-            <option value="user">User (Student/Faculty)</option>
             <option value="admin">Admin</option>
+            <option value="user">Researcher</option>
           </select>
         </div>
       </div>
@@ -81,7 +81,7 @@ const {
             <td>{{ user.email }}</td>
             <td>
               <span :class="['um-badge', `role-${user.role}`]">
-                {{ user.role }}
+                {{ user.role === 'user' ? 'Researcher' : 'Admin' }}
               </span>
             </td>
             <td>

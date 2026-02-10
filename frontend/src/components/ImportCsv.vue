@@ -202,7 +202,7 @@ const uploadPdfs = async () => {
       </div>
     </Transition>
 
-  <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl mx-auto mt-10">
+  <div class="w-full max-w-2xl mx-auto mt-10 p-4 sm:p-6 bg-white rounded-lg shadow-lg">
     <div class="text-center mb-8">
         <h2 class="text-2xl font-bold text-gray-800">Import Data</h2>
         <p class="text-gray-500">Upload a CSV file to bulk add research papers.</p>

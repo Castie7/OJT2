@@ -13,14 +13,14 @@ export interface Stat {
   title: string
   value: string | number
   color: string
-  action?: string 
+  action?: string
 }
 
-export function useDashboard(currentUserRef: Ref<User | null>) { 
-  
+export function useDashboard(currentUserRef: Ref<User | null>) {
+
   // --- 1. CORE STATE ---
   const currentTab = ref('home')
-  
+
   // Child Component Refs (To access methods inside children)
   // We use 'any' here for simplicity, or you could define the specific Component type
   const workspaceRef = ref<any>(null)
@@ -28,9 +28,9 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
 
   // Default Loading State
   const stats = ref<Stat[]>([
-      { id: 'stat-1', title: 'Loading...', value: '...', color: 'text-gray-400' },
-      { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
-      { id: 'stat-3', title: 'Loading...', value: '...', color: 'text-gray-400' }
+    { id: 'stat-1', title: 'Loading...', value: '...', color: 'text-gray-400' },
+    { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
+    { id: 'stat-3', title: 'Loading...', value: '...', color: 'text-gray-400' }
   ])
 
   // --- 2. ADMIN MENU LOGIC ---
@@ -54,36 +54,36 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     if (!user) return
 
     try {
-        let response;
-        // ✅ SECURE API CALLS (Cookies attached automatically)
-        if (user.role === 'admin') {
-            response = await api.get('/research/stats')
-            
-            stats.value = [
-                { id: 'stat-1', title: 'Total Researches', value: response.data.total, color: 'text-green-600', action: 'research' },
-                { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' }, 
-                { id: 'stat-3', title: 'Pending Reviews', value: response.data.pending, color: 'text-red-600', action: 'approval' }
-            ]
-        } else {
-            response = await api.get(`/research/user-stats/${user.id}`)
-            
-            stats.value = [
-                { id: 'stat-1', title: 'My Published Works', value: response.data.published, color: 'text-green-600', action: 'workspace' },
-                { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
-                { id: 'stat-3', title: 'My Pending Submissions', value: response.data.pending, color: 'text-orange-500', action: 'workspace' }
-            ]
-        }
+      let response;
+      // ✅ SECURE API CALLS (Cookies attached automatically)
+      if (user.role === 'admin') {
+        response = await api.get('/research/stats')
+
+        stats.value = [
+          { id: 'stat-1', title: 'Total Researches', value: response.data.total, color: 'text-green-600', action: 'research' },
+          { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
+          { id: 'stat-3', title: 'Pending Reviews', value: response.data.pending, color: 'text-red-600', action: 'approval' }
+        ]
+      } else {
+        response = await api.get(`/research/user-stats/${user.id}`)
+
+        stats.value = [
+          { id: 'stat-1', title: 'My Published Works', value: response.data.published, color: 'text-green-600', action: 'workspace' },
+          { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
+          { id: 'stat-3', title: 'My Pending Submissions', value: response.data.pending, color: 'text-orange-500', action: 'workspace' }
+        ]
+      }
     } catch (e) {
-        console.error("Stats Fetch Failed:", e)
-        stats.value[0] = { ...stats.value[0], title: "Connection Failed", value: "Error", color: "text-red-500" }
-        stats.value[2] = { ...stats.value[2], title: "Connection Failed", value: "Error", color: "text-red-500" }
+      console.error("Stats Fetch Failed:", e)
+      stats.value[0] = { ...stats.value[0], title: "Connection Failed", value: "Error", color: "text-red-500" }
+      stats.value[2] = { ...stats.value[2], title: "Connection Failed", value: "Error", color: "text-red-500" }
     }
   }
 
-  const updateStats = (count: number) => { 
+  const updateStats = (count: number) => {
     const firstStat = stats.value[0]
     if (firstStat && firstStat.title === 'Total Researches') {
-       firstStat.value = count 
+      firstStat.value = count
     }
   }
 
@@ -93,7 +93,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   let audioCtx: AudioContext | null = null
   const ensureAudioContext = () => {
     if (!audioCtx) {
-        try { audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)() } catch (e) { audioCtx = null }
+      try { audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)() } catch (e) { audioCtx = null }
     }
     return audioCtx
   }
@@ -101,26 +101,26 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   const playNotificationSound = (count = 1) => {
     const ctx = ensureAudioContext()
     if (!ctx) return
-    if (ctx.state === 'suspended') void ctx.resume().catch(() => {})
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => { })
 
     const now = ctx.currentTime
-    const spacing = 0.18 
+    const spacing = 0.18
 
     for (let i = 0; i < count; i++) {
-        const o = ctx.createOscillator()
-        const g = ctx.createGain()
-        o.type = 'sine'
-        o.frequency.value = 1000
-        o.connect(g)
-        g.connect(ctx.destination)
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.type = 'sine'
+      o.frequency.value = 1000
+      o.connect(g)
+      g.connect(ctx.destination)
 
-        const start = now + i * spacing
-        g.gain.setValueAtTime(0, start)
-        g.gain.linearRampToValueAtTime(0.28, start + 0.004)
-        g.gain.exponentialRampToValueAtTime(0.001, start + 0.14)
+      const start = now + i * spacing
+      g.gain.setValueAtTime(0, start)
+      g.gain.linearRampToValueAtTime(0.28, start + 0.004)
+      g.gain.exponentialRampToValueAtTime(0.001, start + 0.14)
 
-        o.start(start)
-        o.stop(start + 0.16)
+      o.start(start)
+      o.stop(start + 0.16)
     }
   }
 
@@ -130,26 +130,26 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     const user = currentUserRef.value
     if (!user) return
     try {
-        // ✅ Secure API Call
-        const response = await api.get(`/api/notifications?user_id=${user.id}`)
-        notifications.value = response.data
+      // ✅ Secure API Call
+      const response = await api.get(`/api/notifications?user_id=${user.id}`)
+      notifications.value = response.data
     } catch (error) {
-        console.error("Failed to fetch notifications", error)
+      console.error("Failed to fetch notifications", error)
     }
   }
 
   const toggleNotifications = async () => {
     showNotifications.value = !showNotifications.value
     const user = currentUserRef.value
-    
+
     if (showNotifications.value && unreadCount.value > 0 && user) {
-        try {
-            // Optimistic update
-            notifications.value.forEach(n => n.is_read = 1)
-            
-            // ✅ Secure POST (Sends CSRF Token automatically)
-            await api.post('/api/notifications/read', { user_id: user.id })
-        } catch (e) { console.error(e) }
+      try {
+        // Optimistic update
+        notifications.value.forEach(n => n.is_read = 1)
+
+        // ✅ Secure POST (Sends CSRF Token automatically)
+        await api.post('/api/notifications/read', { user_id: user.id })
+      } catch (e) { console.error(e) }
     }
   }
 
@@ -163,27 +163,55 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
 
     // 1. If User is Admin -> Go to Approval Tab
     if (user?.role === 'admin') {
-        setTab('approval')
-        await nextTick() 
-        if (approvalRef.value) {
-            approvalRef.value.openNotification(targetId)
-        }
-    } 
+      setTab('approval')
+      await nextTick()
+      if (approvalRef.value) {
+        approvalRef.value.openNotification(targetId)
+      }
+    }
     // 2. If User is Student -> Go to Workspace Tab
     else {
-        setTab('workspace')
-        await nextTick() 
-        if (workspaceRef.value) {
-            workspaceRef.value.openNotification(targetId)
-        }
+      setTab('workspace')
+      await nextTick()
+      if (workspaceRef.value) {
+        workspaceRef.value.openNotification(targetId)
+      }
     }
   }
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString)
+  const formatTimeAgo = (dateInput: any) => {
+    if (!dateInput) return ''
+
+    let dateString = dateInput
+
+    // Handle PHP DateTime Object { date: "...", timezone: "..." }
+    if (typeof dateInput === 'object' && dateInput !== null && dateInput.date) {
+      dateString = dateInput.date
+    }
+
+    if (typeof dateString !== 'string') {
+      return 'Invalid Date'
+    }
+
+    // Fix: Convert "YYYY-MM-DD HH:MM:SS" to "YYYY-MM-DDTHH:MM:SS"
+    // Also strip microseconds if present and appended with .000000 for cleaner parsing in some envs, 
+    // though 'T' replacement is usually enough.
+    let safeDateString = dateString.replace(' ', 'T')
+
+    // Assume UTC if it comes from server to align with "timezone": "UTC"
+    // But don't double append if already likely ISO
+    if (!safeDateString.endsWith('Z') && !safeDateString.includes('+')) {
+      safeDateString += 'Z'
+    }
+
+    const date = new Date(safeDateString)
+
+    // Fallback
+    if (isNaN(date.getTime())) return dateString
+
     const now = new Date()
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-    
+
     if (diffInSeconds < 60) return 'Just now'
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
@@ -193,13 +221,13 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   // --- 6. WATCHERS & LIFECYCLE ---
 
   watch(currentUserRef, (newUser) => {
-     if (newUser) {
-        fetchDashboardStats()
-        fetchNotifications().then(() => {
-            prevUnread.value = unreadCount.value
-            initialized.value = true
-        })
-     }
+    if (newUser) {
+      fetchDashboardStats()
+      fetchNotifications().then(() => {
+        prevUnread.value = unreadCount.value
+        initialized.value = true
+      })
+    }
   }, { immediate: true })
 
   watch(unreadCount, (newVal, oldVal) => {
@@ -207,7 +235,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     const prev = (typeof oldVal === 'number') ? oldVal : prevUnread.value || 0
     const diff = newVal - prev
     if (diff > 0) {
-        playNotificationSound(diff)
+      playNotificationSound(diff)
     }
     prevUnread.value = newVal
   })
@@ -221,7 +249,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     if (pollingInterval.value) clearInterval(pollingInterval.value)
   })
 
-  return { 
+  return {
     currentTab, stats, workspaceRef, approvalRef, showAdminMenu, showNotifications, notifications, unreadCount,
     setTab, updateStats, fetchDashboardStats, closeAdminMenu, toggleNotifications, handleNotificationClick, formatTimeAgo
   }

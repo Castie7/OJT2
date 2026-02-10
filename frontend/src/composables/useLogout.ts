@@ -1,14 +1,12 @@
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import api from '@/services/api'; 
+import api from '@/services/api';
 
 export function useLogout() {
-  const router = useRouter();
   const isLoading = ref(false);
 
   const logout = async () => {
     isLoading.value = true;
-    
+
     try {
       // 1. Inform the server to destroy the session/cookie
       await api.post('/auth/logout');
@@ -27,11 +25,8 @@ export function useLogout() {
 
       isLoading.value = false;
 
-      // ✅ 4. REDIRECT & REFRESH (Optional but recommended)
-      // Using router.push is good, but window.location.href = '/login' 
-      // is sometimes better for logout because it completely resets the 
-      // entire Vue application state (Vuex/Pinia) instantly.
-      router.push('/login');
+      // 4. REDIRECT & REFRESH (Force full reload)
+      window.location.href = '/login';
     }
   };
 

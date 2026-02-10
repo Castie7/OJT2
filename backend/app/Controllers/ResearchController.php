@@ -86,41 +86,43 @@ class ResearchController extends BaseController
     // 6. CREATE
     public function create()
     {
-        $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized('Invalid Token/Session');
-
-        // Handle JSON vs Form Data
-        $input = $this->request->getJSON(true);
-        if (empty($input)) {
-            $input = $this->request->getPost();
-        }
-
-        // Validate
-        $validation = \Config\Services::validation();
-        $validation->setRules([
-            'title'  => 'required|min_length[3]',
-            'author' => 'required|min_length[2]',
-        ]);
-
-        if (!$validation->run($input)) {
-            return $this->response->setJSON(['status' => 'error', 'messages' => $validation->getErrors()])->setStatusCode(400);
-        }
-
-        // Duplicate Check
-        $title = trim($input['title'] ?? '');
-        $author = trim($input['author'] ?? '');
-        $edition = trim($input['edition'] ?? '');
-        $isbn = trim($input['isbn_issn'] ?? '');
-
-        $dupError = $this->researchService->checkDuplicate($title, $author, $isbn, $edition);
-        if ($dupError) {
-             return $this->response->setJSON([
-                'status' => 'error', 
-                'messages' => ['duplicate' => $dupError]
-            ])->setStatusCode(400);
-        }
-
         try {
+            $user = $this->validateUser();
+            if (!$user) return $this->failUnauthorized('Invalid Token/Session');
+
+            // Handle JSON vs Form Data
+            // Wrap getJSON to prevent FormatException on file uploads
+            $input = $this->request->getPost(); // Try POST first for file uploads
+            if (empty($input)) {
+                $rawInput = $this->request->getJSON(true); // Only try JSON if POST matches nothing
+                if (!empty($rawInput)) $input = $rawInput;
+            }
+
+            // Validate
+            $validation = \Config\Services::validation();
+            $validation->setRules([
+                'title'  => 'required|min_length[3]',
+                'author' => 'required|min_length[2]',
+            ]);
+
+            if (!$validation->run($input)) {
+                return $this->response->setJSON(['status' => 'error', 'messages' => $validation->getErrors()])->setStatusCode(400);
+            }
+
+            // Duplicate Check
+            $title = trim($input['title'] ?? '');
+            $author = trim($input['author'] ?? '');
+            $edition = trim($input['edition'] ?? '');
+            $isbn = trim($input['isbn_issn'] ?? '');
+
+            $dupError = $this->researchService->checkDuplicate($title, $author, $isbn, $edition);
+            if ($dupError) {
+                 return $this->response->setJSON([
+                    'status' => 'error', 
+                    'messages' => ['duplicate' => $dupError]
+                ])->setStatusCode(400);
+            }
+
             // File is optional/handled by service (safe to pass invalid/null)
             $this->researchService->createResearch($user->id, $input, $this->request->getFile('pdf_file'));
             
@@ -128,49 +130,52 @@ class ResearchController extends BaseController
             log_activity($user->id, $user->name, $user->role, 'CREATE_RESEARCH', "Created research: " . ($input['title'] ?? 'Untitled'));
 
             return $this->respond(['status' => 'success']);
-        } catch (\Exception $e) {
-            return $this->failServerError($e->getMessage());
+        } catch (\Throwable $e) {
+            log_message('error', '[Research Create] ' . $e->getMessage());
+            return $this->failServerError('Server Error: ' . $e->getMessage());
         }
     }
 
     // 7. UPDATE
     public function update($id = null)
     {
-        // Allow POST (standard) or PUT (often JSON)
-        // Check method yourself or trust CI4 routing. Route says POST.
-        
-        $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized();
-
-        // Handle JSON vs Form Data
-        $input = $this->request->getJSON(true);
-        if (empty($input)) {
-            $input = $this->request->getPost();
-        }
-
-        $title = trim($input['title'] ?? '');
-        $author = trim($input['author'] ?? '');
-        $edition = trim($input['edition'] ?? '');
-        $isbn = trim($input['isbn_issn'] ?? '');
-
-        $dupError = $this->researchService->checkDuplicate($title, $author, $isbn, $edition, $id);
-        if ($dupError) {
-            return $this->response->setJSON([
-                'status' => 'error', 
-                'messages' => ['duplicate' => $dupError]
-            ])->setStatusCode(400);
-        }
-
         try {
+            // Allow POST (standard) or PUT (often JSON)
+            // Check method yourself or trust CI4 routing. Route says POST.
+            
+            $user = $this->validateUser();
+            if (!$user) return $this->failUnauthorized();
+
+            // Handle JSON vs Form Data
+            $input = $this->request->getPost();
+            if (empty($input)) {
+                $rawInput = $this->request->getJSON(true);
+                if (!empty($rawInput)) $input = $rawInput;
+            }
+
+            $title = trim($input['title'] ?? '');
+            $author = trim($input['author'] ?? '');
+            $edition = trim($input['edition'] ?? '');
+            $isbn = trim($input['isbn_issn'] ?? '');
+
+            $dupError = $this->researchService->checkDuplicate($title, $author, $isbn, $edition, $id);
+            if ($dupError) {
+                return $this->response->setJSON([
+                    'status' => 'error', 
+                    'messages' => ['duplicate' => $dupError]
+                ])->setStatusCode(400);
+            }
+
             $this->researchService->updateResearch($id, $user->id, $user->role, $input, $this->request->getFile('pdf_file'));
             
             // LOG
             log_activity($user->id, $user->name, $user->role, 'UPDATE_RESEARCH', "Updated research ID: $id (" . ($input['title'] ?? '') . ")");
 
             return $this->respond(['status' => 'success']);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            log_message('error', '[Research Update] ' . $e->getMessage());
             if ($e->getCode() == 403) return $this->failForbidden();
-            return $this->failServerError($e->getMessage());
+            return $this->failServerError('Server Error: ' . $e->getMessage());
         }
     }
 
@@ -347,71 +352,77 @@ class ResearchController extends BaseController
                 'skipped' => $result['skipped'],
                 'message' => "Import successful. Added: {$result['count']}. Skipped (Duplicates): {$result['skipped']}."
             ]);
-        } catch (\Exception $e) {
-            return $this->failServerError($e->getMessage());
+        } catch (\Throwable $e) {
+            log_message('error', '[Research CSV Import] ' . $e->getMessage());
+            return $this->failServerError('Server Error: ' . $e->getMessage());
         }
     }
 
     // BULK PDF UPLOAD
     public function uploadBulkPdfs()
     {
-        $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized('Access Denied');
+        try {
+            $user = $this->validateUser();
+            if (!$user) return $this->failUnauthorized('Access Denied');
 
-        $files = $this->request->getFiles(); 
-        
-        // CI4 structure: if input is 'pdf_files[]', getFiles() returns array or object structure.
-        // We expect 'pdf_files'
-        if (!$files || !isset($files['pdf_files'])) {
-             return $this->fail('No files uploaded', 400);
-        }
+            $files = $this->request->getFiles(); 
+            
+            // CI4 structure: if input is 'pdf_files[]', getFiles() returns array or object structure.
+            // We expect 'pdf_files'
+            if (!$files || !isset($files['pdf_files'])) {
+                 return $this->fail('No files uploaded', 400);
+            }
 
-        $pdfFiles = $files['pdf_files'];
-        // If single file uploaded, CI4 might allow it not as array? Ensure iterable.
-        if (!is_array($pdfFiles)) {
-            $pdfFiles = [$pdfFiles];
-        }
+            $pdfFiles = $files['pdf_files'];
+            // If single file uploaded, CI4 might allow it not as array? Ensure iterable.
+            if (!is_array($pdfFiles)) {
+                $pdfFiles = [$pdfFiles];
+            }
 
-        if (count($pdfFiles) > 10) {
-            return $this->fail('Maximum of 10 files allowed per upload', 400);
-        }
+            if (count($pdfFiles) > 10) {
+                return $this->fail('Maximum of 10 files allowed per upload', 400);
+            }
 
-        $matched = 0;
-        $skipped = 0;
-        $details = [];
+            $matched = 0;
+            $skipped = 0;
+            $details = [];
 
-        foreach ($pdfFiles as $file) {
-            if ($file->isValid() && !$file->hasMoved()) {
-                // Filename without extension
-                $originalName = $file->getClientName();
-                $titleCandidate = pathinfo($originalName, PATHINFO_FILENAME);
-                
-                // Call Service to find and attach
-                $resultStatus = $this->researchService->matchAndAttachPdf($titleCandidate, $file);
+            foreach ($pdfFiles as $file) {
+                if ($file->isValid() && !$file->hasMoved()) {
+                    // Filename without extension
+                    $originalName = $file->getClientName();
+                    $titleCandidate = pathinfo($originalName, PATHINFO_FILENAME);
+                    
+                    // Call Service to find and attach
+                    $resultStatus = $this->researchService->matchAndAttachPdf($titleCandidate, $file);
 
-                if ($resultStatus === 'linked') {
-                    $matched++;
-                    $details[] = "Linked: $originalName";
-                } elseif ($resultStatus === 'exists') {
-                    $skipped++;
-                    $details[] = "Skipped: $originalName (Already has file)";
-                } else {
-                    $skipped++;
-                    $details[] = "Skipped: $originalName (No match found)";
+                    if ($resultStatus === 'linked') {
+                        $matched++;
+                        $details[] = "Linked: $originalName";
+                    } elseif ($resultStatus === 'exists') {
+                        $skipped++;
+                        $details[] = "Skipped: $originalName (Already has file)";
+                    } else {
+                        $skipped++;
+                        $details[] = "Skipped: $originalName (No match found)";
+                    }
                 }
             }
-        }
-        
-        // LOG IT
-        $logDetails = "Bulk Upload: Checked " . count($pdfFiles) . " files. Linked: $matched. Skipped: $skipped.";
-        log_activity($user->id, $user->name, $user->role, 'BULK_UPLOAD_PDF', $logDetails);
+            
+            // LOG IT
+            $logDetails = "Bulk Upload: Checked " . count($pdfFiles) . " files. Linked: $matched. Skipped: $skipped.";
+            log_activity($user->id, $user->name, $user->role, 'BULK_UPLOAD_PDF', $logDetails);
 
-        return $this->response->setJSON([
-            'status' => 'success',
-            'matched' => $matched,
-            'skipped' => $skipped,
-            'message' => "Bulk Upload Complete. Linked: $matched. Skipped: $skipped.",
-            'details' => $details
-        ]);
+            return $this->response->setJSON([
+                'status' => 'success',
+                'matched' => $matched,
+                'skipped' => $skipped,
+                'message' => "Bulk Upload Complete. Linked: $matched. Skipped: $skipped.",
+                'details' => $details
+            ]);
+        } catch (\Throwable $e) {
+             log_message('error', '[Bulk Upload] ' . $e->getMessage());
+             return $this->failServerError('Server Error: ' . $e->getMessage());
+        }
     }
 }

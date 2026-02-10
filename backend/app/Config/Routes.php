@@ -11,8 +11,9 @@ use CodeIgniter\Router\RouteCollection;
 $routes->options('(:any)', function() {
     $response = service('response');
     
-    // ✅ FIX: Use your specific Frontend IP, NOT '*'
-    $response->setHeader('Access-Control-Allow-Origin', 'https://192.168.60.56:5173');
+    // ✅ FIX: Dynamic Origin (Works for any IP)
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+    $response->setHeader('Access-Control-Allow-Origin', $origin);
     
     // ✅ FIX: Allow Cookies/Credentials
     $response->setHeader('Access-Control-Allow-Credentials', 'true');

@@ -6,8 +6,8 @@ Options -Indexes
     RewriteEngine On
 
     # 🔒 FORCE HTTPS
-    RewriteCond %{HTTPS} !=on
-    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    # RewriteCond %{HTTPS} !=on
+    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # ... (Existing CodeIgniter Rules follow below) ...
     RewriteCond %{REQUEST_FILENAME} !-f

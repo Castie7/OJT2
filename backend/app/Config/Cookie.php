@@ -47,7 +47,7 @@ class Cookie extends BaseConfig
      * 🔒 SECURED: Only allowed over HTTPS.
      * REQUIRED if SameSite is set to 'None'.
      */
-    public bool $secure = true;
+    public bool $secure = false;
 
     /**
      * --------------------------------------------------------------------------
@@ -66,7 +66,7 @@ class Cookie extends BaseConfig
      * for decoupled frontends (Vue/React) using 'credentials: include'.
      * * Allowed values: 'None', 'Lax', 'Strict', ''.
      */
-    public string $samesite = 'None';
+    public string $samesite = 'Lax';
 
     /**
      * --------------------------------------------------------------------------

@@ -40,7 +40,7 @@ class Filters extends BaseFilters
      */
     public array $required = [
         'before' => [
-            'forcehttps', // 🔒 Forces SSL (Good for your mkcert setup)
+            //'forcehttps', // 🔒 Forces SSL (Good for your mkcert setup)
             'pagecache',  
         ],
         'after' => [

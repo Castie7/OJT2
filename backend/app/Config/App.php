@@ -16,7 +16,17 @@ class App extends BaseConfig
      *
      * E.g., http://example.com/
      */
-    public $baseURL = 'https://192.168.60.56/OJT2/backend/public/index.php/';
+    public $baseURL = 'http://localhost/OJT2/backend/public/index.php/';
+
+    public function __construct() {
+        parent::__construct();
+
+        // Check if running via command line (CLI) or Web Server
+        if (isset($_SERVER['HTTP_HOST'])) {
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $this->baseURL = $protocol . '://' . $_SERVER['HTTP_HOST'] . '/OJT2/backend/public/index.php/';
+        }
+    }
 
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.
@@ -157,7 +167,7 @@ class App extends BaseConfig
      * secure, the user will be redirected to a secure version of the page
      * and the HTTP Strict Transport Security (HSTS) header will be set.
      */
-    public bool $forceGlobalSecureRequests = true;
+    public bool $forceGlobalSecureRequests = false;
 
     /**
      * --------------------------------------------------------------------------

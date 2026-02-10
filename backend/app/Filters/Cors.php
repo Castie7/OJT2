@@ -9,10 +9,11 @@ class Cors implements FilterInterface
     public function before(RequestInterface $request, $arguments = null)
     {
         // ---------------------------------------------------------------------
-        // 1. DEFINE ALLOWED ORIGIN
+        // 1. DYNAMIC ORIGIN HANDLING
         // ---------------------------------------------------------------------
-        // This must match your Vite frontend URL exactly.
-        $origin = 'https://192.168.60.56:5173';
+        // Allow any origin that connects to us (useful for local dev with changing IPs).
+        // In production, you might want to restrict this to specific domains.
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
 
         // ---------------------------------------------------------------------
         // 2. SET HEADERS MANUALLY

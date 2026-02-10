@@ -2,13 +2,19 @@
 
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 
-// 1. Get the URL from the .env file
-const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+// 1. Dynamic Base URL (Auto-detects IP)
+// This overrides the .env file so you don't need to change it when your IP changes.
+const getBaseUrl = () => {
+  // Dynamically construct URL from browser location
+  // Assumption: Backend is at the same hostname, but on standard port 80/443 (via XAMPP)
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  return `${protocol}//${hostname}/OJT2/backend/public/index.php`;
+};
 
 const api = axios.create({
-  // Append '/index.php' for API calls
-  baseURL: `${BASE_URL}/index.php`, 
-  withCredentials: true, 
+  baseURL: getBaseUrl(),
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

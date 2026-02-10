@@ -67,8 +67,8 @@ const handleLogout = async () => {
     console.warn("Logout request failed, cleaning local state anyway.")
   } finally {
     currentUser.value = null
-    // After logout, stay on the Dashboard (it will automatically show the "Guest" view)
-    router.push('/') 
+    // Force a full page refresh to ensure clean state
+    window.location.href = '/login'; 
   }
 }
 

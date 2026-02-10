@@ -100,9 +100,108 @@ const uploadCsv = async () => {
         isUploading.value = false
     }
 }
+
+// 4. Bulk PDF Upload Logic
+const pdfInput = ref<HTMLInputElement | null>(null)
+const selectedPdfs = ref<File[]>([])
+const isPdfUploading = ref(false)
+const pdfStatus = ref<{ message: string, type: 'success' | 'error' | '', details?: string[] }>({ message: '', type: '', details: [] })
+
+// Toast State
+const toast = ref({ show: false, message: '', type: 'success' as 'success' | 'error' })
+const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    toast.value = { show: true, message, type }
+    setTimeout(() => { toast.value.show = false }, 4000)
+}
+
+const handlePdfChange = (event: Event) => {
+    const target = event.target as HTMLInputElement
+    if (target.files && target.files.length) {
+        if (target.files.length > 10) {
+            alert("You can only upload a maximum of 10 files at a time.")
+            target.value = '' // Reset input
+            selectedPdfs.value = []
+            return
+        }
+        // Convert FileList to Array
+        selectedPdfs.value = Array.from(target.files)
+        pdfStatus.value = { message: '', type: '', details: [] }
+    }
+}
+
+const uploadPdfs = async () => {
+    if (!selectedPdfs.value.length) return
+
+    isPdfUploading.value = true
+    pdfStatus.value = { message: '⏳ Uploading and linking...', type: '' }
+
+    const formData = new FormData()
+    selectedPdfs.value.forEach((file) => {
+        formData.append('pdf_files[]', file)
+    })
+    
+    // ... rest of function ... (unchanged logic, just context)
+
+
+    try {
+        const response = await api.post('/research/bulk-upload-pdfs', formData)
+        
+        let result = response.data
+        if (typeof result === 'string') {
+            try {
+                result = JSON.parse(result)
+            } catch (e) {
+                console.error("Failed to parse JSON response", e)
+            }
+        }
+        
+        console.log("Bulk Upload Result:", result)
+        console.log("Full Response:", response)
+
+        if (result.status === 'success' || response.status === 200) {
+             // Backend returns a formatted message
+             let msg = "Upload Complete"
+             
+             if (result.message) {
+                 msg = result.message
+             } else if (result.matched !== undefined) {
+                 msg = `Done! Linked: ${result.matched}, Skipped: ${result.skipped}`
+             }
+             
+             pdfStatus.value = { 
+                message: msg, 
+                type: 'success',
+                details: result.details || []
+            }
+            showToast(msg, 'success') // ✅ Show Toast
+            
+            selectedPdfs.value = [] // Clear selection
+            if(pdfInput.value) pdfInput.value.value = ''
+        } else {
+            pdfStatus.value = { message: `❌ Error: ${result.message || 'Unknown Error'}`, type: 'error' }
+            showToast("Upload Failed", 'error')
+        }
+
+    } catch (error: any) {
+        console.error(error)
+        const msg = error.response?.data?.message || 'Server Connection Failed'
+        pdfStatus.value = { message: `❌ ${msg}`, type: 'error' }
+        showToast(msg, 'error')
+    } finally {
+        isPdfUploading.value = false
+    }
+}
 </script>
 
 <template>
+  <div>
+    <!-- TOAST NOTIFICATION -->
+    <Transition name="slide-fade">
+      <div v-if="toast.show" :class="`fixed bottom-5 right-5 z-[1000] px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 text-white font-bold transition-all ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`">
+        <span>{{ toast.type === 'error' ? '⚠️' : '✅' }}</span><span>{{ toast.message }}</span>
+      </div>
+    </Transition>
+
   <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl mx-auto mt-10">
     <div class="text-center mb-8">
         <h2 class="text-2xl font-bold text-gray-800">Import Data</h2>
@@ -157,5 +256,59 @@ const uploadCsv = async () => {
             <span v-else>🚀 Upload Data</span>
         </button>
     </div>
+  </div>
+
+  <!-- BULK PDF UPLOAD SECTION -->
+  <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl mx-auto mt-10">
+    <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-800">Bulk Upload PDFs</h2>
+        <p class="text-gray-500">Auto-link PDFs to researches by matching filenames to Titles.</p>
+    </div>
+
+    <div class="border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition relative">
+        <div class="text-5xl mb-4">📚</div>
+        
+        <input 
+            type="file" 
+            ref="pdfInput"
+            accept=".pdf"
+            multiple
+            @change="handlePdfChange"
+            class="hidden"
+            id="pdfUpload"
+        />
+        
+        <label for="pdfUpload" class="cursor-pointer bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition shadow-md">
+            Select PDF Files
+        </label>
+        
+        <p v-if="!selectedPdfs.length" class="mt-3 text-sm text-gray-400">Select multiple PDF files (e.g. "My Title.pdf")</p>
+        <p v-else class="mt-3 text-lg font-medium text-blue-700">📄 {{ selectedPdfs.length }} files selected</p>
+    </div>
+
+    <div class="mt-8 flex justify-end gap-4">
+        <div v-if="pdfStatus.message" :class="`flex-1 py-2 px-4 rounded font-bold flex flex-col justify-center text-sm ${pdfStatus.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`">
+            <span>{{ pdfStatus.message }}</span>
+            <ul v-if="pdfStatus.details && pdfStatus.details.length" class="mt-1 text-xs list-disc border-t pt-1 border-opacity-20 border-black pl-4 max-h-32 overflow-y-auto">
+                <li v-for="(detail, i) in pdfStatus.details" :key="i">{{ detail }}</li>
+            </ul>
+        </div>
+
+        <button 
+            @click="uploadPdfs" 
+            :disabled="!selectedPdfs.length || isPdfUploading"
+            class="bg-blue-800 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-900 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+            <span v-if="isPdfUploading" class="flex items-center gap-2">
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+            </span>
+            <span v-else>🔗 Link PDFs</span>
+        </button>
+    </div>
+  </div>
   </div>
 </template>

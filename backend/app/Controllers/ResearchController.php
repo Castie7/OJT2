@@ -351,4 +351,67 @@ class ResearchController extends BaseController
             return $this->failServerError($e->getMessage());
         }
     }
+
+    // BULK PDF UPLOAD
+    public function uploadBulkPdfs()
+    {
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized('Access Denied');
+
+        $files = $this->request->getFiles(); 
+        
+        // CI4 structure: if input is 'pdf_files[]', getFiles() returns array or object structure.
+        // We expect 'pdf_files'
+        if (!$files || !isset($files['pdf_files'])) {
+             return $this->fail('No files uploaded', 400);
+        }
+
+        $pdfFiles = $files['pdf_files'];
+        // If single file uploaded, CI4 might allow it not as array? Ensure iterable.
+        if (!is_array($pdfFiles)) {
+            $pdfFiles = [$pdfFiles];
+        }
+
+        if (count($pdfFiles) > 10) {
+            return $this->fail('Maximum of 10 files allowed per upload', 400);
+        }
+
+        $matched = 0;
+        $skipped = 0;
+        $details = [];
+
+        foreach ($pdfFiles as $file) {
+            if ($file->isValid() && !$file->hasMoved()) {
+                // Filename without extension
+                $originalName = $file->getClientName();
+                $titleCandidate = pathinfo($originalName, PATHINFO_FILENAME);
+                
+                // Call Service to find and attach
+                $resultStatus = $this->researchService->matchAndAttachPdf($titleCandidate, $file);
+
+                if ($resultStatus === 'linked') {
+                    $matched++;
+                    $details[] = "Linked: $originalName";
+                } elseif ($resultStatus === 'exists') {
+                    $skipped++;
+                    $details[] = "Skipped: $originalName (Already has file)";
+                } else {
+                    $skipped++;
+                    $details[] = "Skipped: $originalName (No match found)";
+                }
+            }
+        }
+        
+        // LOG IT
+        $logDetails = "Bulk Upload: Checked " . count($pdfFiles) . " files. Linked: $matched. Skipped: $skipped.";
+        log_activity($user->id, $user->name, $user->role, 'BULK_UPLOAD_PDF', $logDetails);
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'matched' => $matched,
+            'skipped' => $skipped,
+            'message' => "Bulk Upload Complete. Linked: $matched. Skipped: $skipped.",
+            'details' => $details
+        ]);
+    }
 }

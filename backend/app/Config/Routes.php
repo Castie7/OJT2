@@ -87,4 +87,5 @@ $routes->group('research', function($routes) {
     $routes->post('archive/(:num)', 'ResearchController::archive/$1'); 
     $routes->post('restore/(:num)', 'ResearchController::restore/$1');
     $routes->post('import-csv', 'ResearchController::importCsv'); 
+    $routes->post('bulk-upload-pdfs', 'ResearchController::uploadBulkPdfs'); 
 });

@@ -454,4 +454,35 @@ class ResearchService extends BaseService
 
         return ['count' => $count, 'skipped' => $skipped];
     }
+    public function matchAndAttachPdf($titleCandidate, $file)
+    {
+        // Case-insensitive match.
+        // Option 1: Exact match with varying case
+        $item = $this->researchModel->like('title', $titleCandidate, 'none')->first(); 
+        
+        if ($item) {
+            // CHECK IF EXISTS
+            if (!empty($item->file_path)) {
+                log_message('error', "Skipped: File already exists for {$item->title}");
+                return 'exists';
+            }
+
+            $newName = $file->getRandomName();
+            $targetPath = ROOTPATH . 'public/uploads';
+            
+            log_message('error', "Attempting to move file to: $targetPath with name: $newName");
+            
+            if ($file->move($targetPath, $newName)) {
+                $this->researchModel->update($item->id, ['file_path' => $newName]);
+                log_message('error', "File moved successfully.");
+                return 'linked';
+            } else {
+                log_message('error', "File move failed: " . $file->getErrorString());
+                return 'error_move';
+            }
+        } else {
+             log_message('error', "No match found for title: $titleCandidate");
+             return 'no_match';
+        }
+    }
 }

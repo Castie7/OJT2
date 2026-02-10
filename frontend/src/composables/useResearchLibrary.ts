@@ -7,7 +7,7 @@ export interface Research {
   title: string
   author: string
   status: 'pending' | 'approved' | 'rejected' | 'archived'
-  
+
   // Library Catalog Fields
   knowledge_type: string
   crop_variation: string
@@ -21,7 +21,7 @@ export interface Research {
   item_condition: string
   link: string
   file_path: string
-  
+
   // Dates
   approved_at?: string
   archived_at?: string
@@ -36,26 +36,26 @@ export interface User {
 }
 
 export function useResearchLibrary(currentUser: User | null, emit: (event: 'update-stats', count: number) => void) {
-  
+
   // --- STATE ---
   const researches = ref<Research[]>([])
-  
+
   const searchQuery = ref('')
   const selectedType = ref('') // Dropdown Filter
-  
+
   const showArchived = ref(false)
   const viewMode = ref<'list' | 'grid'>('list')
   const selectedResearch = ref<Research | null>(null)
-  
+
   // UI State
   const isLoading = ref(false)
   const toast = ref({ show: false, message: '', type: 'success' as 'success' | 'error' })
-  const confirmModal = ref({ 
-    show: false, 
-    id: null as number | null, 
-    action: '', 
-    title: '', 
-    subtext: '' 
+  const confirmModal = ref({
+    show: false,
+    id: null as number | null,
+    action: '',
+    title: '',
+    subtext: ''
   })
 
   // Pagination State
@@ -79,14 +79,14 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
     try {
       // ✅ Use api.get()
       // The secure service handles Base URL and Cookies automatically.
-      const endpoint = showArchived.value 
-        ? '/research/archived' 
+      const endpoint = showArchived.value
+        ? '/research/archived'
         : '/research'
 
       const response = await api.get(endpoint)
-      
+
       researches.value = response.data
-      
+
       if (!showArchived.value) {
         emit('update-stats', researches.value.length)
       }
@@ -95,9 +95,9 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
       console.error(error)
       // Check for specific error codes if needed
       if (showArchived.value && error.response?.status === 403) {
-          showToast("Access Denied to Archives", "error")
+        showToast("Access Denied to Archives", "error")
       } else {
-          showToast("Failed to load data.", "error")
+        showToast("Failed to load data.", "error")
       }
     } finally {
       isLoading.value = false
@@ -109,14 +109,16 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
     return researches.value.filter(item => {
       // A. Search Query (Title, Author, ISBN, Subjects)
       const q = searchQuery.value.toLowerCase()
-      const matchesSearch = 
-        item.title.toLowerCase().includes(q) || 
+      const matchesSearch =
+        item.title.toLowerCase().includes(q) ||
         item.author.toLowerCase().includes(q) ||
         (item.isbn_issn && item.isbn_issn.toLowerCase().includes(q)) ||
         (item.subjects && item.subjects.toLowerCase().includes(q))
 
       // B. Knowledge Type Filter
-      const matchesType = selectedType.value === '' || item.knowledge_type === selectedType.value
+      // Handle comma-separated values (e.g. "Journal, Book")
+      const matchesType = selectedType.value === '' ||
+        (item.knowledge_type && item.knowledge_type.includes(selectedType.value))
 
       return matchesSearch && matchesType
     })
@@ -147,7 +149,7 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
 
   const executeArchiveToggle = async () => {
     if (!confirmModal.value.id) return
-    
+
     try {
       // ✅ Use api.post()
       // CSRF headers are automatically handled by the api.ts interceptor
@@ -156,20 +158,20 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
         : `/research/archive/${confirmModal.value.id}`
 
       await api.post(endpoint)
-      
-      fetchResearches() 
+
+      fetchResearches()
       showToast(`Item ${confirmModal.value.action}d successfully!`, "success")
       confirmModal.value.show = false
 
     } catch (error: any) {
-       console.error(error)
-       const msg = error.response?.data?.message || "Error updating status"
-       showToast("Failed: " + msg, "error")
+      console.error(error)
+      const msg = error.response?.data?.message || "Error updating status"
+      showToast("Failed: " + msg, "error")
     }
   }
 
   // --- WATCHERS ---
-  
+
   // Reload when switching between Active/Archived
   watch(showArchived, () => {
     currentPage.value = 1
@@ -187,30 +189,30 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
 
   return {
     // State
-    researches, 
-    searchQuery, 
-    selectedType, 
-    showArchived, 
-    viewMode, 
+    researches,
+    searchQuery,
+    selectedType,
+    showArchived,
+    viewMode,
     selectedResearch,
-    isLoading, 
-    toast, 
-    confirmModal, 
-    currentPage, 
+    isLoading,
+    toast,
+    confirmModal,
+    currentPage,
     itemsPerPage,
-    
+
     // Computed
-    filteredResearches, 
-    paginatedResearches, 
+    filteredResearches,
+    paginatedResearches,
     totalPages,
-    
+
     // Methods
-    fetchResearches, 
-    nextPage, 
-    prevPage, 
-    requestArchiveToggle, 
+    fetchResearches,
+    nextPage,
+    prevPage,
+    requestArchiveToggle,
     executeArchiveToggle,
-    formatSimpleDate, 
+    formatSimpleDate,
     showToast
   }
 }

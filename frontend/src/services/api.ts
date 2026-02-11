@@ -3,13 +3,20 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 
 // 1. Dynamic Base URL (Auto-detects IP)
+// 1. Dynamic Base URL (Auto-detects IP)
 // This overrides the .env file so you don't need to change it when your IP changes.
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
   // Dynamically construct URL from browser location
   // Assumption: Backend is at the same hostname, but on standard port 80/443 (via XAMPP)
   const hostname = window.location.hostname;
   const protocol = window.location.protocol;
   return `${protocol}//${hostname}/OJT2/backend/public/index.php`;
+};
+
+export const getAssetUrl = () => {
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  return `${protocol}//${hostname}/OJT2/backend/public`;
 };
 
 const api = axios.create({

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-// ✅ USE THE ENV VARIABLE
-// This automatically grabs the URL from your .env file
-const ASSET_URL = import.meta.env.VITE_BACKEND_URL
+// ✅ USE THE DYNAMIC URL
+import { getAssetUrl } from '../services/api'
+const ASSET_URL = getAssetUrl()
 
 // Ideally, import your shared 'Research' interface here. 
 // For now, I'm using 'any', but you should replace it with your actual type.

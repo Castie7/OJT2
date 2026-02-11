@@ -2,10 +2,9 @@
 import { ref } from 'vue' 
 import { useResearchLibrary, type User } from '../composables/useResearchLibrary'
 
-// ✅ USE THE ENV VARIABLE
-// This automatically grabs the URL from your .env file
-// Example: https://YOUR_IP/OJT2/backend/public
-const ASSET_URL = import.meta.env.VITE_BACKEND_URL
+// ✅ USE THE DYNAMIC URL
+import { getAssetUrl } from '../services/api'
+const ASSET_URL = getAssetUrl()
 
 const props = defineProps<{
   currentUser: User | null

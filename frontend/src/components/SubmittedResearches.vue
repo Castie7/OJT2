@@ -2,9 +2,9 @@
 import { computed } from 'vue'
 import { useSubmittedResearches, type User } from '../composables/useSubmittedResearches' 
 
-// ✅ USE THE ENV VARIABLE
-// This automatically grabs the URL from your .env file
-const ASSET_URL = import.meta.env.VITE_BACKEND_URL
+// ✅ USE THE DYNAMIC URL
+import { getAssetUrl } from '../services/api'
+const ASSET_URL = getAssetUrl()
 
 const props = defineProps<{
   currentUser: User | null

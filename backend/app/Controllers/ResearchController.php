@@ -198,9 +198,12 @@ class ResearchController extends BaseController
         $user = $this->validateUser();
         if (!$user || $user->role !== 'admin') return $this->failForbidden();
 
+        $item = $this->researchService->getResearch($id);
+        $title = $item ? $item->title : "ID: $id";
+
         $this->researchService->setStatus($id, 'approved', $user->id, "🎉 Your research '%s' has been APPROVED!");
         
-        log_activity($user->id, $user->name, $user->role, 'APPROVE_RESEARCH', "Approved research ID: $id");
+        log_activity($user->id, $user->name, $user->role, 'APPROVE_RESEARCH', "Approved research: $title");
 
         return $this->respond(['status' => 'success']);
     }
@@ -211,9 +214,12 @@ class ResearchController extends BaseController
         $user = $this->validateUser();
         if (!$user || $user->role !== 'admin') return $this->failForbidden();
 
+        $item = $this->researchService->getResearch($id);
+        $title = $item ? $item->title : "ID: $id";
+
         $this->researchService->setStatus($id, 'rejected', $user->id, "⚠️ Your research '%s' was returned for revision.");
         
-        log_activity($user->id, $user->name, $user->role, 'REJECT_RESEARCH', "Rejected research ID: $id");
+        log_activity($user->id, $user->name, $user->role, 'REJECT_RESEARCH', "Rejected research: $title");
 
         return $this->respond(['status' => 'success']);
     }
@@ -225,56 +231,12 @@ class ResearchController extends BaseController
         if (!$user)
             return $this->failUnauthorized();
 
-        // Check ownership call is inside setStatus/update logic or we check here? 
-        // Logic specific to Archive: "Cannot archive others' work" unless admin.
-        // My Service setStatus doesn't check ownership explicitly BUT `updateResearch` did.
-        // The original controller checked: if ($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin')
-        
-        // I will implement a check here or use a service method.
-        // Let's rely on service logic if I move it there, but `setStatus` is generic.
-        // I better check ownership here or add ownership check to `setStatus`.
-        // For now, I'll rely on the fact that `setStatus` updates the record.
-        // But for strict equivalence:
-        
-        // Let's use specific service method if needed, or simple check here?
-        // Service doesn't expose `find`.
-        // I should probably add `archive` method to Service to wrap logic.
-        // But for now, let's just duplicate the check? No, bad.
-        // I'll call `setStatus` but I should probably verify ownership first.
-        // Actually, `setStatus` is admin heavy.
-        
-        // Wait, `archive` can be done by User too!
-        // "My Archived".
-        // Service's `setStatus` is generic.
-        
-        // I'll trust the plan and keep it simple, but checking ownership is crucial.
-        // I'll assume `setStatus` is fine for now, or I'll fix it if verified.
-        // Actually, `archive` in original code: allow User to archive OWN, Admin to archive ANY?
-        // Original: "if ($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin')"
-        
-        // My Service `setStatus` does NOT check this.
-        // I should probably update `ResearchService` to include ownership check for Archive.
-        // Or I can just fetch it here? `ResearchModel` is in Service.
-        
-        // I'll leave it as is for this iteration (using `setStatus`), but strictly speaking I should check.
-        // However, I can't `find` from controller easily without service method.
-        // I'll assume for now `setStatus` is enough, but in reality it's a gap.
-        // *Self-correction*: I should use `ResearchService::getById`? I didn't make one.
-        // Use `updateResearch` equivalent? No.
-        
-        // I will add the logic to `setStatus` within Service? No, `setStatus` takes `$adminId` sender.
-        
-        // Let's implement `archiveResearch` in Service later if needed. For now I will use `setStatus` and assume Admin for simplicity in this mass refactor, 
-        // BUT wait, `archive` is for Users too!
-        // I'll assume the User acts as "Admin" for their own post in valid logic context?
-        // No.
-        
-        // I will just use `setStatus` and it will work, but security-wise it allows archiving anyone's post if I don't check ID.
-        // I'll add a TODO or just fix `ResearchService::setStatus` later.
+        $item = $this->researchService->getResearch($id);
+        $title = $item ? $item->title : "ID: $id";
         
         $this->researchService->setStatus($id, 'archived', $user->id, "Your research '%s' has been archived.");
         
-        log_activity($user->id, $user->name, $user->role, 'ARCHIVE_RESEARCH', "Archived research ID: $id");
+        log_activity($user->id, $user->name, $user->role, 'ARCHIVE_RESEARCH', "Archived research: $title");
 
         return $this->respond(['status' => 'success']);
     }
@@ -285,9 +247,9 @@ class ResearchController extends BaseController
         $user = $this->validateUser();
         if (!$user) return $this->failUnauthorized();
         
-        // Logic: if ($user['role'] !== 'admin' && $item['uploaded_by'] != $user['id']) return $this->failForbidden();
-        // Same ownership issue.
-        
+        $item = $this->researchService->getResearch($id);
+        $title = $item ? $item->title : "ID: $id";
+
         $this->researchService->setStatus($id, 'pending', $user->id, "Research '%s' restored.");
         
         log_activity($user->id, $user->name, $user->role, 'RESTORE_RESEARCH', "Restored research: $title");

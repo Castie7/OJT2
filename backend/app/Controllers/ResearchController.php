@@ -89,6 +89,28 @@ class ResearchController extends BaseController
         return $this->respond($data);
     }
 
+    // --- VALIDATION RULES HELPER ---
+    private function getValidationRules()
+    {
+        return [
+            'title'                => 'required|min_length[3]|max_length[255]',
+            'author'               => 'required|min_length[2]|max_length[255]',
+            'knowledge_type'       => 'required|max_length[100]',
+            'publication_date'     => 'permit_empty|valid_date',
+            'start_date'           => 'permit_empty|valid_date',
+            'deadline_date'        => 'permit_empty|valid_date',
+            'edition'              => 'permit_empty|max_length[50]',
+            'publisher'            => 'permit_empty|max_length[255]',
+            'physical_description' => 'permit_empty|max_length[255]',
+            'isbn_issn'            => 'permit_empty|max_length[50]|alpha_numeric_punct',
+            'subjects'             => 'permit_empty|string',
+            'shelf_location'       => 'permit_empty|max_length[100]',
+            'item_condition'       => 'permit_empty|max_length[50]',
+            'crop_variation'       => 'permit_empty|max_length[100]',
+            'link'                 => 'permit_empty|valid_url_strict',
+        ];
+    }
+
     // 6. CREATE
     public function create()
     {
@@ -108,10 +130,7 @@ class ResearchController extends BaseController
 
             // Validate
             $validation = \Config\Services::validation();
-            $validation->setRules([
-                'title' => 'required|min_length[3]',
-                'author' => 'required|min_length[2]',
-            ]);
+            $validation->setRules($this->getValidationRules());
 
             if (!$validation->run($input)) {
                 return $this->response->setJSON(['status' => 'error', 'messages' => $validation->getErrors()])->setStatusCode(400);
@@ -162,6 +181,14 @@ class ResearchController extends BaseController
                 $rawInput = $this->request->getJSON(true);
                 if (!empty($rawInput))
                     $input = $rawInput;
+            }
+            
+            // Validate
+            $validation = \Config\Services::validation();
+            $validation->setRules($this->getValidationRules());
+
+            if (!$validation->run($input)) {
+                return $this->response->setJSON(['status' => 'error', 'messages' => $validation->getErrors()])->setStatusCode(400);
             }
 
             $title = trim($input['title'] ?? '');

@@ -31,13 +31,24 @@ export interface Research {
   archived_at?: string
 }
 
-export function useMyWorkspace(currentUser: User | null) {
+export function useMyWorkspace(_currentUser: User | null) {
 
   const activeTab = ref<'pending' | 'approved' | 'rejected' | 'archived'>('pending')
   const isModalOpen = ref(false)
   const isSubmitting = ref(false)
   const isLoading = ref(false)
   const myResearches = ref<Research[]>([])
+
+  // VALIDATION STATE
+  const errors = reactive({
+    title: '',
+    author: '',
+    knowledge_type: '',
+    publication_date: '',
+    start_date: '',
+    deadline_date: '',
+    link: ''
+  })
 
   // FORM STATE
   const form = reactive({
@@ -61,6 +72,49 @@ export function useMyWorkspace(currentUser: User | null) {
   })
 
   // --- ACTIONS ---
+
+  // VALIDATION FUNCTION
+  const validateForm = (): boolean => {
+    // Reset errors
+    Object.keys(errors).forEach(key => (errors as any)[key] = '')
+    let isValid = true
+
+    // 1. Title
+    if (!form.title.trim()) {
+      errors.title = 'Title is required.'
+      isValid = false
+    } else if (form.title.length < 3) {
+      errors.title = 'Title must be at least 3 characters.'
+      isValid = false
+    }
+
+    // 2. Author
+    if (!form.author.trim()) {
+      errors.author = 'Author is required.'
+      isValid = false
+    } else if (form.author.length < 2) {
+      errors.author = 'Author must be at least 2 characters.'
+      isValid = false
+    }
+
+    // 3. Knowledge Type
+    if (form.knowledge_type.length === 0) {
+      errors.knowledge_type = 'Please select at least one type.'
+      isValid = false
+    }
+
+    // 4. Link (URL)
+    if (form.link && form.link.trim() !== '') {
+      try {
+        new URL(form.link)
+      } catch (_) {
+        errors.link = 'Please enter a valid URL (e.g., https://example.com).'
+        isValid = false
+      }
+    }
+
+    return isValid
+  }
 
   // 1. FETCH DATA
   const fetchMyResearches = async () => {
@@ -93,6 +147,7 @@ export function useMyWorkspace(currentUser: User | null) {
 
   // 2. OPEN FOR NEW SUBMISSION
   const openSubmitModal = () => {
+    Object.keys(errors).forEach(key => (errors as any)[key] = '') // Clear errors
     Object.assign(form, {
       id: null,
       title: '', author: '', crop_variation: '',
@@ -108,6 +163,7 @@ export function useMyWorkspace(currentUser: User | null) {
 
   // 3. OPEN FOR EDITING
   const openEditModal = (item: Research) => {
+    Object.keys(errors).forEach(key => (errors as any)[key] = '') // Clear errors
     Object.assign(form, {
       id: item.id,
       title: item.title,
@@ -148,8 +204,11 @@ export function useMyWorkspace(currentUser: User | null) {
   }
 
   const submitResearch = async (): Promise<boolean> => {
-    if (!form.title.trim()) { alert("⚠️ Title is required."); return false }
-    if (!form.author.trim()) { alert("⚠️ Author is required."); return false }
+    // 🛑 FRONTEND VALIDATION
+    if (!validateForm()) {
+      // Small delay to ensure modal checks update visually if needed
+      return false
+    }
 
     isSubmitting.value = true
     const formData = new FormData()
@@ -194,7 +253,12 @@ export function useMyWorkspace(currentUser: User | null) {
       // ✅ Improved Error Handling
       let msg = "Action Failed";
       if (error.response?.data?.messages) {
-        msg = Object.values(error.response.data.messages).join('\n');
+        // Map backend errors to frontend error state if keys match
+        const messages = error.response.data.messages;
+        Object.keys(messages).forEach(key => {
+          if (key in errors) (errors as any)[key] = messages[key];
+        });
+        msg = Object.values(messages).join('\n');
       } else if (error.response?.data?.message) {
         msg = error.response.data.message;
       }
@@ -213,6 +277,7 @@ export function useMyWorkspace(currentUser: User | null) {
     isModalOpen,
     isSubmitting,
     form,
+    errors,
     fetchMyResearches,
     openSubmitModal,
     openEditModal,

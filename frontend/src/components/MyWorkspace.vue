@@ -13,6 +13,7 @@ const {
   isModalOpen, 
   isSubmitting, 
   form, 
+  errors,
   openSubmitModal, 
   openEditModal,
   submitResearch,
@@ -121,7 +122,7 @@ defineExpose({ openNotification })
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type <span class="text-red-500">*</span></label>
-                    <div class="flex flex-col gap-2 p-2 border rounded bg-white max-h-32 overflow-y-auto">
+                    <div :class="{'border-red-500 bg-red-50': errors.knowledge_type}" class="flex flex-col gap-2 p-2 border rounded bg-white max-h-32 overflow-y-auto">
                         <label class="flex items-center gap-2">
                             <input type="checkbox" v-model="form.knowledge_type" value="Research Paper" class="accent-green-600">
                             <span class="text-sm">Research Paper</span>
@@ -143,6 +144,7 @@ defineExpose({ openNotification })
                             <span class="text-sm">Thesis</span>
                         </label>
                     </div>
+                    <span v-if="errors.knowledge_type" class="text-red-500 text-xs mt-1 block">{{ errors.knowledge_type }}</span>
                  </div>
                  <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Crop Variation (Optional)</label>
@@ -179,13 +181,29 @@ defineExpose({ openNotification })
 
               <div>
                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Title / Name of Product <span class="text-red-500">*</span></label>
-                 <input v-model="form.title" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="Enter title" required />
+                 <input 
+                   v-model="form.title" 
+                   type="text" 
+                   :class="{'border-red-500 focus:ring-red-500': errors.title}"
+                   class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" 
+                   placeholder="Enter title" 
+                   required 
+                 />
+                 <span v-if="errors.title" class="text-red-500 text-xs mt-1 block">{{ errors.title }}</span>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Author(s) <span class="text-red-500">*</span></label>
-                    <input v-model="form.author" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. Juan Cruz" required />
+                    <input 
+                       v-model="form.author" 
+                       type="text" 
+                       :class="{'border-red-500 focus:ring-red-500': errors.author}"
+                       class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" 
+                       placeholder="e.g. Juan Cruz" 
+                       required 
+                    />
+                    <span v-if="errors.author" class="text-red-500 text-xs mt-1 block">{{ errors.author }}</span>
                  </div>
                  <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Publication / Creation Date</label>

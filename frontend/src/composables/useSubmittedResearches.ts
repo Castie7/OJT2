@@ -165,8 +165,10 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
     // Watchers & Lifecycle
     // Watchers & Lifecycle
     watch(searchQuery, () => { currentPage.value = 1 })
-    watch(() => props.statusFilter, () => {
-        if (props.statusFilter === 'archived' || myItems.value.length === 0) {
+    watch(() => props.statusFilter, (newVal, oldVal) => {
+        // If we switch TO 'archived', or FROM 'archived', or have no items, we must fetch fresh data.
+        // Because 'archived' uses a different API endpoint than the other statuses.
+        if (newVal === 'archived' || oldVal === 'archived' || myItems.value.length === 0) {
             fetchData()
         }
     })

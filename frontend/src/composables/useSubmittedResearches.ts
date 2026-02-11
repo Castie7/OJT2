@@ -31,7 +31,7 @@ interface Comment {
     comment: string
 }
 
-export function useSubmittedResearches(props: { currentUser: User | null, isArchived: boolean }) {
+export function useSubmittedResearches(props: { currentUser: User | null, statusFilter: string }) {
 
     // --- STATE ---
     const myItems = ref<Research[]>([])
@@ -117,7 +117,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         try {
             // ✅ Use api.get()
             // The service handles Base URL and Cookies automatically
-            const endpoint = props.isArchived
+            const endpoint = props.statusFilter === 'archived'
                 ? '/research/my-archived'
                 : '/research/my-submissions'
 
@@ -134,13 +134,24 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
     }
 
     // --- SEARCH & PAGINATION ---
+    // --- SEARCH & PAGINATION ---
     const filteredItems = computed(() => {
-        if (!searchQuery.value) return myItems.value
-        const query = searchQuery.value.toLowerCase()
-        return myItems.value.filter(item =>
-            item.title.toLowerCase().includes(query) ||
-            item.author.toLowerCase().includes(query)
-        )
+        let items = myItems.value
+
+        // 1. Filter by status (if not archived)
+        if (props.statusFilter !== 'archived') {
+            items = items.filter(item => item.status === props.statusFilter)
+        }
+
+        // 2. Filter by search query
+        if (searchQuery.value) {
+            const query = searchQuery.value.toLowerCase()
+            items = items.filter(item =>
+                item.title.toLowerCase().includes(query) ||
+                item.author.toLowerCase().includes(query)
+            )
+        }
+        return items
     })
 
     const paginatedItems = computed(() => {
@@ -152,8 +163,13 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
     const totalPages = computed(() => Math.ceil(filteredItems.value.length / itemsPerPage))
 
     // Watchers & Lifecycle
+    // Watchers & Lifecycle
     watch(searchQuery, () => { currentPage.value = 1 })
-    watch(() => props.isArchived, () => fetchData())
+    watch(() => props.statusFilter, () => {
+        if (props.statusFilter === 'archived' || myItems.value.length === 0) {
+            fetchData()
+        }
+    })
     onMounted(() => fetchData())
 
     const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
@@ -161,7 +177,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
 
     // --- ACTIONS ---
     const requestArchive = (item: Research) => {
-        const action = props.isArchived ? 'Restore' : 'Archive'
+        const action = props.statusFilter === 'archived' ? 'Restore' : 'Archive'
         confirmModal.value = {
             show: true, id: item.id, action: action,
             title: action === 'Archive' ? 'Move to Trash?' : 'Restore File?',
@@ -175,7 +191,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, isArch
         confirmModal.value.isProcessing = true
         try {
             // ✅ Use api.post()
-            const endpoint = props.isArchived
+            const endpoint = props.statusFilter === 'archived'
                 ? `/research/restore/${confirmModal.value.id}`
                 : `/research/archive/${confirmModal.value.id}`
 

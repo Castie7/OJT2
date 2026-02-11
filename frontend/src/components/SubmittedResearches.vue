@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useSubmittedResearches, type User } from '../composables/useSubmittedResearches' 
 
 // ✅ USE THE ENV VARIABLE
@@ -7,8 +8,10 @@ const ASSET_URL = import.meta.env.VITE_BACKEND_URL
 
 const props = defineProps<{
   currentUser: User | null
-  isArchived: boolean
+  statusFilter: string
 }>()
+
+const isArchived = computed(() => props.statusFilter === 'archived')
 
 // 1. Define Emit for the parent to catch
 const emit = defineEmits<{
@@ -157,7 +160,7 @@ defineExpose({ fetchData, openNotification })
         </table>
         
         <div v-if="filteredItems.length === 0" class="text-center py-10 border border-dashed border-gray-300 rounded mt-4 text-gray-500">
-           {{ isArchived ? 'No archived items.' : 'No submissions found.' }}
+           No {{ statusFilter }} items found.
         </div>
       </div>
       

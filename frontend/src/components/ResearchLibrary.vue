@@ -54,7 +54,7 @@ const toggleFullscreen = () => {
   if (!pdfContainer.value) return
 
   if (!document.fullscreenElement) {
-    pdfContainer.value.requestFullscreen().catch(err => {
+    pdfContainer.value.requestFullscreen().catch((err: any) => {
       alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
     });
   } else {

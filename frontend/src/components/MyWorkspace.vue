@@ -69,15 +69,37 @@ defineExpose({ openNotification })
       </div>
     </div>
 
-    <div class="flex space-x-4 border-b mb-6">
-      <button @click="activeTab = 'submitted'" :class="`pb-2 px-4 font-medium text-sm transition ${activeTab === 'submitted' ? 'border-b-2 border-green-600 text-green-700' : 'text-gray-500 hover:text-gray-700'}`">📄 Submitted Researches</button>
-      <button @click="activeTab = 'archived'" :class="`pb-2 px-4 font-medium text-sm transition ${activeTab === 'archived' ? 'border-b-2 border-red-500 text-red-600' : 'text-gray-500 hover:text-gray-700'}`">🗑️ Archived Files</button>
+    <div class="flex space-x-2 border-b mb-6 overflow-x-auto">
+      <button 
+        @click="activeTab = 'pending'" 
+        :class="`pb-2 px-4 font-medium text-sm transition whitespace-nowrap ${activeTab === 'pending' ? 'border-b-2 border-yellow-500 text-yellow-600' : 'text-gray-500 hover:text-gray-700'}`"
+      >
+        ⏳ Pending
+      </button>
+      <button 
+        @click="activeTab = 'approved'" 
+        :class="`pb-2 px-4 font-medium text-sm transition whitespace-nowrap ${activeTab === 'approved' ? 'border-b-2 border-green-600 text-green-700' : 'text-gray-500 hover:text-gray-700'}`"
+      >
+        ✅ Approved
+      </button>
+      <button 
+        @click="activeTab = 'rejected'" 
+        :class="`pb-2 px-4 font-medium text-sm transition whitespace-nowrap ${activeTab === 'rejected' ? 'border-b-2 border-red-500 text-red-600' : 'text-gray-500 hover:text-gray-700'}`"
+      >
+        ❌ Rejected
+      </button>
+      <button 
+        @click="activeTab = 'archived'" 
+        :class="`pb-2 px-4 font-medium text-sm transition whitespace-nowrap ${activeTab === 'archived' ? 'border-b-2 border-gray-500 text-gray-600' : 'text-gray-500 hover:text-gray-700'}`"
+      >
+        🗑️ Archived
+      </button>
     </div>
 
     <SubmittedResearches 
         ref="submissionsRef" 
         :currentUser="currentUser" 
-        :isArchived="activeTab === 'archived'" 
+        :statusFilter="activeTab" 
         @edit="openEditModal"
         @view="handleViewResearch"
     />

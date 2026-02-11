@@ -136,6 +136,14 @@ class ResearchService extends BaseService
         return $this->commentModel->where('research_id', $researchId)->orderBy('created_at', 'ASC')->findAll();
     }
 
+    public function getResearch(int $id)
+    {
+        return $this->researchModel->select($this->selectString)
+                      ->join('research_details', 'researches.id = research_details.research_id', 'left')
+                      ->where('researches.id', $id)
+                      ->first();
+    }
+
     // --- WRITE METHODS ---
 
     public function checkDuplicate($title, $author, $isbn, $edition, $excludeId = null)

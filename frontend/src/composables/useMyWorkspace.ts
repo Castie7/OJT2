@@ -33,7 +33,7 @@ export interface Research {
 
 export function useMyWorkspace(currentUser: User | null) {
 
-  const activeTab = ref<'submitted' | 'archived'>('submitted')
+  const activeTab = ref<'pending' | 'approved' | 'rejected' | 'archived'>('pending')
   const isModalOpen = ref(false)
   const isSubmitting = ref(false)
   const isLoading = ref(false)
@@ -67,9 +67,14 @@ export function useMyWorkspace(currentUser: User | null) {
     isLoading.value = true
     try {
       // ✅ Use api.get()
-      const endpoint = activeTab.value === 'archived'
-        ? '/research/my-archived'
-        : '/research/my-submissions';
+      let endpoint = '';
+      switch (activeTab.value) {
+        case 'archived':
+          endpoint = '/research/my-archived'
+          break
+        default:
+          endpoint = '/research/my-submissions'
+      }
 
       const response = await api.get(endpoint);
       myResearches.value = response.data;

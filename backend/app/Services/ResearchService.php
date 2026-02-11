@@ -43,21 +43,30 @@ class ResearchService extends BaseService
 
     public function getAllApproved()
     {
-        return $this->researchModel->select($this->selectString) 
-                      ->join('research_details', 'researches.id = research_details.research_id', 'left')
-                      ->where('researches.status', 'approved')
-                      ->orderBy('researches.created_at', 'DESC')
-                      ->findAll();
+        return $this->researchModel->select($this->selectString)
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->where('researches.status', 'approved')
+            ->orderBy('researches.created_at', 'DESC')
+            ->findAll();
+    }
+
+    public function getAll()
+    {
+        return $this->researchModel->select($this->selectString)
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->where('researches.status !=', 'archived')
+            ->orderBy('researches.created_at', 'DESC')
+            ->findAll();
     }
 
     public function getMySubmissions(int $userId)
     {
         return $this->researchModel->select($this->selectString)
-                      ->join('research_details', 'researches.id = research_details.research_id', 'left')
-                      ->where('researches.uploaded_by', $userId)
-                      ->where('researches.status !=', 'archived') 
-                      ->orderBy('researches.created_at', 'DESC')
-                      ->findAll();
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->where('researches.uploaded_by', $userId)
+            ->where('researches.status !=', 'archived')
+            ->orderBy('researches.created_at', 'DESC')
+            ->findAll();
     }
 
     public function getMyArchived(int $userId)
@@ -65,34 +74,34 @@ class ResearchService extends BaseService
         // Auto-delete old archived
         $cutoffDate = date('Y-m-d H:i:s', strtotime('-60 days'));
         $this->researchModel->where('uploaded_by', $userId)
-              ->where('status', 'archived')
-              ->where('archived_at <', $cutoffDate)
-              ->delete();
+            ->where('status', 'archived')
+            ->where('archived_at <', $cutoffDate)
+            ->delete();
 
         return $this->researchModel->select($this->selectString)
-                      ->join('research_details', 'researches.id = research_details.research_id', 'left')
-                      ->where('researches.uploaded_by', $userId)
-                      ->where('researches.status', 'archived')
-                      ->orderBy('researches.archived_at', 'DESC')
-                      ->findAll();
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->where('researches.uploaded_by', $userId)
+            ->where('researches.status', 'archived')
+            ->orderBy('researches.archived_at', 'DESC')
+            ->findAll();
     }
 
     public function getAllArchived()
     {
         return $this->researchModel->select($this->selectString)
-                      ->join('research_details', 'researches.id = research_details.research_id', 'left')
-                      ->where('researches.status', 'archived')
-                      ->orderBy('researches.archived_at', 'DESC')
-                      ->findAll();
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->where('researches.status', 'archived')
+            ->orderBy('researches.archived_at', 'DESC')
+            ->findAll();
     }
 
     public function getPending()
     {
         return $this->researchModel->select($this->selectString)
-                      ->join('research_details', 'researches.id = research_details.research_id', 'left')
-                      ->where('researches.status', 'pending')
-                      ->orderBy('researches.created_at', 'ASC')
-                      ->findAll();
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->where('researches.status', 'pending')
+            ->orderBy('researches.created_at', 'ASC')
+            ->findAll();
     }
 
     public function getRejected()
@@ -102,10 +111,10 @@ class ResearchService extends BaseService
         $this->researchModel->where('status', 'rejected')->where('rejected_at <', $cutoffDate)->delete();
 
         return $this->researchModel->select($this->selectString)
-                      ->join('research_details', 'researches.id = research_details.research_id', 'left')
-                      ->where('researches.status', 'rejected')
-                      ->orderBy('researches.rejected_at', 'DESC')
-                      ->findAll();
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->where('researches.status', 'rejected')
+            ->orderBy('researches.rejected_at', 'DESC')
+            ->findAll();
     }
 
     public function getStats()
@@ -124,7 +133,7 @@ class ResearchService extends BaseService
 
     public function getComments($researchId)
     {
-         return $this->commentModel->where('research_id', $researchId)->orderBy('created_at', 'ASC')->findAll();
+        return $this->commentModel->where('research_id', $researchId)->orderBy('created_at', 'ASC')->findAll();
     }
 
     // --- WRITE METHODS ---
@@ -139,22 +148,23 @@ class ResearchService extends BaseService
 
         // 2. Strict Author Check (to allow same title by different authors)
         $builder->where('researches.author', $author);
-        
+
         // 3. Strict Edition Check
         // If edition provided, match it. If empty, match ONLY empty/null editions.
         if (!empty($edition)) {
             $builder->where('research_details.edition', $edition);
-        } else {
+        }
+        else {
             $builder->groupStart()
-                    ->where('research_details.edition', '')
-                    ->orWhere('research_details.edition', null)
-                    ->groupEnd();
+                ->where('research_details.edition', '')
+                ->orWhere('research_details.edition', null)
+                ->groupEnd();
         }
 
         if ($excludeId) {
             $builder->where('researches.id !=', $excludeId);
         }
-        
+
         if ($builder->countAllResults() > 0) {
             return "Duplicate! This Title/Author/Edition combination already exists.";
         }
@@ -176,15 +186,15 @@ class ResearchService extends BaseService
 
         $mainData = [
             'uploaded_by' => $userId,
-            'title'       => $data['title'],
-            'author'      => $data['author'],
+            'title' => $data['title'],
+            'author' => $data['author'],
             'crop_variation' => $data['crop_variation'],
-            'status'      => 'pending',
-            'file_path'   => $fileName,
-            'created_at'  => date('Y-m-d H:i:s'),
+            'status' => 'pending',
+            'file_path' => $fileName,
+            'created_at' => date('Y-m-d H:i:s'),
         ];
-        
-        $newResearchId = $this->researchModel->insert($mainData); 
+
+        $newResearchId = $this->researchModel->insert($mainData);
 
         // Create Logic
         $knowledgeType = $data['knowledge_type'];
@@ -193,38 +203,38 @@ class ResearchService extends BaseService
         }
 
         $detailsData = [
-            'research_id'      => $newResearchId,
-            'knowledge_type'   => $knowledgeType,
+            'research_id' => $newResearchId,
+            'knowledge_type' => $knowledgeType,
             'publication_date' => $data['publication_date'],
-            'edition'          => $data['edition'],
-            'publisher'        => $data['publisher'],
+            'edition' => $data['edition'],
+            'publisher' => $data['publisher'],
             'physical_description' => $data['physical_description'],
-            'isbn_issn'        => $data['isbn_issn'],
-            'subjects'         => $data['subjects'],
-            'shelf_location'   => $data['shelf_location'],
-            'item_condition'   => $data['item_condition'],
-            'link'             => $data['link'],
+            'isbn_issn' => $data['isbn_issn'],
+            'subjects' => $data['subjects'],
+            'shelf_location' => $data['shelf_location'],
+            'item_condition' => $data['item_condition'],
+            'link' => $data['link'],
         ];
         $this->detailsModel->insert($detailsData);
 
         // Notify Admins
         $admins = $this->userModel->where('role', 'admin')->findAll();
-        
+
         foreach ($admins as $admin) {
             $this->notifModel->insert([
-                'user_id'     => $admin->id, // Entity access
-                'sender_id'   => $userId,
+                'user_id' => $admin->id, // Entity access
+                'sender_id' => $userId,
                 'research_id' => $newResearchId,
-                'message'     => "New Submission: " . $data['title'],
-                'is_read'     => 0,
-                'created_at'  => date('Y-m-d H:i:s')
+                'message' => "New Submission: " . $data['title'],
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s')
             ]);
         }
 
         $this->db->transComplete();
 
         if ($this->db->transStatus() === false) {
-             throw new \Exception("Research creation failed.");
+            throw new \Exception("Research creation failed.");
         }
 
         return $newResearchId;
@@ -233,49 +243,50 @@ class ResearchService extends BaseService
     public function updateResearch(int $id, int $userId, string $userRole, array $data, $file)
     {
         $item = $this->researchModel->find($id);
-        
-        if(!$item || ($item->uploaded_by != $userId && $userRole !== 'admin')) {
-             throw new \Exception("Generic Forbidden", 403);
+
+        if (!$item || ($item->uploaded_by != $userId && $userRole !== 'admin')) {
+            throw new \Exception("Generic Forbidden", 403);
         }
 
         $this->db->transStart();
 
         $mainUpdate = [
-            'title'  => $data['title'],
+            'title' => $data['title'],
             'author' => $data['author'],
             'crop_variation' => $data['crop_variation'],
         ];
-        
+
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
             $file->move('public/uploads', $newName);
-            $mainUpdate['file_path'] = $newName; 
+            $mainUpdate['file_path'] = $newName;
         }
         $this->researchModel->update($id, $mainUpdate);
 
         $exists = $this->detailsModel->where('research_id', $id)->first();
-        
+
         $knowledgeType = $data['knowledge_type'];
         if (is_array($knowledgeType)) {
             $knowledgeType = implode(', ', $knowledgeType);
         }
 
         $detailsData = [
-            'knowledge_type'   => $knowledgeType,
+            'knowledge_type' => $knowledgeType,
             'publication_date' => $data['publication_date'],
-            'edition'          => $data['edition'],
-            'publisher'        => $data['publisher'],
+            'edition' => $data['edition'],
+            'publisher' => $data['publisher'],
             'physical_description' => $data['physical_description'],
-            'isbn_issn'        => $data['isbn_issn'],
-            'subjects'         => $data['subjects'],
-            'shelf_location'   => $data['shelf_location'],
-            'item_condition'   => $data['item_condition'],
-            'link'             => $data['link'],
+            'isbn_issn' => $data['isbn_issn'],
+            'subjects' => $data['subjects'],
+            'shelf_location' => $data['shelf_location'],
+            'item_condition' => $data['item_condition'],
+            'link' => $data['link'],
         ];
 
         if ($exists) {
             $this->detailsModel->where('research_id', $id)->set($detailsData)->update();
-        } else {
+        }
+        else {
             $detailsData['research_id'] = $id;
             $this->detailsModel->insert($detailsData);
         }
@@ -288,10 +299,13 @@ class ResearchService extends BaseService
     {
         // For Approve/Reject/Archive
         $data = ['status' => $status];
-        if ($status === 'approved') $data['approved_at'] = date('Y-m-d H:i:s');
-        if ($status === 'rejected') $data['rejected_at'] = date('Y-m-d H:i:s');
-        if ($status === 'archived') $data['archived_at'] = date('Y-m-d H:i:s');
-        
+        if ($status === 'approved')
+            $data['approved_at'] = date('Y-m-d H:i:s');
+        if ($status === 'rejected')
+            $data['rejected_at'] = date('Y-m-d H:i:s');
+        if ($status === 'archived')
+            $data['archived_at'] = date('Y-m-d H:i:s');
+
         // For Restore
         if ($status === 'pending') {
             $data['rejected_at'] = null;
@@ -304,17 +318,17 @@ class ResearchService extends BaseService
         $item = $this->researchModel->find($id);
         if ($item && $item->uploaded_by) {
             $this->notifModel->insert([
-                'user_id'     => $item->uploaded_by,
-                'sender_id'   => $adminId,
+                'user_id' => $item->uploaded_by,
+                'sender_id' => $adminId,
                 'research_id' => $id,
-                'message'     => sprintf($messageTemplate, $item->title),
-                'is_read'     => 0,
-                'created_at'  => date('Y-m-d H:i:s')
+                'message' => sprintf($messageTemplate, $item->title),
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s')
             ]);
         }
         $this->db->transComplete();
     }
-    
+
     public function extendDeadline($id, $newDate, $adminId)
     {
         $this->db->transStart();
@@ -324,12 +338,12 @@ class ResearchService extends BaseService
         if ($item && $item->uploaded_by) {
             $formattedDate = date('M d, Y', strtotime($newDate));
             $this->notifModel->insert([
-                'user_id'     => $item->uploaded_by,
-                'sender_id'   => $adminId,
+                'user_id' => $item->uploaded_by,
+                'sender_id' => $adminId,
                 'research_id' => $id,
-                'message'     => "📅 Deadline Updated: '{$item->title}' is due on {$formattedDate}.",
-                'is_read'     => 0,
-                'created_at'  => date('Y-m-d H:i:s')
+                'message' => "📅 Deadline Updated: '{$item->title}' is due on {$formattedDate}.",
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s')
             ]);
         }
         $this->db->transComplete();
@@ -339,35 +353,36 @@ class ResearchService extends BaseService
     {
         if ($this->commentModel->insert($data)) {
             $researchId = $data['research_id'];
-            $senderId   = $data['user_id'];
-            $role       = strtolower($data['role']); 
+            $senderId = $data['user_id'];
+            $role = strtolower($data['role']);
             $commentText = $data['comment'];
 
             if ($role === 'admin') {
                 $research = $this->researchModel->find($researchId);
                 if ($research && isset($research->uploaded_by) && $research->uploaded_by != $senderId) {
                     $this->notifModel->insert([
-                        'user_id'     => $research->uploaded_by,
-                        'sender_id'   => $senderId,
+                        'user_id' => $research->uploaded_by,
+                        'sender_id' => $senderId,
                         'research_id' => $researchId,
-                        'message'     => "Admin commented: " . substr($commentText, 0, 15) . "...",
-                        'is_read'     => 0,
-                        'created_at'  => date('Y-m-d H:i:s')
+                        'message' => "Admin commented: " . substr($commentText, 0, 15) . "...",
+                        'is_read' => 0,
+                        'created_at' => date('Y-m-d H:i:s')
                     ]);
                 }
-            } else {
+            }
+            else {
                 $admins = $this->userModel->where('role', 'admin')->findAll();
                 foreach ($admins as $admin) {
-                      if ($admin->id != $senderId) {
+                    if ($admin->id != $senderId) {
                         $this->notifModel->insert([
-                            'user_id'     => $admin->id,
-                            'sender_id'   => $senderId,
+                            'user_id' => $admin->id,
+                            'sender_id' => $senderId,
                             'research_id' => $researchId,
-                            'message'     => "New comment by {$data['user_name']}",
-                            'is_read'     => 0,
-                            'created_at'  => date('Y-m-d H:i:s')
+                            'message' => "New comment by {$data['user_name']}",
+                            'is_read' => 0,
+                            'created_at' => date('Y-m-d H:i:s')
                         ]);
-                      }
+                    }
                 }
             }
             return true;
@@ -381,32 +396,33 @@ class ResearchService extends BaseService
         $userId = 1; // Default System User?
 
         $csvData = array_map('str_getcsv', file($fileTempName));
-        $headers = array_map('trim', $csvData[0]); 
-        array_shift($csvData); 
+        $headers = array_map('trim', $csvData[0]);
+        array_shift($csvData);
 
         $count = 0;
         $skipped = 0;
-        
+
         $this->db->transStart();
 
         foreach ($csvData as $row) {
-            if (count($row) < count($headers)) continue;
-            
+            if (count($row) < count($headers))
+                continue;
+
             $rawData = array_combine($headers, $row);
 
             $data = [
-                'title'                => $rawData['Title'] ?? 'Untitled',
-                'knowledge_type'       => $rawData['Type'] ?? 'Research Paper',
-                'author'               => $rawData['Author'] ?? $rawData['Authors'] ?? 'Unknown',
-                'publication_date'     => $rawData['Date'] ?? null,
-                'edition'              => $rawData['Edition'] ?? $rawData['Publication'] ?? '', 
-                'publisher'            => $rawData['Publisher'] ?? '',
-                'physical_description' => $rawData['Pages'] ?? '',       
-                'isbn_issn'            => $rawData['ISBN/ISSN'] ?? $rawData['ISSN'] ?? $rawData['ISBN'] ?? '',        
-                'subjects'             => $rawData['Subjects'] ?? $rawData['Description'] ?? '', 
-                'shelf_location'       => $rawData['Location'] ?? '',
-                'item_condition'       => $rawData['Condition'] ?? 'Good',
-                'crop_variation'       => $rawData['Crop'] ?? ''         
+                'title' => $rawData['Title'] ?? 'Untitled',
+                'knowledge_type' => $rawData['Type'] ?? 'Research Paper',
+                'author' => $rawData['Author'] ?? $rawData['Authors'] ?? 'Unknown',
+                'publication_date' => $rawData['Date'] ?? null,
+                'edition' => $rawData['Edition'] ?? $rawData['Publication'] ?? '',
+                'publisher' => $rawData['Publisher'] ?? '',
+                'physical_description' => $rawData['Pages'] ?? '',
+                'isbn_issn' => $rawData['ISBN/ISSN'] ?? $rawData['ISSN'] ?? $rawData['ISBN'] ?? '',
+                'subjects' => $rawData['Subjects'] ?? $rawData['Description'] ?? '',
+                'shelf_location' => $rawData['Location'] ?? '',
+                'item_condition' => $rawData['Condition'] ?? 'Good',
+                'crop_variation' => $rawData['Crop'] ?? ''
             ];
 
             $isbn = trim($data['isbn_issn']);
@@ -421,35 +437,35 @@ class ResearchService extends BaseService
             }
 
             $mainData = [
-                'title'          => $title,
-                'author'         => $data['author'],
+                'title' => $title,
+                'author' => $data['author'],
                 'crop_variation' => $data['crop_variation'],
-                'status'         => 'approved',
-                'uploaded_by'    => $userId,
-                'created_at'     => date('Y-m-d H:i:s')
+                'status' => 'approved',
+                'uploaded_by' => $userId,
+                'created_at' => date('Y-m-d H:i:s')
             ];
 
             $newId = $this->researchModel->insert($mainData);
 
             if ($newId) {
                 $detailsData = [
-                    'research_id'          => $newId,
-                    'knowledge_type'       => $data['knowledge_type'],
-                    'publication_date'     => $data['publication_date'],
-                    'edition'              => $data['edition'],
-                    'publisher'            => $data['publisher'],
+                    'research_id' => $newId,
+                    'knowledge_type' => $data['knowledge_type'],
+                    'publication_date' => $data['publication_date'],
+                    'edition' => $data['edition'],
+                    'publisher' => $data['publisher'],
                     'physical_description' => $data['physical_description'],
-                    'isbn_issn'            => $data['isbn_issn'],
-                    'subjects'             => $data['subjects'],
-                    'shelf_location'       => $data['shelf_location'],
-                    'item_condition'       => $data['item_condition'],
-                    'link'                 => ''
+                    'isbn_issn' => $data['isbn_issn'],
+                    'subjects' => $data['subjects'],
+                    'shelf_location' => $data['shelf_location'],
+                    'item_condition' => $data['item_condition'],
+                    'link' => ''
                 ];
                 $this->detailsModel->insert($detailsData);
                 $count++;
             }
         }
-        
+
         $this->db->transComplete();
 
         return ['count' => $count, 'skipped' => $skipped];
@@ -458,8 +474,8 @@ class ResearchService extends BaseService
     {
         // Case-insensitive match.
         // Option 1: Exact match with varying case
-        $item = $this->researchModel->like('title', $titleCandidate, 'none')->first(); 
-        
+        $item = $this->researchModel->like('title', $titleCandidate, 'none')->first();
+
         if ($item) {
             // CHECK IF EXISTS
             if (!empty($item->file_path)) {
@@ -469,20 +485,22 @@ class ResearchService extends BaseService
 
             $newName = $file->getRandomName();
             $targetPath = ROOTPATH . 'public/uploads';
-            
+
             log_message('error', "Attempting to move file to: $targetPath with name: $newName");
-            
+
             if ($file->move($targetPath, $newName)) {
                 $this->researchModel->update($item->id, ['file_path' => $newName]);
                 log_message('error', "File moved successfully.");
                 return 'linked';
-            } else {
+            }
+            else {
                 log_message('error', "File move failed: " . $file->getErrorString());
                 return 'error_move';
             }
-        } else {
-             log_message('error', "No match found for title: $titleCandidate");
-             return 'no_match';
+        }
+        else {
+            log_message('error', "No match found for title: $titleCandidate");
+            return 'no_match';
         }
     }
 }

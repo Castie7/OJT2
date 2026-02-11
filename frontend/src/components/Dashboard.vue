@@ -11,6 +11,7 @@ import Settings from '../components/Settings.vue'
 import ImportCsv from '../components/ImportCsv.vue' 
 import UserManagement from '../components/UserManagement.vue'
 import AdminLogs from '../components/AdminLogs.vue'
+import Masterlist from '../components/Masterlist.vue'
 
 const props = defineProps<{
   currentUser: User | null
@@ -101,7 +102,7 @@ const handleUserUpdate = (updatedUser: User) => {
                     <button 
                         @click="showAdminMenu = !showAdminMenu" 
                         @blur="closeAdminMenu"
-                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || currentTab === 'users' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
+                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || currentTab === 'users' || currentTab === 'masterlist' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
                     >
                         Admin Tools ▾
                     </button>
@@ -122,6 +123,15 @@ const handleUserUpdate = (updatedUser: User) => {
                                 class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
                             >
                                 👥 Add/Reset Accounts
+                            </button>
+
+                            <div class="border-t border-gray-100 my-1"></div>
+
+                            <button 
+                                @click="setTab('masterlist'); showAdminMenu = false"
+                                class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
+                            >
+                                📋 Masterlist
                             </button>
 
                             <div class="border-t border-gray-100 my-1"></div>
@@ -161,6 +171,9 @@ const handleUserUpdate = (updatedUser: User) => {
                     {{ unreadCount }}
                   </span>
                 </button>
+
+                <!-- Invisible backdrop to close notifications on outside click -->
+                <div v-if="showNotifications" class="fixed inset-0 z-40" @click="showNotifications = false"></div>
 
                 <div v-if="showNotifications" class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl overflow-hidden z-50 border border-gray-100 animate-fade-in">
                   <div class="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center">
@@ -237,6 +250,9 @@ const handleUserUpdate = (updatedUser: User) => {
                     <button @click="setTab('users'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'users' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                         👥 Users
                     </button>
+                    <button @click="setTab('masterlist'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'masterlist' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                        📋 Masterlist
+                    </button>
                     <button @click="setTab('logs'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'logs' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                         📜 Logs
                     </button>
@@ -298,6 +314,10 @@ const handleUserUpdate = (updatedUser: User) => {
         v-if="currentTab === 'users' && currentUser && currentUser.role === 'admin'"
       />
       
+      <Masterlist 
+        v-if="currentTab === 'masterlist' && currentUser && currentUser.role === 'admin'"
+      />
+
       <AdminLogs 
         v-if="currentTab === 'logs' && currentUser && currentUser.role === 'admin'"
       />

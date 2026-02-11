@@ -1,8 +1,36 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useAdminLogs } from '../composables/useAdminLogs'
 
 const { logs, loading, pagination, filters, fetchLogs, downloadLogs, formatActionColor } = useAdminLogs()
+
+// Row background color based on action severity
+const getLogRowColor = (action: string) => {
+    switch (action) {
+        case 'APPROVE_RESEARCH': return 'bg-green-50 border-l-4 border-l-green-400'
+        case 'LOGIN': return 'bg-emerald-50 border-l-4 border-l-emerald-300'
+        case 'CREATE_RESEARCH': return 'bg-blue-50 border-l-4 border-l-blue-400'
+        case 'REJECT_RESEARCH': return 'bg-red-50 border-l-4 border-l-red-400'
+        case 'ARCHIVE_RESEARCH': return 'bg-yellow-50 border-l-4 border-l-yellow-400'
+        case 'UPDATE_PROFILE': return 'bg-purple-50 border-l-4 border-l-purple-400'
+        case 'LOGOUT': return 'bg-gray-50 border-l-4 border-l-gray-300'
+        default: return 'bg-white border-l-4 border-l-gray-200'
+    }
+}
+
+const isRefreshing = ref(false)
+const resetAndRefresh = async () => {
+    filters.value.startDate = ''
+    filters.value.endDate = ''
+    filters.value.action = 'ALL'
+    filters.value.search = ''
+    isRefreshing.value = true
+    try {
+        await fetchLogs(1)
+    } finally {
+        setTimeout(() => { isRefreshing.value = false }, 500)
+    }
+}
 
 // Debounce Search
 let debounceTimer: any = null
@@ -101,10 +129,19 @@ onMounted(() => {
 
           <!-- Reset -->
           <button 
-            @click="filters.startDate = ''; filters.endDate = ''; filters.action = 'ALL'; filters.search = ''; fetchLogs(1)"
-            class="text-sm text-red-500 hover:underline"
+            @click="resetAndRefresh"
+            class="p-2 bg-green-100 text-green-700 border border-green-200 rounded-lg hover:bg-green-200 hover:text-green-800 transition-all shadow-sm"
+            title="Refresh & Reset Filters"
+            :disabled="isRefreshing"
           >
-            Reset
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              class="h-5 w-5 transition-transform" 
+              :class="{ 'animate-spin-refresh': isRefreshing }"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
           </button>
       </div>
 
@@ -136,7 +173,7 @@ onMounted(() => {
                         </td>
                     </tr>
 
-                    <tr v-for="log in logs" :key="log.id" class="hover:bg-gray-50 transition">
+                    <tr v-for="log in logs" :key="log.id" class="hover:brightness-95 transition" :class="getLogRowColor(log.action)">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {{ new Date(log.created_at).toLocaleString() }}
                         </td>
@@ -190,3 +227,13 @@ onMounted(() => {
 
   </div>
 </template>
+
+<style scoped>
+@keyframes spin-refresh {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-refresh {
+  animation: spin-refresh 0.6s ease-in-out;
+}
+</style>

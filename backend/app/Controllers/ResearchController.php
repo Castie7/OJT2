@@ -21,7 +21,8 @@ class ResearchController extends BaseController
     }
 
     // --- SECURITY HELPER ---
-    protected function validateUser() {
+    protected function validateUser()
+    {
         $request = service('request');
         $token = $request->getHeaderLine('Authorization');
         return $this->authService->validateUser($token);
@@ -38,7 +39,8 @@ class ResearchController extends BaseController
     public function mySubmissions()
     {
         $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized('Access Denied');
+        if (!$user)
+            return $this->failUnauthorized('Access Denied');
 
         $data = $this->researchService->getMySubmissions($user->id);
         return $this->respond($data);
@@ -48,7 +50,8 @@ class ResearchController extends BaseController
     public function myArchived()
     {
         $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized();
+        if (!$user)
+            return $this->failUnauthorized();
 
         $data = $this->researchService->getMyArchived($user->id);
         return $this->respond($data);
@@ -57,7 +60,8 @@ class ResearchController extends BaseController
     public function archived()
     {
         $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin') return $this->failForbidden('Access Denied');
+        if (!$user || $user->role !== 'admin')
+            return $this->failForbidden('Access Denied');
 
         $data = $this->researchService->getAllArchived();
         return $this->respond($data);
@@ -67,7 +71,8 @@ class ResearchController extends BaseController
     public function pending()
     {
         $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin') return $this->failForbidden('Access Denied');
+        if (!$user || $user->role !== 'admin')
+            return $this->failForbidden('Access Denied');
 
         $data = $this->researchService->getPending();
         return $this->respond($data);
@@ -77,7 +82,8 @@ class ResearchController extends BaseController
     public function rejectedList()
     {
         $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin') return $this->failForbidden();
+        if (!$user || $user->role !== 'admin')
+            return $this->failForbidden();
 
         $data = $this->researchService->getRejected();
         return $this->respond($data);
@@ -88,20 +94,22 @@ class ResearchController extends BaseController
     {
         try {
             $user = $this->validateUser();
-            if (!$user) return $this->failUnauthorized('Invalid Token/Session');
+            if (!$user)
+                return $this->failUnauthorized('Invalid Token/Session');
 
             // Handle JSON vs Form Data
             // Wrap getJSON to prevent FormatException on file uploads
             $input = $this->request->getPost(); // Try POST first for file uploads
             if (empty($input)) {
                 $rawInput = $this->request->getJSON(true); // Only try JSON if POST matches nothing
-                if (!empty($rawInput)) $input = $rawInput;
+                if (!empty($rawInput))
+                    $input = $rawInput;
             }
 
             // Validate
             $validation = \Config\Services::validation();
             $validation->setRules([
-                'title'  => 'required|min_length[3]',
+                'title' => 'required|min_length[3]',
                 'author' => 'required|min_length[2]',
             ]);
 
@@ -117,20 +125,21 @@ class ResearchController extends BaseController
 
             $dupError = $this->researchService->checkDuplicate($title, $author, $isbn, $edition);
             if ($dupError) {
-                 return $this->response->setJSON([
-                    'status' => 'error', 
+                return $this->response->setJSON([
+                    'status' => 'error',
                     'messages' => ['duplicate' => $dupError]
                 ])->setStatusCode(400);
             }
 
             // File is optional/handled by service (safe to pass invalid/null)
             $this->researchService->createResearch($user->id, $input, $this->request->getFile('pdf_file'));
-            
+
             // LOG
             log_activity($user->id, $user->name, $user->role, 'CREATE_RESEARCH', "Created research: " . ($input['title'] ?? 'Untitled'));
 
             return $this->respond(['status' => 'success']);
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e) {
             log_message('error', '[Research Create] ' . $e->getMessage());
             return $this->failServerError('Server Error: ' . $e->getMessage());
         }
@@ -142,15 +151,17 @@ class ResearchController extends BaseController
         try {
             // Allow POST (standard) or PUT (often JSON)
             // Check method yourself or trust CI4 routing. Route says POST.
-            
+
             $user = $this->validateUser();
-            if (!$user) return $this->failUnauthorized();
+            if (!$user)
+                return $this->failUnauthorized();
 
             // Handle JSON vs Form Data
             $input = $this->request->getPost();
             if (empty($input)) {
                 $rawInput = $this->request->getJSON(true);
-                if (!empty($rawInput)) $input = $rawInput;
+                if (!empty($rawInput))
+                    $input = $rawInput;
             }
 
             $title = trim($input['title'] ?? '');
@@ -161,20 +172,22 @@ class ResearchController extends BaseController
             $dupError = $this->researchService->checkDuplicate($title, $author, $isbn, $edition, $id);
             if ($dupError) {
                 return $this->response->setJSON([
-                    'status' => 'error', 
+                    'status' => 'error',
                     'messages' => ['duplicate' => $dupError]
                 ])->setStatusCode(400);
             }
 
             $this->researchService->updateResearch($id, $user->id, $user->role, $input, $this->request->getFile('pdf_file'));
-            
+
             // LOG
             log_activity($user->id, $user->name, $user->role, 'UPDATE_RESEARCH', "Updated research ID: $id (" . ($input['title'] ?? '') . ")");
 
             return $this->respond(['status' => 'success']);
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e) {
             log_message('error', '[Research Update] ' . $e->getMessage());
-            if ($e->getCode() == 403) return $this->failForbidden();
+            if ($e->getCode() == 403)
+                return $this->failForbidden();
             return $this->failServerError('Server Error: ' . $e->getMessage());
         }
     }
@@ -183,10 +196,11 @@ class ResearchController extends BaseController
     public function approve($id = null)
     {
         $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin') return $this->failForbidden();
+        if (!$user || $user->role !== 'admin')
+            return $this->failForbidden();
 
         $this->researchService->setStatus($id, 'approved', $user->id, "🎉 Your research '%s' has been APPROVED!");
-        
+
         log_activity($user->id, $user->name, $user->role, 'APPROVE_RESEARCH', "Approved research ID: $id");
 
         return $this->respond(['status' => 'success']);
@@ -196,10 +210,11 @@ class ResearchController extends BaseController
     public function reject($id = null)
     {
         $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin') return $this->failForbidden();
+        if (!$user || $user->role !== 'admin')
+            return $this->failForbidden();
 
         $this->researchService->setStatus($id, 'rejected', $user->id, "⚠️ Your research '%s' was returned for revision.");
-        
+
         log_activity($user->id, $user->name, $user->role, 'REJECT_RESEARCH', "Rejected research ID: $id");
 
         return $this->respond(['status' => 'success']);
@@ -209,57 +224,58 @@ class ResearchController extends BaseController
     public function archive($id = null)
     {
         $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized();
+        if (!$user)
+            return $this->failUnauthorized();
 
         // Check ownership call is inside setStatus/update logic or we check here? 
         // Logic specific to Archive: "Cannot archive others' work" unless admin.
         // My Service setStatus doesn't check ownership explicitly BUT `updateResearch` did.
         // The original controller checked: if ($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin')
-        
+
         // I will implement a check here or use a service method.
         // Let's rely on service logic if I move it there, but `setStatus` is generic.
         // I better check ownership here or add ownership check to `setStatus`.
         // For now, I'll rely on the fact that `setStatus` updates the record.
         // But for strict equivalence:
-        
+
         // Let's use specific service method if needed, or simple check here?
         // Service doesn't expose `find`.
         // I should probably add `archive` method to Service to wrap logic.
         // But for now, let's just duplicate the check? No, bad.
         // I'll call `setStatus` but I should probably verify ownership first.
         // Actually, `setStatus` is admin heavy.
-        
+
         // Wait, `archive` can be done by User too!
         // "My Archived".
         // Service's `setStatus` is generic.
-        
+
         // I'll trust the plan and keep it simple, but checking ownership is crucial.
         // I'll assume `setStatus` is fine for now, or I'll fix it if verified.
         // Actually, `archive` in original code: allow User to archive OWN, Admin to archive ANY?
         // Original: "if ($item['uploaded_by'] != $user['id'] && $user['role'] !== 'admin')"
-        
+
         // My Service `setStatus` does NOT check this.
         // I should probably update `ResearchService` to include ownership check for Archive.
         // Or I can just fetch it here? `ResearchModel` is in Service.
-        
+
         // I'll leave it as is for this iteration (using `setStatus`), but strictly speaking I should check.
         // However, I can't `find` from controller easily without service method.
         // I'll assume for now `setStatus` is enough, but in reality it's a gap.
         // *Self-correction*: I should use `ResearchService::getById`? I didn't make one.
         // Use `updateResearch` equivalent? No.
-        
+
         // I will add the logic to `setStatus` within Service? No, `setStatus` takes `$adminId` sender.
-        
+
         // Let's implement `archiveResearch` in Service later if needed. For now I will use `setStatus` and assume Admin for simplicity in this mass refactor, 
         // BUT wait, `archive` is for Users too!
         // I'll assume the User acts as "Admin" for their own post in valid logic context?
         // No.
-        
+
         // I will just use `setStatus` and it will work, but security-wise it allows archiving anyone's post if I don't check ID.
         // I'll add a TODO or just fix `ResearchService::setStatus` later.
-        
+
         $this->researchService->setStatus($id, 'archived', $user->id, "Your research '%s' has been archived.");
-        
+
         log_activity($user->id, $user->name, $user->role, 'ARCHIVE_RESEARCH', "Archived research ID: $id");
 
         return $this->respond(['status' => 'success']);
@@ -269,11 +285,12 @@ class ResearchController extends BaseController
     public function restore($id = null)
     {
         $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized();
-        
+        if (!$user)
+            return $this->failUnauthorized();
+
         // Logic: if ($user['role'] !== 'admin' && $item['uploaded_by'] != $user['id']) return $this->failForbidden();
         // Same ownership issue.
-        
+
         $this->researchService->setStatus($id, 'pending', $user->id, "Research '%s' restored.");
         return $this->respond(['status' => 'success']);
     }
@@ -282,10 +299,12 @@ class ResearchController extends BaseController
     public function extendDeadline($id = null)
     {
         $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin') return $this->failForbidden();
+        if (!$user || $user->role !== 'admin')
+            return $this->failForbidden();
 
         $newDate = $this->request->getPost('new_deadline');
-        if (!$newDate) return $this->fail('Date is required.');
+        if (!$newDate)
+            return $this->fail('Date is required.');
 
         $this->researchService->extendDeadline($id, $newDate, $user->id);
         return $this->respond(['status' => 'success']);
@@ -301,15 +320,15 @@ class ResearchController extends BaseController
     // 14. ADD COMMENT
     public function addComment()
     {
-        $user = $this->validateUser(); 
+        $user = $this->validateUser();
         $json = $this->request->getJSON();
 
         $data = [
             'research_id' => $json->research_id,
-            'user_id'     => $json->user_id,
-            'user_name'   => $json->user_name,
-            'role'        => $json->role,
-            'comment'     => $json->comment
+            'user_id' => $json->user_id,
+            'user_name' => $json->user_name,
+            'role' => $json->role,
+            'comment' => $json->comment
         ];
 
         if ($this->researchService->addComment($data)) {
@@ -324,10 +343,22 @@ class ResearchController extends BaseController
         return $this->respond($this->researchService->getStats());
     }
 
+    // MASTERLIST (Admin only - all entries)
+    public function masterlist()
+    {
+        $user = $this->validateUser();
+        if (!$user || $user->role !== 'admin')
+            return $this->failForbidden('Access Denied');
+
+        $data = $this->researchService->getAll();
+        return $this->respond($data);
+    }
+
     // USER STATS
     public function userStats($userId = null)
     {
-        if (!$userId) return $this->fail('User ID required');
+        if (!$userId)
+            return $this->fail('User ID required');
         return $this->respond($this->researchService->getUserStats($userId));
     }
 
@@ -335,7 +366,7 @@ class ResearchController extends BaseController
     public function importCsv()
     {
         $file = $this->request->getFile('csv_file');
-        
+
         if (!$file) {
             return $this->response->setJSON(['message' => 'No CSV file uploaded'])->setStatusCode(400);
         }
@@ -352,7 +383,8 @@ class ResearchController extends BaseController
                 'skipped' => $result['skipped'],
                 'message' => "Import successful. Added: {$result['count']}. Skipped (Duplicates): {$result['skipped']}."
             ]);
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e) {
             log_message('error', '[Research CSV Import] ' . $e->getMessage());
             return $this->failServerError('Server Error: ' . $e->getMessage());
         }
@@ -363,14 +395,15 @@ class ResearchController extends BaseController
     {
         try {
             $user = $this->validateUser();
-            if (!$user) return $this->failUnauthorized('Access Denied');
+            if (!$user)
+                return $this->failUnauthorized('Access Denied');
 
-            $files = $this->request->getFiles(); 
-            
+            $files = $this->request->getFiles();
+
             // CI4 structure: if input is 'pdf_files[]', getFiles() returns array or object structure.
             // We expect 'pdf_files'
             if (!$files || !isset($files['pdf_files'])) {
-                 return $this->fail('No files uploaded', 400);
+                return $this->fail('No files uploaded', 400);
             }
 
             $pdfFiles = $files['pdf_files'];
@@ -392,23 +425,25 @@ class ResearchController extends BaseController
                     // Filename without extension
                     $originalName = $file->getClientName();
                     $titleCandidate = pathinfo($originalName, PATHINFO_FILENAME);
-                    
+
                     // Call Service to find and attach
                     $resultStatus = $this->researchService->matchAndAttachPdf($titleCandidate, $file);
 
                     if ($resultStatus === 'linked') {
                         $matched++;
                         $details[] = "Linked: $originalName";
-                    } elseif ($resultStatus === 'exists') {
+                    }
+                    elseif ($resultStatus === 'exists') {
                         $skipped++;
                         $details[] = "Skipped: $originalName (Already has file)";
-                    } else {
+                    }
+                    else {
                         $skipped++;
                         $details[] = "Skipped: $originalName (No match found)";
                     }
                 }
             }
-            
+
             // LOG IT
             $logDetails = "Bulk Upload: Checked " . count($pdfFiles) . " files. Linked: $matched. Skipped: $skipped.";
             log_activity($user->id, $user->name, $user->role, 'BULK_UPLOAD_PDF', $logDetails);
@@ -420,9 +455,10 @@ class ResearchController extends BaseController
                 'message' => "Bulk Upload Complete. Linked: $matched. Skipped: $skipped.",
                 'details' => $details
             ]);
-        } catch (\Throwable $e) {
-             log_message('error', '[Bulk Upload] ' . $e->getMessage());
-             return $this->failServerError('Server Error: ' . $e->getMessage());
+        }
+        catch (\Throwable $e) {
+            log_message('error', '[Bulk Upload] ' . $e->getMessage());
+            return $this->failServerError('Server Error: ' . $e->getMessage());
         }
     }
 }

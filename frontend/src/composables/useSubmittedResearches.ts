@@ -163,7 +163,6 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
     const totalPages = computed(() => Math.ceil(filteredItems.value.length / itemsPerPage))
 
     // Watchers & Lifecycle
-    // Watchers & Lifecycle
     watch(searchQuery, () => { currentPage.value = 1 })
     watch(() => props.statusFilter, (newVal, oldVal) => {
         // If we switch TO 'archived', or FROM 'archived', or have no items, we must fetch fresh data.

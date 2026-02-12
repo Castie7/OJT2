@@ -23,6 +23,30 @@ class AuthController extends BaseController
     public function login()
     {
         try {
+            $ip = $this->request->getIPAddress();
+            $cache = \Config\Services::cache();
+            $lockoutKey = 'login_lockout_' . md5($ip);
+            $attemptsKey = 'login_attempts_' . md5($ip);
+
+            // ── Check if this IP is currently locked out ──
+            $lockoutUntil = $cache->get($lockoutKey);
+            if ($lockoutUntil) {
+                $remaining = (int)ceil($lockoutUntil - time());
+                if ($remaining > 0) {
+                    return $this->response
+                        ->setStatusCode(429)
+                        ->setJSON([
+                        'status' => 'error',
+                        'message' => "Too many failed attempts. Please try again in {$remaining} seconds.",
+                        'retry_after' => $remaining,
+                        'csrf_token' => csrf_hash()
+                    ]);
+                }
+                // Lockout expired – clean up
+                $cache->delete($lockoutKey);
+                $cache->delete($attemptsKey);
+            }
+
             $json = $this->request->getJSON();
             $email = $json->email ?? '';
             $password = $json->password ?? '';
@@ -30,25 +54,55 @@ class AuthController extends BaseController
             $user = $this->authService->login($email, $password);
 
             if ($user) {
+                // ── Success: clear any stored attempts ──
+                $cache->delete($attemptsKey);
+                $cache->delete($lockoutKey);
+
                 // LOG ACTIVITY
                 log_activity($user->id, $user->name, $user->role, 'LOGIN', "User logged in via email: $email");
 
                 return $this->respond([
-                    'status'     => 'success',
-                    'message'    => 'Login Successful!',
-                    'user'       => [
-                        'id'   => $user->id,
+                    'status' => 'success',
+                    'message' => 'Login Successful!',
+                    'user' => [
+                        'id' => $user->id,
                         'name' => $user->name,
                         'role' => $user->role
                     ],
-                    'csrf_token' => csrf_hash() 
+                    'csrf_token' => csrf_hash()
                 ]);
-            } else {
-                // Optional: Log failed attempts?
-                // log_activity(null, 'Guest', 'guest', 'LOGIN_FAILED', "Failed login attempt for: $email");
-                return $this->failUnauthorized('Invalid email or password');
             }
-        } catch (\Throwable $e) {
+            else {
+                // ── Failure: increment attempt counter ──
+                $attempts = (int)($cache->get($attemptsKey) ?? 0);
+                $attempts++;
+
+                $maxAttempts = 5;
+                $lockoutSecs = 60; // 1 minute
+
+                if ($attempts >= $maxAttempts) {
+                    // Lock this IP out
+                    $cache->save($lockoutKey, time() + $lockoutSecs, $lockoutSecs);
+                    $cache->save($attemptsKey, $attempts, $lockoutSecs);
+
+                    return $this->response
+                        ->setStatusCode(429)
+                        ->setJSON([
+                        'status' => 'error',
+                        'message' => "Too many failed attempts. Please try again in {$lockoutSecs} seconds.",
+                        'retry_after' => $lockoutSecs,
+                        'csrf_token' => csrf_hash()
+                    ]);
+                }
+
+                // Save the incremented counter (TTL = lockout window so it auto-resets)
+                $cache->save($attemptsKey, $attempts, $lockoutSecs);
+
+                $remaining = $maxAttempts - $attempts;
+                return $this->failUnauthorized("Invalid email or password. {$remaining} attempt(s) remaining.");
+            }
+        }
+        catch (\Throwable $e) {
             return $this->failServerError($e->getMessage());
         }
     }
@@ -62,15 +116,15 @@ class AuthController extends BaseController
 
         if (!$sessionData) {
             return $this->response->setJSON([
-                'status'     => 'guest',
-                'message'    => 'User is not logged in',
+                'status' => 'guest',
+                'message' => 'User is not logged in',
                 'csrf_token' => csrf_hash()
             ]);
         }
 
         return $this->response->setJSON([
             'status' => 'success',
-            'user'   => $sessionData,
+            'user' => $sessionData,
             'csrf_token' => csrf_hash()
         ]);
     }
@@ -109,7 +163,7 @@ class AuthController extends BaseController
             // since Service shouldn't strictly depend on global session if we want to be pure, 
             // but for now relying on Helper usage in Service is fine for CI4.
             // Actually, I passed `currentUserId` to `updateProfile` in AuthService.
-            
+
             $currentUserId = session()->get('id');
             $currentUserRole = session()->get('role');
 
@@ -122,14 +176,15 @@ class AuthController extends BaseController
                 'status' => 'success',
                 'message' => 'Account updated successfully',
                 'user' => [
-                    'id'    => $updatedUser->id,
-                    'name'  => $updatedUser->name,
+                    'id' => $updatedUser->id,
+                    'name' => $updatedUser->name,
                     'email' => $updatedUser->email,
-                    'role'  => $updatedUser->role,
+                    'role' => $updatedUser->role,
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return $this->fail($e->getMessage(), $e->getCode() ?: 400);
         }
     }
@@ -147,30 +202,32 @@ class AuthController extends BaseController
 
         try {
             $this->authService->register($json);
-            
+
             // LOG ACTIVITY (Who registered? The admin usually, or self-register via public?) 
             // If admin endpoint:
             $adminId = session()->get('id');
             $adminName = session()->get('name');
             $adminRole = session()->get('role');
-            
+
             if ($adminId) {
-                 log_activity($adminId, $adminName, $adminRole, 'REGISTER_USER', "Registered new user: " . ($json->email ?? 'unknown'));
-            } else {
-                 log_activity(null, 'Guest', 'guest', 'REGISTER_USER', "Public registration: " . ($json->email ?? 'unknown'));
+                log_activity($adminId, $adminName, $adminRole, 'REGISTER_USER', "Registered new user: " . ($json->email ?? 'unknown'));
+            }
+            else {
+                log_activity(null, 'Guest', 'guest', 'REGISTER_USER', "Public registration: " . ($json->email ?? 'unknown'));
             }
 
             return $this->respondCreated([
-                'status'  => 'success',
+                'status' => 'success',
                 'message' => 'User added successfully'
             ]);
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e) {
             log_message('error', '[Register] Error: ' . $e->getMessage());
-            
+
             // Handle specific codes if needed
-             if ($e->getCode() == 409) {
-                 return $this->failResourceExists($e->getMessage());
-             }
+            if ($e->getCode() == 409) {
+                return $this->failResourceExists($e->getMessage());
+            }
             return $this->failServerError($e->getMessage());
         }
     }

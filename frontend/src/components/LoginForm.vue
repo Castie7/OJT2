@@ -15,6 +15,8 @@ const {
   message, 
   isSuccess, 
   isLoading, 
+  isLockedOut,
+  lockoutSeconds,
   handleLogin 
 } = useLoginForm(emit)
 </script>
@@ -71,8 +73,8 @@ const {
           
           <button 
             type="submit" 
-            :disabled="isLoading"
-            :class="`w-full font-bold py-3 px-4 rounded-lg shadow-lg transform transition-all active:scale-95 flex justify-center items-center gap-2 ${isLoading || isSuccess ? 'bg-green-700 cursor-not-allowed' : 'bg-green-800 hover:bg-green-700 hover:shadow-green-900/30 text-white'}`"
+            :disabled="isLoading || isLockedOut"
+            :class="`w-full font-bold py-3 px-4 rounded-lg shadow-lg transform transition-all active:scale-95 flex justify-center items-center gap-2 ${isLoading || isSuccess || isLockedOut ? 'bg-green-700 cursor-not-allowed opacity-60' : 'bg-green-800 hover:bg-green-700 hover:shadow-green-900/30 text-white'}`"
           >
             <span v-if="isLoading && !isSuccess" class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
             <span v-if="!isLoading">Sign In</span>

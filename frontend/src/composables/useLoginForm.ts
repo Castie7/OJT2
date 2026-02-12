@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import api from '../services/api' // ✅ Secure API Service
 
 export function useLoginForm(emit: {
@@ -12,6 +12,41 @@ export function useLoginForm(emit: {
   const message = ref('')
   const isSuccess = ref(false)
   const isLoading = ref(false)
+  const isLockedOut = ref(false)
+  const lockoutSeconds = ref(0)
+
+  let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+  // --- LOCKOUT COUNTDOWN ---
+  const startLockoutCountdown = (seconds: number) => {
+    // Clear any existing timer
+    if (countdownTimer) clearInterval(countdownTimer)
+
+    isLockedOut.value = true
+    lockoutSeconds.value = seconds
+    message.value = `Too many failed attempts. Please try again in ${seconds} second(s).`
+
+    countdownTimer = setInterval(() => {
+      lockoutSeconds.value--
+      if (lockoutSeconds.value <= 0) {
+        // Lockout expired
+        isLockedOut.value = false
+        lockoutSeconds.value = 0
+        message.value = ''
+        if (countdownTimer) {
+          clearInterval(countdownTimer)
+          countdownTimer = null
+        }
+      } else {
+        message.value = `Too many failed attempts. Please try again in ${lockoutSeconds.value} second(s).`
+      }
+    }, 1000)
+  }
+
+  // Clean up timer on unmount
+  onUnmounted(() => {
+    if (countdownTimer) clearInterval(countdownTimer)
+  })
 
   // --- ACTIONS ---
   const fetchCsrfToken = async () => {
@@ -31,14 +66,13 @@ export function useLoginForm(emit: {
   })
 
   const handleLogin = async () => {
+    if (isLockedOut.value) return
+
     isLoading.value = true
     message.value = ""
 
     try {
       // ✅ SECURE POST REQUEST
-      // The 'api' interceptor automatically adds:
-      // 1. The X-CSRF-TOKEN header (from Cookie or LocalStorage)
-      // 2. The 'withCredentials' flag
       const response = await api.post('/auth/login', {
         email: email.value,
         password: password.value
@@ -51,7 +85,6 @@ export function useLoginForm(emit: {
         message.value = "Login Successful!"
 
         // Pass the data (including the new CSRF token) up to App.vue
-        // App.vue will handle saving it to the "Bridge" (LocalStorage)
         setTimeout(() => {
           emit('login-success', data)
         }, 1000)
@@ -68,15 +101,16 @@ export function useLoginForm(emit: {
       isLoading.value = false
 
       if (error.response) {
-        // 🛡️ SPECIFIC ERROR HANDLING
-        if (error.response.status === 403) {
-          // 403 usually means the CSRF token is missing or expired
+        if (error.response.status === 429) {
+          // 🔒 Too many attempts – start countdown
+          const retryAfter = error.response.data?.retry_after || 60
+          startLockoutCountdown(retryAfter)
+        } else if (error.response.status === 403) {
           message.value = "Session expired. Please refresh the page."
         } else {
           message.value = error.response.data.message || "Invalid credentials"
         }
       } else if (error.request) {
-        // Server is down or unreachable
         message.value = "Server connection failed. Please try again."
       } else {
         message.value = "An unexpected error occurred."
@@ -90,6 +124,8 @@ export function useLoginForm(emit: {
     message,
     isSuccess,
     isLoading,
+    isLockedOut,
+    lockoutSeconds,
     handleLogin
   }
 }

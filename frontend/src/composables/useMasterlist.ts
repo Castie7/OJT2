@@ -1,5 +1,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '../services/api'
+import { useToast } from './useToast'
 
 export interface Research {
     id: number
@@ -48,6 +49,7 @@ export function useMasterlist() {
     // Edit Modal State
     const isEditModalOpen = ref(false)
     const isSaving = ref(false)
+    const { showToast } = useToast()
     const editForm = ref<any>({
         id: null,
         title: '',
@@ -150,7 +152,7 @@ export function useMasterlist() {
         const fileExtension = file.name.split('.').pop()?.toLowerCase() || ''
 
         if (!allowedExtensions.includes(fileExtension)) {
-            alert('❌ Invalid File!\nPlease upload a PDF or an Image.')
+            showToast('❌ Invalid File! Please upload a PDF or an Image.', 'error')
             target.value = ''
             editForm.value.pdf_file = null
             return
@@ -162,8 +164,8 @@ export function useMasterlist() {
         if (isSaving.value || !editForm.value.id) return false
         const form = editForm.value
 
-        if (!form.title.trim()) { alert('⚠️ Title is required.'); return false }
-        if (!form.author.trim()) { alert('⚠️ Author is required.'); return false }
+        if (!form.title.trim()) { showToast('⚠️ Title is required.', 'warning'); return false }
+        if (!form.author.trim()) { showToast('⚠️ Author is required.', 'warning'); return false }
 
         isSaving.value = true
         const formData = new FormData()
@@ -190,7 +192,7 @@ export function useMasterlist() {
 
         try {
             await api.post(`/research/update/${form.id}`, formData)
-            alert('✅ Research updated successfully!')
+            showToast('✅ Research updated successfully!', 'success')
             isEditModalOpen.value = false
             fetchData()
             return true
@@ -201,7 +203,7 @@ export function useMasterlist() {
             } else if (error.response?.data?.message) {
                 msg = error.response.data.message
             }
-            alert('❌ Error:\n' + msg)
+            showToast('❌ Error: ' + msg, 'error')
             return false
         } finally {
             isSaving.value = false

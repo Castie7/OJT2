@@ -1,5 +1,6 @@
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import api from '../services/api' // ✅ Secure API Service
+import { useToast } from './useToast'
 
 // --- TYPE DEFINITIONS ---
 export interface Research {
@@ -45,6 +46,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
     const editPdfFile = ref<File | null>(null)
     const isSaving = ref(false)
     const selectedResearch = ref<Research | null>(null)
+    const { showToast } = useToast()
 
     // Modal State
     const commentModal = ref({
@@ -202,7 +204,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
             fetchData()
 
         } catch (e) {
-            alert("Action Failed.")
+            showToast("Action Failed.", "error")
         } finally {
             confirmModal.value.isProcessing = false
         }
@@ -239,7 +241,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
             commentModal.value.newComment = ''
             nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight })
         } catch (e: any) {
-            alert("Failed: " + (e.response?.data?.message || e.message))
+            showToast("Failed: " + (e.response?.data?.message || e.message), "error")
         } finally {
             isSendingComment.value = false
         }
@@ -255,7 +257,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
 
         const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png']
         if (!allowedExtensions.includes(file.name.split('.').pop()?.toLowerCase() || '')) {
-            alert("❌ Invalid File!")
+            showToast("❌ Invalid File!", "error")
             target.value = ''
             editPdfFile.value = null
             return
@@ -268,7 +270,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
         const item = editingItem.value
 
         if (!item.title.trim() || !item.author.trim() || !item.deadline_date) {
-            alert("⚠️ Missing Fields")
+            showToast("⚠️ Missing Fields", "warning")
             return
         }
 
@@ -286,12 +288,12 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
             // Axios handles multipart/form-data automatically when passed FormData
             await api.post(`/research/update/${item.id}`, formData)
 
-            alert("✅ Updated!")
+            showToast("✅ Updated!", "success")
             editingItem.value = null
             fetchData()
 
         } catch (e) {
-            alert("Server Error")
+            showToast("Server Error", "error")
         } finally {
             isSaving.value = false
         }

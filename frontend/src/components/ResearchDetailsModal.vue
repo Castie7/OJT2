@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useToast } from '../composables/useToast'
 
 // ✅ USE THE DYNAMIC URL
 import { getAssetUrl } from '../services/api'
@@ -40,13 +41,14 @@ const formatDate = (date: any) => {
   }
 }
 
+const { showToast } = useToast()
 const pdfContainer = ref<HTMLElement | null>(null)
 
 const toggleFullscreen = () => {
   if (!pdfContainer.value) return
   if (!document.fullscreenElement) {
     pdfContainer.value.requestFullscreen().catch((err: any) => {
-      alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+      showToast(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`, 'error');
     });
   } else {
     document.exitFullscreen();

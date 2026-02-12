@@ -1,5 +1,6 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
 import api from '../services/api' // ✅ Switch to Secure API Service
+import { useToast } from './useToast'
 
 // --- TYPES ---
 export interface Research {
@@ -33,6 +34,7 @@ export function useApproval(currentUser: User | null) {
   const items = ref<Research[]>([])
   const isLoading = ref(false)
   const selectedResearch = ref<Research | null>(null)
+  const { showToast } = useToast()
 
   const currentPage = ref(1)
   const itemsPerPage = 10
@@ -106,12 +108,48 @@ export function useApproval(currentUser: User | null) {
     }
   }
 
-  const handleAction = async (id: number, action: 'approve' | 'reject' | 'restore') => {
-    const msg = action === 'restore'
-      ? 'Are you sure you want to RESTORE this item to Pending?'
-      : `Are you sure you want to ${action} this research?`
+  // --- CONFIRMATION MODAL STATE ---
+  const confirmModal = ref({
+    show: false,
+    id: null as number | null,
+    action: '' as 'approve' | 'reject' | 'restore',
+    title: '',
+    subtext: '',
+    isProcessing: false
+  })
 
-    if (!confirm(msg)) return
+  // Open the modal
+  const handleAction = (id: number, action: 'approve' | 'reject' | 'restore') => {
+    let title = ''
+    let subtext = ''
+
+    if (action === 'approve') {
+      title = 'Approve Research?'
+      subtext = 'This will publish the research and make it visible in the library.'
+    } else if (action === 'reject') {
+      title = 'Reject Submission?'
+      subtext = 'This will move the research to the Rejected Bin.'
+    } else {
+      title = 'Restore to Pending?'
+      subtext = 'This will move the research back to the Pending list for review.'
+    }
+
+    confirmModal.value = {
+      show: true,
+      id,
+      action,
+      title,
+      subtext,
+      isProcessing: false
+    }
+  }
+
+  // Execute the action (called by modal "Yes" button)
+  const executeAction = async () => {
+    if (!confirmModal.value.id) return
+
+    confirmModal.value.isProcessing = true
+    const { id, action } = confirmModal.value
 
     try {
       let endpoint = ''
@@ -122,10 +160,14 @@ export function useApproval(currentUser: User | null) {
       // ✅ Use api.post()
       await api.post(`/research/${endpoint}/${id}`)
 
-      alert(`Action ${action} successful!`)
+      showToast(`Action ${action} successful!`, 'success')
       fetchData()
+      confirmModal.value.show = false
+
     } catch (error) {
-      alert("Action failed")
+      showToast("Action failed", 'error')
+    } finally {
+      confirmModal.value.isProcessing = false
     }
   }
 
@@ -153,11 +195,11 @@ export function useApproval(currentUser: User | null) {
       // ✅ Use api.post() with FormData
       await api.post(`/research/extend-deadline/${deadlineModal.value.id}`, formData)
 
-      alert("Deadline Updated!")
+      showToast("Deadline Updated!", 'success')
       deadlineModal.value.show = false
       fetchData()
     } catch (e) {
-      alert("Server Error: Failed to update deadline.")
+      showToast("Server Error: Failed to update deadline.", 'error')
     }
   }
 
@@ -197,7 +239,7 @@ export function useApproval(currentUser: User | null) {
       scrollToBottom()
 
     } catch (e: any) {
-      alert("Failed: " + (e.response?.data?.message || e.message))
+      showToast("Failed: " + (e.response?.data?.message || e.message), 'error')
     } finally {
       isSendingComment.value = false
     }
@@ -209,8 +251,9 @@ export function useApproval(currentUser: User | null) {
     activeTab, items, isLoading, selectedResearch,
     currentPage, itemsPerPage, paginatedItems, totalPages, nextPage, prevPage,
     deadlineModal, commentModal, isSendingComment, chatContainer,
-    fetchData, handleAction, formatDate, getDaysLeft,
+    fetchData, handleAction, executeAction, formatDate, getDaysLeft,
     openDeadlineModal, saveNewDeadline, openComments, postComment,
-    formatSimpleDate
+    formatSimpleDate,
+    confirmModal // Export the modal state
   }
 }

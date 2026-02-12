@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import api from '../services/api' // ✅ Switch to Secure API Service
+import { useToast } from '../composables/useToast'
 
 const emit = defineEmits<{
   (e: 'upload-success'): void
@@ -108,17 +109,13 @@ const isPdfUploading = ref(false)
 const pdfStatus = ref<{ message: string, type: 'success' | 'error' | '', details?: string[] }>({ message: '', type: '', details: [] })
 
 // Toast State
-const toast = ref({ show: false, message: '', type: 'success' as 'success' | 'error' })
-const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    toast.value = { show: true, message, type }
-    setTimeout(() => { toast.value.show = false }, 4000)
-}
+const { showToast } = useToast()
 
 const handlePdfChange = (event: Event) => {
     const target = event.target as HTMLInputElement
     if (target.files && target.files.length) {
         if (target.files.length > 10) {
-            alert("You can only upload a maximum of 10 files at a time.")
+            showToast("You can only upload a maximum of 10 files at a time.", "warning")
             target.value = '' // Reset input
             selectedPdfs.value = []
             return
@@ -195,12 +192,7 @@ const uploadPdfs = async () => {
 
 <template>
   <div>
-    <!-- TOAST NOTIFICATION -->
-    <Transition name="slide-fade">
-      <div v-if="toast.show" :class="`fixed bottom-5 right-5 z-[1000] px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 text-white font-bold transition-all ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`">
-        <span>{{ toast.type === 'error' ? '⚠️' : '✅' }}</span><span>{{ toast.message }}</span>
-      </div>
-    </Transition>
+    <!-- TOAST NOTIFICATION Removed (Global Toast used instead) -->
 
   <div class="w-full max-w-2xl mx-auto mt-10 p-4 sm:p-6 bg-white rounded-lg shadow-lg">
     <div class="text-center mb-8">

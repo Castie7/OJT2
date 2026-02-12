@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue' 
 import { useResearchLibrary, type User } from '../composables/useResearchLibrary'
+import { useToast } from '../composables/useToast'
 
 // ✅ USE THE DYNAMIC URL
 import { getAssetUrl } from '../services/api'
@@ -16,10 +17,12 @@ const emit = defineEmits<{
 
 const {
   searchQuery, selectedType, showArchived, viewMode, selectedResearch,
-  isLoading, toast, confirmModal, currentPage, 
+  isLoading, confirmModal, currentPage, 
   filteredResearches, paginatedResearches, totalPages,
   nextPage, prevPage, requestArchiveToggle, executeArchiveToggle
 } = useResearchLibrary(props.currentUser, emit)
+
+const { showToast } = useToast()
 
 // Helper to handle both string dates and Backend-returned DateTime objects
 const formatDate = (date: any) => {
@@ -54,7 +57,7 @@ const toggleFullscreen = () => {
 
   if (!document.fullscreenElement) {
     pdfContainer.value.requestFullscreen().catch((err: any) => {
-      alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+      showToast(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`, 'error');
     });
   } else {
     document.exitFullscreen();
@@ -64,11 +67,7 @@ const toggleFullscreen = () => {
 
 <template>
   <div>
-    <Transition name="slide-fade">
-      <div v-if="toast.show" :class="`fixed bottom-5 right-5 z-[100] px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 text-white font-bold transition-all ${toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'}`">
-        <span>{{ toast.type === 'error' ? '⚠️' : '✅' }}</span><span>{{ toast.message }}</span>
-      </div>
-    </Transition>
+    <!-- Toast Removed (Global Toast used instead) -->
 
     <div class="flex justify-between items-center mb-6">
        <div class="flex items-center gap-4">

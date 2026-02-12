@@ -1,5 +1,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '../services/api' // ✅ Uses Secure API Service
+import { useToast } from './useToast'
 
 // --- 1. SHARED INTERFACES ---
 export interface Research {
@@ -35,7 +36,7 @@ export interface User {
   email: string
 }
 
-export function useResearchLibrary(currentUser: User | null, emit: (event: 'update-stats', count: number) => void) {
+export function useResearchLibrary(_currentUser: User | null, emit: (event: 'update-stats', count: number) => void) {
 
   // --- STATE ---
   const researches = ref<Research[]>([])
@@ -49,7 +50,7 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
 
   // UI State
   const isLoading = ref(false)
-  const toast = ref({ show: false, message: '', type: 'success' as 'success' | 'error' })
+  const { showToast } = useToast()
   const confirmModal = ref({
     show: false,
     id: null as number | null,
@@ -63,10 +64,7 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
   const itemsPerPage = 10
 
   // --- HELPERS ---
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    toast.value = { show: true, message, type }
-    setTimeout(() => { toast.value.show = false }, 3000)
-  }
+
 
   const formatSimpleDate = (dateStr?: string) => {
     if (!dateStr) return 'N/A'
@@ -196,7 +194,6 @@ export function useResearchLibrary(currentUser: User | null, emit: (event: 'upda
     viewMode,
     selectedResearch,
     isLoading,
-    toast,
     confirmModal,
     currentPage,
     itemsPerPage,

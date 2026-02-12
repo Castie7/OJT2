@@ -10,8 +10,9 @@ const {
   activeTab, items, isLoading, selectedResearch, 
   currentPage, itemsPerPage, paginatedItems, totalPages, nextPage, prevPage,
   deadlineModal, commentModal, isSendingComment, chatContainer,
-  fetchData, handleAction, formatDate, getDaysLeft,
-  openDeadlineModal, saveNewDeadline, openComments, postComment
+  fetchData, handleAction, executeAction, formatDate, getDaysLeft,
+  openDeadlineModal, saveNewDeadline, openComments, postComment,
+  confirmModal
 } = useApproval(props.currentUser)
 
 // --- NEW: Handle Notification Clicks from Dashboard ---
@@ -200,6 +201,29 @@ defineExpose({ openNotification })
             <div class="text-[10px] text-gray-400 mt-2 text-right">Press Enter to send</div>
           </div>
 
+        </div>
+      </div>
+    </Transition>
+
+
+    <Transition name="pop">
+      <div v-if="confirmModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-6 text-center w-full max-w-sm shadow-2xl transform transition-all">
+          <div class="mb-4 text-5xl">{{ confirmModal.action === 'reject' ? '🗑️' : (confirmModal.action === 'restore' ? '♻️' : '✅') }}</div>
+          <h3 class="text-xl font-bold text-gray-900 mb-2">{{ confirmModal.title }}</h3>
+          <p class="text-gray-500 text-sm mb-6">{{ confirmModal.subtext }}</p>
+          <div class="flex gap-3 justify-center">
+            <button @click="confirmModal.show=false" class="px-5 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition" :disabled="confirmModal.isProcessing">Cancel</button>
+            <button 
+                @click="executeAction" 
+                class="px-5 py-2 text-white font-bold rounded-lg shadow-lg transition" 
+                :class="confirmModal.action === 'reject' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'"
+                :disabled="confirmModal.isProcessing"
+            >
+                <span v-if="confirmModal.isProcessing" class="animate-spin mr-2">⏳</span>
+                Yes, {{ confirmModal.action === 'restore' ? 'Restore' : (confirmModal.action === 'reject' ? 'Reject' : 'Approve') }}
+            </button>
+          </div>
         </div>
       </div>
     </Transition>

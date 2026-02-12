@@ -1,5 +1,6 @@
 import { ref, reactive, watch } from 'vue'
 import api from '../services/api' // ✅ Switch to Secure API Service
+import { useToast } from './useToast'
 
 export interface User {
   id: number
@@ -38,6 +39,7 @@ export function useMyWorkspace(_currentUser: User | null) {
   const isSubmitting = ref(false)
   const isLoading = ref(false)
   const myResearches = ref<Research[]>([])
+  const { showToast } = useToast()
 
   // VALIDATION STATE
   const errors = reactive({
@@ -195,7 +197,7 @@ export function useMyWorkspace(_currentUser: User | null) {
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || ''
 
     if (!allowedExtensions.includes(fileExtension)) {
-      alert("❌ Invalid File!\nPlease upload a PDF or an Image.")
+      showToast("Invalid File! Please upload a PDF or an Image.", "error")
       target.value = ''
       form.pdf_file = null
       return
@@ -243,7 +245,7 @@ export function useMyWorkspace(_currentUser: User | null) {
 
       await api.post(url, formData)
 
-      alert(form.id ? "✅ Success! Research Updated." : "✅ Success! Research Submitted.")
+      showToast(form.id ? "Success! Research Updated." : "Success! Research Submitted.", "success")
       isModalOpen.value = false
       return true // Indicate success
 
@@ -263,7 +265,7 @@ export function useMyWorkspace(_currentUser: User | null) {
         msg = error.response.data.message;
       }
 
-      alert("❌ Error:\n" + msg)
+      showToast("Error: " + msg, "error")
       return false // Indicate failure
     } finally {
       isSubmitting.value = false

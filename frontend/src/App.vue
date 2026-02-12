@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import api from './services/api' 
 import { RouterView, useRouter } from 'vue-router'
+import Toast from './components/Toast.vue'
 
 interface User {
   id: number; 
@@ -94,6 +95,7 @@ const goToLogin = () => {
       @update-user="(u: any) => currentUser = u"
       @back="router.push('/')"
     />
+    <Toast />
   </template>
 </template>
 

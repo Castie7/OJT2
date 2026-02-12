@@ -32,9 +32,16 @@ const {
       <div class="p-8">
         
         <div class="text-center mb-8">
-          <div class="h-20 w-20 bg-green-100 rounded-full mx-auto flex items-center justify-center shadow-inner mb-4 border-2 border-yellow-400 overflow-hidden">
-             <img src="/logo.png" alt="Logo" class="h-16 w-auto object-contain" />
+          <div class="h-20 w-20 bg-white rounded-full mx-auto flex items-center justify-center shadow-md mb-4 border-2 border-yellow-400 overflow-hidden">
+            
+            <img 
+              src="/logo.svg" 
+              alt="Logo" 
+              class="w-full h-full object-contain p-0.5 scale-143gi mt-[-3px] ml-[-2px]" 
+            />
+            
           </div>
+          
           <h2 class="text-3xl font-bold text-green-900 tracking-tight">Research Portal</h2>
           <p class="text-sm text-green-600 font-medium uppercase tracking-wide mt-1">BSU RootCrops Research</p>
         </div>

@@ -127,7 +127,6 @@ _modules/*
 /vendor/
 /node_modules/
 /writable/
-*.sql
 *.pdf
 *.zip
 *.docx

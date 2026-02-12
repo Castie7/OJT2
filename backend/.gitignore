@@ -124,3 +124,12 @@ _modules/*
 
 /results/
 /phpunit*.xml
+/vendor/
+/node_modules/
+/writable/
+*.sql
+*.pdf
+*.zip
+*.docx
+backend/public/uploads/*
+/No record in library (not linked)/

@@ -247,13 +247,24 @@ export function useMasterlist() {
 
         confirmModal.value.isProcessing = true
         try {
-            const endpoint = confirmModal.value.action === 'Restore'
-                ? `/research/restore/${confirmModal.value.id}`
-                : `/research/archive/${confirmModal.value.id}`
+            let endpoint = ''
+
+            // Standard Archive/Restore
+            if (confirmModal.value.action === 'Restore') endpoint = `/research/restore/${confirmModal.value.id}`
+            else if (confirmModal.value.action === 'Archive') endpoint = `/research/archive/${confirmModal.value.id}`
+            // Approve/Reject
+            else if (confirmModal.value.action === 'Approve') endpoint = `/research/approve/${confirmModal.value.id}`
+            else if (confirmModal.value.action === 'Reject') endpoint = `/research/reject/${confirmModal.value.id}`
 
             await api.post(endpoint)
             showToast(`${confirmModal.value.action} successful!`, 'success')
             confirmModal.value.show = false
+
+            // If we approved/rejected from details modal, close it
+            if (['Approve', 'Reject'].includes(confirmModal.value.action) && selectedItem.value) {
+                closeDetails()
+            }
+
             fetchData()
         } catch (error: any) {
             const msg = error.response?.data?.message || 'Action failed'
@@ -302,6 +313,29 @@ export function useMasterlist() {
     // --- LIFECYCLE ---
     onMounted(() => fetchData())
 
+    // Approve / Reject
+    const approveResearch = (id: number) => {
+        confirmModal.value = {
+            show: true,
+            id: id,
+            action: 'Approve',
+            title: '✅ Approve Research?',
+            subtext: 'This item will be marked as Approved and visible to the public.',
+            isProcessing: false
+        }
+    }
+
+    const rejectResearch = (id: number) => {
+        confirmModal.value = {
+            show: true,
+            id: id,
+            action: 'Reject',
+            title: '❌ Reject Research?',
+            subtext: 'This item will be marked as Rejected and returned for revision.',
+            isProcessing: false
+        }
+    }
+
     return {
         allItems, isLoading, isRefreshing, searchQuery, statusFilter,
         currentPage, itemsPerPage, filteredItems, paginatedItems, totalPages,
@@ -310,6 +344,7 @@ export function useMasterlist() {
         fetchData, openEdit, handleFileChange, saveEdit,
         getStatusBadge, formatDate, resetFilters,
         confirmModal, requestArchive, executeArchive,
-        selectedItem, viewDetails, closeDetails
+        selectedItem, viewDetails, closeDetails,
+        approveResearch, rejectResearch
     }
 }

@@ -43,6 +43,9 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
 
   const searchQuery = ref('')
   const selectedType = ref('') // Dropdown Filter
+  const startDate = ref('') // Date Filter
+  const endDate = ref('') // Date Filter
+
 
   const showArchived = ref(false)
   const viewMode = ref<'list' | 'grid'>('list')
@@ -82,7 +85,12 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
         ? '/research/archived'
         : '/research'
 
-      const response = await api.get(endpoint)
+      // Build Query Params
+      const params = new URLSearchParams()
+      if (startDate.value) params.append('start_date', startDate.value)
+      if (endDate.value) params.append('end_date', endDate.value)
+
+      const response = await api.get(`${endpoint}?${params.toString()}`)
 
       researches.value = response.data
 
@@ -182,8 +190,9 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
   })
 
   // Reset pagination on filter change
-  watch([searchQuery, selectedType], () => {
+  watch([searchQuery, selectedType, startDate, endDate], () => {
     currentPage.value = 1
+    fetchResearches() // Start Date/End Date changes trigger fetch
   })
 
   onMounted(() => {
@@ -195,6 +204,8 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
     researches,
     searchQuery,
     selectedType,
+    startDate,
+    endDate,
     showArchived,
     viewMode,
     selectedResearch,

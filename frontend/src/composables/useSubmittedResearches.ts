@@ -96,7 +96,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
             // Check if valid date
             if (isNaN(d.getTime())) return dateVal
 
-            return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
         } catch (e) {
             return dateVal
         }

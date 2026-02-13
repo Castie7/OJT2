@@ -31,7 +31,10 @@ class ResearchController extends BaseController
     // 1. PUBLIC INDEX
     public function index()
     {
-        $data = $this->researchService->getAllApproved();
+        $startDate = $this->request->getGet('start_date');
+        $endDate = $this->request->getGet('end_date');
+
+        $data = $this->researchService->getAllApproved($startDate, $endDate);
         return $this->respond($data);
     }
 
@@ -373,6 +376,11 @@ class ResearchController extends BaseController
     // CSV IMPORT
     public function importCsv()
     {
+        $user = $this->validateUser();
+        if (!$user || $user->role !== 'admin') {
+            return $this->failForbidden('Access Denied');
+        }
+
         $file = $this->request->getFile('csv_file');
 
         if (!$file) {

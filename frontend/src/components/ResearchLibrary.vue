@@ -16,7 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const {
-  searchQuery, selectedType, showArchived, viewMode, selectedResearch,
+  searchQuery, selectedType, startDate, endDate, showArchived, viewMode, selectedResearch,
   isLoading, confirmModal, currentPage, 
   filteredResearches, paginatedResearches, totalPages,
   nextPage, prevPage, requestArchiveToggle, executeArchiveToggle
@@ -79,13 +79,13 @@ const toggleFullscreen = () => {
     <div class="w-full">
       <div class="bg-white p-6 rounded-lg shadow-lg min-h-[500px] relative flex flex-col">
         
-        <div class="flex flex-col xl:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
+        <div class="flex flex-col justify-between items-start mb-6 border-b pb-4 gap-4">
           <h2 class="text-xl font-bold text-gray-800 whitespace-nowrap">
             {{ showArchived ? '🗑️ Archived Items' : '📚 Library Catalog' }}
             <span class="text-sm font-normal text-gray-500 ml-2">({{ filteredResearches.length }} found)</span>
           </h2>
 
-          <div class="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+          <div class="flex flex-col sm:flex-row flex-wrap gap-3 w-full justify-center items-center">
             <select v-model="selectedType" class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none bg-gray-50">
               <option value="">All Types</option>
               <option>Research Paper</option>
@@ -94,6 +94,14 @@ const toggleFullscreen = () => {
               <option>IEC Material</option>
               <option>Thesis</option>
             </select>
+            
+            <!-- Date Range Filter -->
+            <div class="flex gap-2 items-center bg-gray-50 border rounded-lg px-2">
+                <span class="text-xs text-gray-500 font-bold whitespace-nowrap">📅 From:</span>
+                <input v-model="startDate" type="date" class="bg-transparent text-sm focus:outline-none w-32 py-2" title="From Date">
+                <span class="text-xs text-gray-500 font-bold whitespace-nowrap">To:</span>
+                <input v-model="endDate" type="date" class="bg-transparent text-sm focus:outline-none w-32 py-2" title="To Date">
+            </div>
             <div class="relative w-full sm:w-64">
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
               <input v-model="searchQuery" type="text" placeholder="Search title, author, subject..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"/>
@@ -138,7 +146,10 @@ const toggleFullscreen = () => {
                         <span class="inline-block px-2 py-1 text-[10px] font-bold rounded bg-blue-50 text-blue-700 uppercase mb-1">
                           {{ item.knowledge_type }}
                         </span>
-                        <div v-if="item.crop_variation" class="text-xs text-amber-600 italic">
+                        <div class="text-xs text-gray-500 mt-1">
+                          {{ item.edition ? item.edition : 'No Edition' }} • {{ formatDate(item.publication_date) }}
+                        </div>
+                        <div class="text-xs text-amber-600 mt-1" v-if="item.crop_variation">
                           {{ item.crop_variation }}
                         </div>
                     </td>
@@ -181,7 +192,8 @@ const toggleFullscreen = () => {
                     <span v-if="item.file_path" class="text-xs">📎</span>
                  </div>
                  <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1 group-hover:text-green-700 line-clamp-2">{{ item.title }}</h3>
-                 <p class="text-sm text-gray-500 mb-3">By {{ item.author }}</p>
+                 <p class="text-sm text-gray-500 mb-1">By {{ item.author }}</p>
+                 <p class="text-xs text-gray-400 mb-3">📅 {{ formatDate(item.publication_date) }}</p>
                  <div class="mt-auto pt-3 border-t text-xs text-gray-600 space-y-1">
                     <div class="flex justify-between"><span>Location:</span> <span class="font-mono font-bold">{{ item.shelf_location || 'N/A' }}</span></div>
                     <div v-if="item.crop_variation" class="flex justify-between text-amber-600"><span>Crop:</span> <span>{{ item.crop_variation }}</span></div>

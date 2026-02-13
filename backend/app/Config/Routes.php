@@ -33,9 +33,6 @@ $routes->get('/', 'Home::index');
 // --- AUTH ROUTES ---
 $routes->post('auth/login', 'AuthController::login');
 
-// ✅ CHANGED: Set to 'get' because App.vue fetches this on load
-$routes->get('auth/verify', 'AuthController::verify');
-
 
 $routes->post('auth/logout', 'AuthController::logout');
 $routes->post('auth/update-profile', 'AuthController::updateProfile');
@@ -92,5 +89,4 @@ $routes->group('research', function ($routes) {
     $routes->post('import-csv', 'ResearchController::importCsv');
     $routes->post('import-single', 'ResearchController::importSingle');
     $routes->post('bulk-upload-pdfs', 'ResearchController::uploadBulkPdfs');
-
 });

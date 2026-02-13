@@ -39,6 +39,46 @@ class ResearchService extends BaseService
         $this->userModel = new UserModel();
     }
 
+    /**
+     * Parse various date formats into YYYY-MM-DD
+     * Handles: '2018', 'January-June 2006', '01/02/2014'
+     */
+    private function parseFlexibleDate($dateStr)
+    {
+        if (empty($dateStr)) return date('Y-m-d'); // Default to Today
+
+        $dateStr = trim($dateStr);
+
+        // 1. Year Only (e.g. "2018") -> "2018-01-01"
+        if (preg_match('/^\d{4}$/', $dateStr)) {
+            return $dateStr . '-01-01';
+        }
+
+        // 2. Month-Month Year (e.g. "January-June 2006", "January -June 2010")
+        // Regex: (Month Name)(Space?)-(Space?)(Month Name) (4 Digit Year)
+        if (preg_match('/^([a-zA-Z]+)\s*[-]\s*[a-zA-Z]+\s+(\d{4})$/', $dateStr, $matches)) {
+            // matches[1] = January, matches[2] = 2006
+            $time = strtotime($matches[1] . ' ' . $matches[2]);
+            if ($time) return date('Y-m-d', $time);
+        }
+
+        // 3. Slashes/Dashes (01/02/2014)
+        // Check if it's already YYYY-MM-DD
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateStr)) {
+            return $dateStr;
+        }
+
+        // Try standard parsing
+        $time = strtotime($dateStr);
+        if ($time) {
+            return date('Y-m-d', $time);
+        }
+
+        // Fallback: Return original (database might reject it and store 0000-00-00, or user sees error)
+        // Or default to today? Let's default to today to avoid breaking the DB insert if strict mode is on.
+        return date('Y-m-d'); 
+    }
+
     // --- READ METHODS ---
 
     public function getAllApproved($startDate = null, $endDate = null)
@@ -223,7 +263,7 @@ class ResearchService extends BaseService
         $detailsData = [
             'research_id' => $newResearchId,
             'knowledge_type' => $knowledgeType,
-            'publication_date' => $data['publication_date'],
+            'publication_date' => !empty($data['publication_date']) ? $data['publication_date'] : date('Y-m-d'),
             'edition' => $data['edition'],
             'publisher' => $data['publisher'],
             'physical_description' => $data['physical_description'],
@@ -290,7 +330,7 @@ class ResearchService extends BaseService
 
         $detailsData = [
             'knowledge_type' => $knowledgeType,
-            'publication_date' => $data['publication_date'],
+            'publication_date' => !empty($data['publication_date']) ? $data['publication_date'] : date('Y-m-d'),
             'edition' => $data['edition'],
             'publisher' => $data['publisher'],
             'physical_description' => $data['physical_description'],
@@ -415,7 +455,7 @@ class ResearchService extends BaseService
             'title' => $rawData['Title'] ?? 'Untitled',
             'knowledge_type' => $rawData['Type'] ?? 'Research Paper',
             'author' => $rawData['Author'] ?? $rawData['Authors'] ?? 'Unknown',
-            'publication_date' => $rawData['Date'] ?? null,
+            'publication_date' => $this->parseFlexibleDate($rawData['Date'] ?? ''),
             'edition' => $rawData['Edition'] ?? $rawData['Publication'] ?? '',
             'publisher' => $rawData['Publisher'] ?? '',
             'physical_description' => $rawData['Pages'] ?? '',

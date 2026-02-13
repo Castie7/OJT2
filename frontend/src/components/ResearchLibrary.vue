@@ -146,7 +146,10 @@ const toggleFullscreen = () => {
                         <span class="inline-block px-2 py-1 text-[10px] font-bold rounded bg-blue-50 text-blue-700 uppercase mb-1">
                           {{ item.knowledge_type }}
                         </span>
-                        <div v-if="item.crop_variation" class="text-xs text-amber-600 italic">
+                        <div class="text-xs text-gray-500 mt-1">
+                          {{ item.edition ? item.edition : 'No Edition' }} • {{ formatDate(item.publication_date) }}
+                        </div>
+                        <div class="text-xs text-amber-600 mt-1" v-if="item.crop_variation">
                           {{ item.crop_variation }}
                         </div>
                     </td>
@@ -189,7 +192,8 @@ const toggleFullscreen = () => {
                     <span v-if="item.file_path" class="text-xs">📎</span>
                  </div>
                  <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1 group-hover:text-green-700 line-clamp-2">{{ item.title }}</h3>
-                 <p class="text-sm text-gray-500 mb-3">By {{ item.author }}</p>
+                 <p class="text-sm text-gray-500 mb-1">By {{ item.author }}</p>
+                 <p class="text-xs text-gray-400 mb-3">📅 {{ formatDate(item.publication_date) }}</p>
                  <div class="mt-auto pt-3 border-t text-xs text-gray-600 space-y-1">
                     <div class="flex justify-between"><span>Location:</span> <span class="font-mono font-bold">{{ item.shelf_location || 'N/A' }}</span></div>
                     <div v-if="item.crop_variation" class="flex justify-between text-amber-600"><span>Crop:</span> <span>{{ item.crop_variation }}</span></div>

@@ -70,6 +70,25 @@ export function useMasterlist() {
         pdf_file: null as File | null
     })
 
+    // View Details Modal
+    const selectedItem = ref<Research | null>(null)
+    const viewDetails = (item: Research) => {
+        selectedItem.value = item
+    }
+    const closeDetails = () => {
+        selectedItem.value = null
+    }
+
+    // Confirm Modal
+    const confirmModal = ref({
+        show: false,
+        id: null as number | null,
+        action: '',
+        title: '',
+        subtext: '',
+        isProcessing: false
+    })
+
     // --- FETCH ---
     const fetchData = async () => {
         isLoading.value = true
@@ -210,12 +229,47 @@ export function useMasterlist() {
         }
     }
 
+    // --- ARCHIVE / RESTORE ---
+    const requestArchive = (item: Research) => {
+        const action = item.status === 'archived' ? 'Restore' : 'Archive'
+        confirmModal.value = {
+            show: true,
+            id: item.id,
+            action: action,
+            title: action === 'Archive' ? 'Move to Trash?' : 'Restore Item?',
+            subtext: action === 'Archive' ? `Remove "${item.title}" from Masterlist?` : `Restore "${item.title}" to active list?`,
+            isProcessing: false
+        }
+    }
+
+    const executeArchive = async () => {
+        if (!confirmModal.value.id || confirmModal.value.isProcessing) return
+
+        confirmModal.value.isProcessing = true
+        try {
+            const endpoint = confirmModal.value.action === 'Restore'
+                ? `/research/restore/${confirmModal.value.id}`
+                : `/research/archive/${confirmModal.value.id}`
+
+            await api.post(endpoint)
+            showToast(`${confirmModal.value.action} successful!`, 'success')
+            confirmModal.value.show = false
+            fetchData()
+        } catch (error: any) {
+            const msg = error.response?.data?.message || 'Action failed'
+            showToast(`Error: ${msg}`, 'error')
+        } finally {
+            confirmModal.value.isProcessing = false
+        }
+    }
+
     // --- HELPERS ---
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'approved': return { label: '✅ Published', classes: 'bg-green-100 text-green-700 border-green-200' }
             case 'pending': return { label: '⏳ Pending', classes: 'bg-yellow-100 text-yellow-800 border-yellow-200' }
             case 'rejected': return { label: '❌ Rejected', classes: 'bg-red-100 text-red-700 border-red-200' }
+            case 'archived': return { label: '🗑️ Archived', classes: 'bg-gray-200 text-gray-600 border-gray-300' }
             default: return { label: status, classes: 'bg-gray-100 text-gray-700 border-gray-200' }
         }
     }
@@ -254,6 +308,8 @@ export function useMasterlist() {
         nextPage, prevPage,
         isEditModalOpen, isSaving, editForm,
         fetchData, openEdit, handleFileChange, saveEdit,
-        getStatusBadge, formatDate, resetFilters
+        getStatusBadge, formatDate, resetFilters,
+        confirmModal, requestArchive, executeArchive,
+        selectedItem, viewDetails, closeDetails
     }
 }

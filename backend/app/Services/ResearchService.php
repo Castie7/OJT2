@@ -54,7 +54,6 @@ class ResearchService extends BaseService
     {
         return $this->researchModel->select($this->selectString)
             ->join('research_details', 'researches.id = research_details.research_id', 'left')
-            ->where('researches.status !=', 'archived')
             ->orderBy('researches.created_at', 'DESC')
             ->findAll();
     }

@@ -1,5 +1,18 @@
 <script setup lang="ts">
 import { useMasterlist } from '../composables/useMasterlist'
+import { getAssetUrl } from '../services/api'
+const ASSET_URL = getAssetUrl()
+import { ref } from 'vue'
+
+const pdfContainer = ref<HTMLElement | null>(null)
+const toggleFullscreen = () => {
+  if (!pdfContainer.value) return
+  if (!document.fullscreenElement) {
+    pdfContainer.value.requestFullscreen().catch(err => console.error(err))
+  } else {
+    document.exitFullscreen()
+  }
+}
 
 const {
   isLoading, isRefreshing, searchQuery, statusFilter,
@@ -7,7 +20,9 @@ const {
   nextPage, prevPage,
   isEditModalOpen, isSaving, editForm,
   openEdit, handleFileChange, saveEdit,
-  getStatusBadge, formatDate, resetFilters
+  getStatusBadge, formatDate, resetFilters,
+  confirmModal, requestArchive, executeArchive,
+  selectedItem, viewDetails, closeDetails
 } = useMasterlist()
 </script>
 
@@ -44,6 +59,7 @@ const {
           <option value="APPROVED">Published</option>
           <option value="PENDING">Pending</option>
           <option value="REJECTED">Rejected</option>
+          <option value="ARCHIVED">Archived</option>
         </select>
       </div>
 
@@ -101,8 +117,10 @@ const {
                 'bg-green-50 border-l-green-400': item.status === 'approved',
                 'bg-yellow-50 border-l-yellow-400': item.status === 'pending',
                 'bg-red-50 border-l-red-400': item.status === 'rejected',
-                'bg-white border-l-gray-200': !['approved','pending','rejected'].includes(item.status)
+                'bg-gray-200 border-l-gray-400 text-gray-500': item.status === 'archived',
+                'bg-white border-l-gray-200': !['approved','pending','rejected','archived'].includes(item.status)
               }"
+              @click="viewDetails(item)"
             >
               <td class="px-6 py-4">
                 <div class="font-medium text-gray-900 max-w-[250px] truncate" :title="item.title">{{ item.title }}</div>
@@ -117,12 +135,43 @@ const {
               <td class="px-6 py-4 text-sm text-gray-500">{{ item.knowledge_type || '—' }}</td>
               <td class="px-6 py-4 text-sm text-gray-500">{{ formatDate(item.created_at) }}</td>
               <td class="px-6 py-4 text-right">
-                <button 
-                  @click="openEdit(item)" 
-                  class="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded font-bold hover:bg-green-200 transition border border-green-200"
-                >
-                  ✏️ Edit
-                </button>
+                <div class="flex items-center justify-end gap-2">
+                  <button 
+                    v-if="item.file_path"
+                    @click.stop="viewDetails(item)" 
+                    class="p-2 rounded-full text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                    title="View PDF"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </button>
+                  <button 
+                    @click.stop="openEdit(item)" 
+                    class="p-2 rounded-full text-gray-500 hover:bg-green-50 hover:text-green-600 transition-colors"
+                    title="Edit Details"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button 
+                    @click.stop="requestArchive(item)"
+                    :class="`p-2 rounded-full transition-colors ${
+                      item.status === 'archived' 
+                        ? 'text-blue-500 hover:bg-blue-50 hover:text-blue-700' 
+                        : 'text-red-400 hover:bg-red-50 hover:text-red-600'
+                    }`"
+                    :title="item.status === 'archived' ? 'Restore Item' : 'Archive Item'"
+                  >
+                    <svg v-if="item.status === 'archived'" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -342,6 +391,109 @@ const {
             >
               {{ isSaving ? 'Saving...' : 'Update Item 💾' }}
             </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Archive Confirmation Modal -->
+    <Transition name="modal-pop">
+      <div v-if="confirmModal.show" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center">
+          <div class="mb-4 flex justify-center">
+            <div class="text-6xl">{{ confirmModal.action === 'Archive' ? '🗑️' : '♻️' }}</div>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-2">{{ confirmModal.title }}</h3>
+          <p class="text-gray-500 text-sm mb-6">{{ confirmModal.subtext }}</p>
+          <div class="flex gap-3 justify-center">
+            <button @click="confirmModal.show = false" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">Cancel</button>
+            <button 
+              @click="executeArchive" 
+              :disabled="confirmModal.isProcessing"
+              :class="`px-5 py-2.5 rounded-xl font-bold text-white shadow-lg ${
+                confirmModal.action === 'Archive' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'
+              } ${confirmModal.isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`"
+            >
+              <span v-if="confirmModal.isProcessing">⏳</span>
+              Yes, {{ confirmModal.action }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- View Details Modal -->
+    <Transition name="modal-pop">
+      <div v-if="selectedItem" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden" @click.stop>
+          
+          <div class="bg-green-800 text-white p-5 flex justify-between items-start shrink-0">
+            <div>
+              <span class="bg-green-900 text-green-100 text-[10px] uppercase font-bold px-2 py-1 rounded mb-2 inline-block">{{ selectedItem.knowledge_type }}</span>
+              <h2 class="text-2xl font-bold leading-tight">{{ selectedItem.title }}</h2>
+              <p class="text-green-200 text-sm mt-1">Author: {{ selectedItem.author }}</p>
+            </div>
+            <button @click="closeDetails" class="text-white hover:text-gray-300 text-3xl font-bold leading-none">&times;</button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
+              
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white p-5 rounded-lg border shadow-sm space-y-3">
+                   <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">📖 Catalog Details</h3>
+                   <div class="grid grid-cols-3 gap-2 text-sm">
+                      <span class="text-gray-500">Publisher:</span> <span class="col-span-2 font-medium">{{ selectedItem.publisher || '-' }}</span>
+                      <span class="text-gray-500">Edition:</span> <span class="col-span-2">{{ selectedItem.edition || '-' }}</span>
+                      <span class="text-gray-500">Date:</span> <span class="col-span-2">{{ formatDate(selectedItem.publication_date) }}</span>
+                      <span class="text-gray-500">ISBN/ISSN:</span> <span class="col-span-2 font-mono text-gray-600">{{ selectedItem.isbn_issn || '-' }}</span>
+                      <span class="text-gray-500">Description:</span> <span class="col-span-2">{{ selectedItem.physical_description || '-' }}</span>
+                   </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-lg border shadow-sm space-y-3">
+                   <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">📍 Location & Topic</h3>
+                   <div class="grid grid-cols-3 gap-2 text-sm">
+                      <span class="text-gray-500">Shelf Loc:</span> <span class="col-span-2 font-mono font-bold text-green-700 text-lg">{{ selectedItem.shelf_location || 'Unknown' }}</span>
+                      <span class="text-gray-500">Condition:</span> <span class="col-span-2">{{ selectedItem.item_condition }}</span>
+                      <span class="text-gray-500">Crop:</span> <span class="col-span-2 text-amber-600 font-medium">{{ selectedItem.crop_variation || 'General' }}</span>
+                      <span class="text-gray-500">Subjects:</span> <span class="col-span-2 italic text-gray-600">{{ selectedItem.subjects || 'No keywords' }}</span>
+                   </div>
+                </div>
+             </div>
+
+             <div v-if="selectedItem.file_path || selectedItem.link" class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <h3 class="font-bold text-blue-900 mb-3 flex items-center gap-2">🌐 Digital Access</h3>
+                
+                <div class="flex flex-wrap gap-4">
+                  
+                  <div v-if="selectedItem.file_path" class="w-full">
+                      <div class="flex justify-between items-center mb-2">
+                         <p class="text-xs text-blue-600 font-bold uppercase">Attached Document:</p>
+                         <button @click="toggleFullscreen" class="text-xs flex items-center gap-1 bg-white border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-50 font-bold transition">
+                           ⛶ Full Screen
+                         </button>
+                      </div>
+                      
+                      <div ref="pdfContainer" class="w-full bg-black rounded overflow-hidden shadow-lg h-[500px]">
+                          <iframe 
+                             :src="`${ASSET_URL}/uploads/${selectedItem.file_path}`" 
+                             class="w-full h-full border-none bg-white" 
+                             title="PDF Preview">
+                          </iframe>
+                      </div>
+                   </div>
+
+                   <div v-if="selectedItem.link" class="w-full mt-2">
+                      <a :href="selectedItem.link" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow hover:bg-blue-700 transition">
+                         <span>🔗 Open External Link / Website</span>
+                      </a>
+                   </div>
+                </div>
+             </div>
+             <div v-else class="text-center py-8 text-gray-400 italic bg-white rounded border border-dashed">
+                No digital copy available for this item.
+             </div>
+
           </div>
         </div>
       </div>

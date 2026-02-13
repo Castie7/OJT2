@@ -32,6 +32,7 @@ $routes->get('/', 'Home::index');
 
 // --- AUTH ROUTES ---
 $routes->post('auth/login', 'AuthController::login');
+$routes->get('auth/verify', 'AuthController::verify');
 
 
 $routes->post('auth/logout', 'AuthController::logout');

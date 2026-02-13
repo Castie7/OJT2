@@ -146,7 +146,7 @@ export function useApproval(currentUser: User | null) {
 
   // Execute the action (called by modal "Yes" button)
   const executeAction = async () => {
-    if (!confirmModal.value.id) return
+    if (!confirmModal.value.id || confirmModal.value.isProcessing) return
 
     confirmModal.value.isProcessing = true
     const { id, action } = confirmModal.value

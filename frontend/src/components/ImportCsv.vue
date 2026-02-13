@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import api from '../services/api' // ✅ Switch to Secure API Service
 import { useToast } from '../composables/useToast'
+import Papa from 'papaparse'
 
 const emit = defineEmits<{
   (e: 'upload-success'): void
@@ -67,39 +68,65 @@ const downloadTemplate = () => {
 }
 
 // 3. Upload Logic
-const uploadCsv = async () => {
+// 3. Upload Logic
+const uploadCsv = () => {
     if (!selectedFile.value) return
 
     isUploading.value = true
-    uploadStatus.value = { message: '⏳ Uploading and processing...', type: '' }
+    uploadStatus.value = { message: '⏳ Parsing CSV...', type: '' }
 
-    const formData = new FormData()
-    formData.append('csv_file', selectedFile.value)
+    Papa.parse(selectedFile.value, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+            const rows = results.data as any[]
+            const total = rows.length
+            let success = 0
+            let skipped = 0
+            let errors = 0
+            
+            if (total === 0) {
+                uploadStatus.value = { message: '❌ CSV is empty', type: 'error' }
+                isUploading.value = false
+                return
+            }
 
-    try {
-        // ✅ Use api.post()
-        // Axios automatically sets 'Content-Type': 'multipart/form-data' when sending FormData
-        // It also handles the Base URL and Auth Cookies automatically.
-        const response = await api.post('/research/import-csv', formData)
+            for (let i = 0; i < total; i++) {
+                const row = rows[i]
+                uploadStatus.value = { message: `⏳ Importing ${i + 1}/${total}...`, type: '' }
 
-        const result = response.data
+                try {
+                    const response = await api.post('/research/import-single', row)
+                    
+                    if (response.data.status === 'success') {
+                        success++
+                    } else if (response.data.status === 'skipped') {
+                        skipped++
+                    } else {
+                        errors++
+                    }
+                } catch (error) {
+                    console.error("Row import failed", row, error)
+                    errors++
+                }
+            }
 
-        if (response.status === 200 || response.status === 201) {
-            uploadStatus.value = { message: `✅ Success! ${result.count} items imported.`, type: 'success' }
+            isUploading.value = false
+            uploadStatus.value = { 
+                message: `✅ Completed! Imported: ${success}, Skipped (Dup): ${skipped}, Errors: ${errors}.`, 
+                type: 'success' 
+            }
+            
             selectedFile.value = null
             if(fileInput.value) fileInput.value.value = ''
-            emit('upload-success') 
-        } else {
-            uploadStatus.value = { message: `❌ Error: ${result.message}`, type: 'error' }
+            emit('upload-success')
+        },
+        error: (error) => {
+            console.error(error)
+            uploadStatus.value = { message: `❌ CSV Parse Error: ${error.message}`, type: 'error' }
+            isUploading.value = false
         }
-
-    } catch (error: any) {
-        console.error(error)
-        const msg = error.response?.data?.message || 'Server Connection Failed'
-        uploadStatus.value = { message: `❌ ${msg}`, type: 'error' }
-    } finally {
-        isUploading.value = false
-    }
+    })
 }
 
 // 4. Bulk PDF Upload Logic

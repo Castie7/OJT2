@@ -93,21 +93,21 @@ class ResearchController extends BaseController
     private function getValidationRules()
     {
         return [
-            'title'                => 'required|min_length[3]|max_length[255]',
-            'author'               => 'required|min_length[2]|max_length[255]',
-            'knowledge_type'       => 'required|max_length[100]',
-            'publication_date'     => 'permit_empty|valid_date',
-            'start_date'           => 'permit_empty|valid_date',
-            'deadline_date'        => 'permit_empty|valid_date',
-            'edition'              => 'permit_empty|max_length[50]',
-            'publisher'            => 'permit_empty|max_length[255]',
+            'title' => 'required|min_length[3]|max_length[255]',
+            'author' => 'required|min_length[2]|max_length[255]',
+            'knowledge_type' => 'required|max_length[100]',
+            'publication_date' => 'permit_empty|valid_date',
+            'start_date' => 'permit_empty|valid_date',
+            'deadline_date' => 'permit_empty|valid_date',
+            'edition' => 'permit_empty|max_length[50]',
+            'publisher' => 'permit_empty|max_length[255]',
             'physical_description' => 'permit_empty|max_length[255]',
-            'isbn_issn'            => 'permit_empty|max_length[50]|alpha_numeric_punct',
-            'subjects'             => 'permit_empty|string',
-            'shelf_location'       => 'permit_empty|max_length[100]',
-            'item_condition'       => 'permit_empty|max_length[50]',
-            'crop_variation'       => 'permit_empty|max_length[100]',
-            'link'                 => 'permit_empty|valid_url_strict',
+            'isbn_issn' => 'permit_empty|max_length[50]|alpha_numeric_punct',
+            'subjects' => 'permit_empty|string',
+            'shelf_location' => 'permit_empty|max_length[100]',
+            'item_condition' => 'permit_empty|max_length[50]',
+            'crop_variation' => 'permit_empty|max_length[100]',
+            'link' => 'permit_empty|valid_url_strict',
         ];
     }
 
@@ -182,7 +182,7 @@ class ResearchController extends BaseController
                 if (!empty($rawInput))
                     $input = $rawInput;
             }
-            
+
             // Validate
             $validation = \Config\Services::validation();
             $validation->setRules($this->getValidationRules());
@@ -223,13 +223,14 @@ class ResearchController extends BaseController
     public function approve($id = null)
     {
         $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin') return $this->failForbidden();
+        if (!$user || $user->role !== 'admin')
+            return $this->failForbidden();
 
         $item = $this->researchService->getResearch($id);
         $title = $item ? $item->title : "ID: $id";
 
         $this->researchService->setStatus($id, 'approved', $user->id, "🎉 Your research '%s' has been APPROVED!");
-        
+
         log_activity($user->id, $user->name, $user->role, 'APPROVE_RESEARCH', "Approved research: $title");
 
         return $this->respond(['status' => 'success']);
@@ -239,13 +240,14 @@ class ResearchController extends BaseController
     public function reject($id = null)
     {
         $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin') return $this->failForbidden();
+        if (!$user || $user->role !== 'admin')
+            return $this->failForbidden();
 
         $item = $this->researchService->getResearch($id);
         $title = $item ? $item->title : "ID: $id";
 
         $this->researchService->setStatus($id, 'rejected', $user->id, "⚠️ Your research '%s' was returned for revision.");
-        
+
         log_activity($user->id, $user->name, $user->role, 'REJECT_RESEARCH', "Rejected research: $title");
 
         return $this->respond(['status' => 'success']);
@@ -259,10 +261,18 @@ class ResearchController extends BaseController
             return $this->failUnauthorized();
 
         $item = $this->researchService->getResearch($id);
-        $title = $item ? $item->title : "ID: $id";
-        
+        if (!$item)
+            return $this->failNotFound();
+
+        // Prevent repeated actions
+        if ($item->status === 'archived') {
+            return $this->respond(['status' => 'success', 'message' => 'Already archived']);
+        }
+
+        $title = $item->title;
+
         $this->researchService->setStatus($id, 'archived', $user->id, "Your research '%s' has been archived.");
-        
+
         log_activity($user->id, $user->name, $user->role, 'ARCHIVE_RESEARCH', "Archived research: $title");
 
         return $this->respond(['status' => 'success']);
@@ -272,13 +282,22 @@ class ResearchController extends BaseController
     public function restore($id = null)
     {
         $user = $this->validateUser();
-        if (!$user) return $this->failUnauthorized();
-        
+        if (!$user)
+            return $this->failUnauthorized();
+
         $item = $this->researchService->getResearch($id);
-        $title = $item ? $item->title : "ID: $id";
+        if (!$item)
+            return $this->failNotFound();
+
+        // Prevent repeated actions
+        if ($item->status !== 'archived') {
+            return $this->respond(['status' => 'success', 'message' => 'Item is not archived']);
+        }
+
+        $title = $item->title;
 
         $this->researchService->setStatus($id, 'pending', $user->id, "Research '%s' restored.");
-        
+
         log_activity($user->id, $user->name, $user->role, 'RESTORE_RESEARCH', "Restored research: $title");
 
         return $this->respond(['status' => 'success']);
@@ -375,6 +394,37 @@ class ResearchController extends BaseController
         }
         catch (\Throwable $e) {
             log_message('error', '[Research CSV Import] ' . $e->getMessage());
+            return $this->failServerError('Server Error: ' . $e->getMessage());
+        }
+    }
+
+    // SINGLE ROW IMPORT (For Sequential Processing)
+    public function importSingle()
+    {
+        try {
+            $user = $this->validateUser();
+            if (!$user)
+                return $this->failUnauthorized('Access Denied');
+
+            $input = $this->request->getJSON(true);
+            if (empty($input)) {
+                return $this->fail('No data provided', 400);
+            }
+
+            // Security: Use Logged In User
+            $result = $this->researchService->importSingleRow($input, $user->id);
+
+            if ($result['status'] === 'success') {
+                log_activity($user->id, $user->name, $user->role, 'IMPORT_SINGLE', "Imported single research: " . ($input['Title'] ?? 'Untitled'));
+                return $this->respond(['status' => 'success', 'id' => $result['id']]);
+            }
+            else {
+                return $this->respond(['status' => 'skipped', 'message' => $result['message']]);
+            }
+
+        }
+        catch (\Throwable $e) {
+            log_message('error', '[Import Single] ' . $e->getMessage());
             return $this->failServerError('Server Error: ' . $e->getMessage());
         }
     }

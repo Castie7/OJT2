@@ -290,7 +290,7 @@ const toggleFullscreen = () => {
           <p class="text-gray-500 text-sm mb-6">{{ confirmModal.subtext }}</p>
           <div class="flex gap-3 justify-center">
             <button @click="confirmModal.show = false" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition">Cancel</button>
-            <button @click="executeArchiveToggle" :class="`px-5 py-2.5 rounded-xl font-bold text-white shadow-lg ${confirmModal.action === 'Archive' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`">Yes, {{ confirmModal.action }}</button>
+            <button @click="executeArchiveToggle" :disabled="confirmModal.isProcessing" :class="`px-5 py-2.5 rounded-xl font-bold text-white shadow-lg ${confirmModal.action === 'Archive' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'} ${confirmModal.isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`">Yes, {{ confirmModal.action }}</button>
           </div>
         </div>
       </div>

@@ -59,7 +59,8 @@ $routes->group('api', function ($routes) {
             $routes->get('/', 'Admin\LogController::index'); // List files
             $routes->get('(:segment)', 'Admin\LogController::show/$1'); // View file
         }
-        );    });
+        );
+    });
 
 // --- RESEARCH ROUTES ---
 $routes->group('research', function ($routes) {
@@ -89,6 +90,7 @@ $routes->group('research', function ($routes) {
     $routes->post('archive/(:num)', 'ResearchController::archive/$1');
     $routes->post('restore/(:num)', 'ResearchController::restore/$1');
     $routes->post('import-csv', 'ResearchController::importCsv');
+    $routes->post('import-single', 'ResearchController::importSingle');
     $routes->post('bulk-upload-pdfs', 'ResearchController::uploadBulkPdfs');
 
 });

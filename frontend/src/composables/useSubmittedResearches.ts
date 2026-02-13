@@ -190,7 +190,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
     }
 
     const executeArchive = async () => {
-        if (!confirmModal.value.id) return
+        if (!confirmModal.value.id || confirmModal.value.isProcessing) return
         confirmModal.value.isProcessing = true
         try {
             // ✅ Use api.post()
@@ -201,6 +201,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
             await api.post(endpoint)
 
             confirmModal.value.show = false
+            showToast(`${confirmModal.value.action} successful!`, 'success')
             fetchData()
 
         } catch (e) {

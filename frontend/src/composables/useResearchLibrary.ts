@@ -56,7 +56,8 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
     id: null as number | null,
     action: '',
     title: '',
-    subtext: ''
+    subtext: '',
+    isProcessing: false
   })
 
   // Pagination State
@@ -141,13 +142,15 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
       id: item.id,
       action: action,
       title: action === 'Archive' ? 'Move to Trash?' : 'Restore Research?',
-      subtext: action === 'Archive' ? `Remove "${item.title}"?` : `Restore "${item.title}"?`
+      subtext: action === 'Archive' ? `Remove "${item.title}"?` : `Restore "${item.title}"?`,
+      isProcessing: false
     }
   }
 
   const executeArchiveToggle = async () => {
-    if (!confirmModal.value.id) return
+    if (!confirmModal.value.id || confirmModal.value.isProcessing) return
 
+    confirmModal.value.isProcessing = true
     try {
       // ✅ Use api.post()
       // CSRF headers are automatically handled by the api.ts interceptor
@@ -165,6 +168,8 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
       console.error(error)
       const msg = error.response?.data?.message || "Error updating status"
       showToast("Failed: " + msg, "error")
+    } finally {
+      confirmModal.value.isProcessing = false
     }
   }
 

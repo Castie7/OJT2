@@ -139,9 +139,9 @@ class ResearchService extends BaseService
     public function getResearch(int $id)
     {
         return $this->researchModel->select($this->selectString)
-                      ->join('research_details', 'researches.id = research_details.research_id', 'left')
-                      ->where('researches.id', $id)
-                      ->first();
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->where('researches.id', $id)
+            ->first();
     }
 
     // --- WRITE METHODS ---
@@ -398,6 +398,74 @@ class ResearchService extends BaseService
         return false;
     }
 
+    public function importSingleRow($rawData, $userId)
+    {
+        // Data Mapping
+        $data = [
+            'title' => $rawData['Title'] ?? 'Untitled',
+            'knowledge_type' => $rawData['Type'] ?? 'Research Paper',
+            'author' => $rawData['Author'] ?? $rawData['Authors'] ?? 'Unknown',
+            'publication_date' => $rawData['Date'] ?? null,
+            'edition' => $rawData['Edition'] ?? $rawData['Publication'] ?? '',
+            'publisher' => $rawData['Publisher'] ?? '',
+            'physical_description' => $rawData['Pages'] ?? '',
+            'isbn_issn' => $rawData['ISBN/ISSN'] ?? $rawData['ISSN'] ?? $rawData['ISBN'] ?? '',
+            'subjects' => $rawData['Subjects'] ?? $rawData['Description'] ?? '',
+            'shelf_location' => $rawData['Location'] ?? '',
+            'item_condition' => $rawData['Condition'] ?? 'Good',
+            'crop_variation' => $rawData['Crop'] ?? ''
+        ];
+
+        $isbn = trim($data['isbn_issn']);
+        $title = trim($data['title']);
+        $edition = trim($data['edition']);
+
+        // Check Duplicate
+        $dupError = $this->checkDuplicate($title, $data['author'], $isbn, $edition);
+
+        if ($dupError) {
+            return ['status' => 'skipped', 'message' => 'Duplicate entry'];
+        }
+
+        $this->db->transStart();
+
+        $mainData = [
+            'title' => $title,
+            'author' => $data['author'],
+            'crop_variation' => $data['crop_variation'],
+            'status' => 'approved',
+            'uploaded_by' => $userId,
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+
+        $newId = $this->researchModel->insert($mainData);
+
+        if ($newId) {
+            $detailsData = [
+                'research_id' => $newId,
+                'knowledge_type' => $data['knowledge_type'],
+                'publication_date' => $data['publication_date'],
+                'edition' => $data['edition'],
+                'publisher' => $data['publisher'],
+                'physical_description' => $data['physical_description'],
+                'isbn_issn' => $data['isbn_issn'],
+                'subjects' => $data['subjects'],
+                'shelf_location' => $data['shelf_location'],
+                'item_condition' => $data['item_condition'],
+                'link' => ''
+            ];
+            $this->detailsModel->insert($detailsData);
+        }
+
+        $this->db->transComplete();
+
+        if ($this->db->transStatus() === false) {
+            return ['status' => 'error', 'message' => 'Database transaction failed'];
+        }
+
+        return ['status' => 'success', 'id' => $newId];
+    }
+
     public function importCsv($fileTempName)
     {
         ini_set('auto_detect_line_endings', TRUE);
@@ -410,71 +478,20 @@ class ResearchService extends BaseService
         $count = 0;
         $skipped = 0;
 
-        $this->db->transStart();
-
         foreach ($csvData as $row) {
             if (count($row) < count($headers))
                 continue;
 
             $rawData = array_combine($headers, $row);
+            $result = $this->importSingleRow($rawData, $userId);
 
-            $data = [
-                'title' => $rawData['Title'] ?? 'Untitled',
-                'knowledge_type' => $rawData['Type'] ?? 'Research Paper',
-                'author' => $rawData['Author'] ?? $rawData['Authors'] ?? 'Unknown',
-                'publication_date' => $rawData['Date'] ?? null,
-                'edition' => $rawData['Edition'] ?? $rawData['Publication'] ?? '',
-                'publisher' => $rawData['Publisher'] ?? '',
-                'physical_description' => $rawData['Pages'] ?? '',
-                'isbn_issn' => $rawData['ISBN/ISSN'] ?? $rawData['ISSN'] ?? $rawData['ISBN'] ?? '',
-                'subjects' => $rawData['Subjects'] ?? $rawData['Description'] ?? '',
-                'shelf_location' => $rawData['Location'] ?? '',
-                'item_condition' => $rawData['Condition'] ?? 'Good',
-                'crop_variation' => $rawData['Crop'] ?? ''
-            ];
-
-            $isbn = trim($data['isbn_issn']);
-            $title = trim($data['title']);
-            $edition = trim($data['edition']);
-
-            $dupError = $this->checkDuplicate($title, $data['author'], $isbn, $edition);
-
-            if ($dupError) {
-                $skipped++;
-                continue;
-            }
-
-            $mainData = [
-                'title' => $title,
-                'author' => $data['author'],
-                'crop_variation' => $data['crop_variation'],
-                'status' => 'approved',
-                'uploaded_by' => $userId,
-                'created_at' => date('Y-m-d H:i:s')
-            ];
-
-            $newId = $this->researchModel->insert($mainData);
-
-            if ($newId) {
-                $detailsData = [
-                    'research_id' => $newId,
-                    'knowledge_type' => $data['knowledge_type'],
-                    'publication_date' => $data['publication_date'],
-                    'edition' => $data['edition'],
-                    'publisher' => $data['publisher'],
-                    'physical_description' => $data['physical_description'],
-                    'isbn_issn' => $data['isbn_issn'],
-                    'subjects' => $data['subjects'],
-                    'shelf_location' => $data['shelf_location'],
-                    'item_condition' => $data['item_condition'],
-                    'link' => ''
-                ];
-                $this->detailsModel->insert($detailsData);
+            if ($result['status'] === 'success') {
                 $count++;
             }
+            else {
+                $skipped++;
+            }
         }
-
-        $this->db->transComplete();
 
         return ['count' => $count, 'skipped' => $skipped];
     }

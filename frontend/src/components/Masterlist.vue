@@ -22,7 +22,8 @@ const {
   openEdit, handleFileChange, saveEdit,
   getStatusBadge, formatDate, resetFilters,
   confirmModal, requestArchive, executeArchive,
-  selectedItem, viewDetails, closeDetails
+  selectedItem, viewDetails, closeDetails,
+  approveResearch, rejectResearch
 } = useMasterlist()
 </script>
 
@@ -401,7 +402,13 @@ const {
       <div v-if="confirmModal.show" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all p-6 text-center">
           <div class="mb-4 flex justify-center">
-            <div class="text-6xl">{{ confirmModal.action === 'Archive' ? '🗑️' : '♻️' }}</div>
+            <div class="text-6xl">
+              {{ 
+                confirmModal.action === 'Archive' ? '🗑️' : 
+                confirmModal.action === 'Reject' ? '❌' : 
+                confirmModal.action === 'Approve' ? '✅' : '♻️' 
+              }}
+            </div>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-2">{{ confirmModal.title }}</h3>
           <p class="text-gray-500 text-sm mb-6">{{ confirmModal.subtext }}</p>
@@ -411,7 +418,7 @@ const {
               @click="executeArchive" 
               :disabled="confirmModal.isProcessing"
               :class="`px-5 py-2.5 rounded-xl font-bold text-white shadow-lg ${
-                confirmModal.action === 'Archive' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'
+                ['Archive', 'Reject'].includes(confirmModal.action) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'
               } ${confirmModal.isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`"
             >
               <span v-if="confirmModal.isProcessing">⏳</span>
@@ -433,7 +440,12 @@ const {
               <h2 class="text-2xl font-bold leading-tight">{{ selectedItem.title }}</h2>
               <p class="text-green-200 text-sm mt-1">Author: {{ selectedItem.author }}</p>
             </div>
-            <button @click="closeDetails" class="text-white hover:text-gray-300 text-3xl font-bold leading-none">&times;</button>
+            <div class="flex items-center gap-3">
+               <div class="px-3 py-1 rounded bg-white/20 text-white text-xs font-bold uppercase border border-white/30">
+                  {{ selectedItem.status }}
+               </div>
+               <button @click="closeDetails" class="text-white hover:text-gray-300 text-3xl font-bold leading-none">&times;</button>
+            </div>
           </div>
 
           <div class="flex-1 overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
@@ -494,6 +506,22 @@ const {
                 No digital copy available for this item.
              </div>
 
+          </div>
+
+          <!-- Modal Footer with Actions -->
+          <div v-if="selectedItem.status === 'pending'" class="bg-gray-100 p-4 border-t flex justify-end gap-3 shrink-0">
+             <button 
+               @click="rejectResearch(selectedItem.id)" 
+               class="px-5 py-2 rounded-lg font-bold text-red-600 bg-white border border-red-200 shadow-sm hover:bg-red-50 transition"
+             >
+               ❌ Reject
+             </button>
+             <button 
+               @click="approveResearch(selectedItem.id)" 
+               class="px-6 py-2 rounded-lg font-bold text-white bg-green-600 shadow-md hover:bg-green-700 transition"
+             >
+               ✅ Approve
+             </button>
           </div>
         </div>
       </div>

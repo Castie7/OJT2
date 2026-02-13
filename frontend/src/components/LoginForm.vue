@@ -39,7 +39,7 @@ const {
             <img 
               src="/logo.svg" 
               alt="Logo" 
-              class="w-full h-full object-contain p-0.5 scale-143gi mt-[-3px] ml-[-2px]" 
+              class="w-full h-full object-contain p-0.5 scale-143 mt-[-3px] ml-[-2px]" 
             />
             
           </div>

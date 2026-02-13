@@ -16,7 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const {
-  searchQuery, selectedType, showArchived, viewMode, selectedResearch,
+  searchQuery, selectedType, startDate, endDate, showArchived, viewMode, selectedResearch,
   isLoading, confirmModal, currentPage, 
   filteredResearches, paginatedResearches, totalPages,
   nextPage, prevPage, requestArchiveToggle, executeArchiveToggle
@@ -79,13 +79,13 @@ const toggleFullscreen = () => {
     <div class="w-full">
       <div class="bg-white p-6 rounded-lg shadow-lg min-h-[500px] relative flex flex-col">
         
-        <div class="flex flex-col xl:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
+        <div class="flex flex-col justify-between items-start mb-6 border-b pb-4 gap-4">
           <h2 class="text-xl font-bold text-gray-800 whitespace-nowrap">
             {{ showArchived ? '🗑️ Archived Items' : '📚 Library Catalog' }}
             <span class="text-sm font-normal text-gray-500 ml-2">({{ filteredResearches.length }} found)</span>
           </h2>
 
-          <div class="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+          <div class="flex flex-col sm:flex-row flex-wrap gap-3 w-full justify-center items-center">
             <select v-model="selectedType" class="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none bg-gray-50">
               <option value="">All Types</option>
               <option>Research Paper</option>
@@ -94,6 +94,14 @@ const toggleFullscreen = () => {
               <option>IEC Material</option>
               <option>Thesis</option>
             </select>
+            
+            <!-- Date Range Filter -->
+            <div class="flex gap-2 items-center bg-gray-50 border rounded-lg px-2">
+                <span class="text-xs text-gray-500 font-bold whitespace-nowrap">📅 From:</span>
+                <input v-model="startDate" type="date" class="bg-transparent text-sm focus:outline-none w-32 py-2" title="From Date">
+                <span class="text-xs text-gray-500 font-bold whitespace-nowrap">To:</span>
+                <input v-model="endDate" type="date" class="bg-transparent text-sm focus:outline-none w-32 py-2" title="To Date">
+            </div>
             <div class="relative w-full sm:w-64">
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
               <input v-model="searchQuery" type="text" placeholder="Search title, author, subject..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"/>

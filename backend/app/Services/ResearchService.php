@@ -41,13 +41,23 @@ class ResearchService extends BaseService
 
     // --- READ METHODS ---
 
-    public function getAllApproved()
+    public function getAllApproved($startDate = null, $endDate = null)
     {
-        return $this->researchModel->select($this->selectString)
+        $builder = $this->researchModel->select($this->selectString)
             ->join('research_details', 'researches.id = research_details.research_id', 'left')
-            ->where('researches.status', 'approved')
-            ->orderBy('researches.created_at', 'DESC')
-            ->findAll();
+            ->where('researches.status', 'approved');
+
+        if ($startDate) {
+            $builder->where('research_details.publication_date >=', $startDate);
+        }
+
+        if ($endDate) {
+            $builder->where('research_details.publication_date <=', $endDate);
+        }
+
+        $results = $builder->orderBy('researches.created_at', 'DESC')->findAll();
+
+        return $results;
     }
 
     public function getAll()

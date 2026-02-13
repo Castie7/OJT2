@@ -90,11 +90,13 @@ defineExpose({ fetchData, openNotification })
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition cursor-pointer" @click="$emit('view', item)">
               
-              <td class="px-6 py-4 font-medium text-gray-900">{{ item.title }}</td>
+              <td class="px-6 py-4">
+                 <div class="font-medium text-gray-900 line-clamp-2 max-w-[300px]" :title="item.title">{{ item.title }}</div>
+              </td>
               
               <td class="px-6 py-4">
                 <div v-if="isArchived">
-                  <span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200">
+                  <span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200 whitespace-nowrap">
                     ⚠️ {{ getArchiveDaysLeft(item.archived_at) }} Days left
                   </span>
                 </div>
@@ -138,22 +140,46 @@ defineExpose({ fetchData, openNotification })
                 <button @click.stop="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1 transition-colors">💬 Comments</button>
               </td>
 
-              <td class="px-6 py-4 text-right flex justify-end gap-2">
-                <button v-if="item.status === 'approved' && !isArchived" @click.stop="selectedResearch = item" class="text-xs px-3 py-1 rounded font-bold border text-blue-600 border-blue-200 hover:bg-blue-50 transition">View PDF</button>
-                
-                <template v-else>
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-2">
                   <button 
-                    v-if="!isArchived" 
-                    @click.stop="emit('edit', item)" 
-                    class="text-xs px-3 py-1 rounded font-bold border text-yellow-700 border-yellow-400 hover:bg-yellow-100 transition"
+                    v-if="item.status === 'approved' && !isArchived" 
+                    @click.stop="selectedResearch = item" 
+                    class="p-2 rounded-full text-blue-600 hover:bg-blue-50 transition-colors"
+                    title="View PDF"
                   >
-                    ✏️ Edit
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
                   </button>
+                  
+                  <template v-else>
+                    <button 
+                      v-if="!isArchived" 
+                      @click.stop="emit('edit', item)" 
+                      class="p-2 rounded-full text-amber-500 hover:bg-amber-50 transition-colors"
+                      title="Edit"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
 
-                  <button @click.stop="requestArchive(item)" :class="`text-xs px-3 py-1 rounded font-bold border transition ${isArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`">
-                    {{ isArchived ? '♻️ Restore' : '📦 Archive' }}
-                  </button>
-                </template>
+                    <button 
+                      @click.stop="requestArchive(item)" 
+                      :class="`p-2 rounded-full transition-colors ${isArchived ? 'text-blue-600 hover:bg-blue-50' : 'text-red-500 hover:bg-red-50'}`"
+                      :title="isArchived ? 'Restore' : 'Archive'"
+                    >
+                      <svg v-if="isArchived" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </template>
+                </div>
               </td>
             </tr>
           </tbody>

@@ -73,7 +73,7 @@ defineExpose({ openNotification })
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition cursor-pointer" @click="selectedResearch = item">
               <td class="px-6 py-4">
-                <div class="font-bold text-gray-900">{{ item.title }}</div>
+                <div class="font-bold text-gray-900 line-clamp-2 max-w-[300px]" :title="item.title">{{ item.title }}</div>
                 <div class="text-sm text-gray-500">By: {{ item.author }}</div>
               </td>
               <td class="px-6 py-4">
@@ -81,15 +81,43 @@ defineExpose({ openNotification })
                   <span :class="`text-sm font-medium ${!item.deadline_date ? 'text-gray-400' : 'text-gray-700'}`">{{ formatDate(item.deadline_date) }}</span>
                   <button @click.stop="openDeadlineModal(item)" class="text-gray-400 hover:text-green-600 transition" title="Extend Deadline">🕒</button>
                 </div>
-                <div v-else><span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200">⚠️ {{ getDaysLeft(item.rejected_at) }} Days left</span></div>
+                <div v-else><span class="text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200 whitespace-nowrap">⚠️ {{ getDaysLeft(item.rejected_at) }} Days left</span></div>
               </td>
               <td class="px-6 py-4"><button @click.stop="openComments(item)" class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center gap-1">💬 Comments</button></td>
-              <td class="px-6 py-4 text-right space-x-2">
-                <template v-if="activeTab === 'pending'">
-                  <button @click.stop="handleAction(item.id, 'approve')" class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded font-bold hover:bg-green-200 transition">✅ Approve</button>
-                  <button @click.stop="handleAction(item.id, 'reject')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-bold hover:bg-red-200 transition">❌ Reject</button>
-                </template>
-                <template v-else><button @click.stop="handleAction(item.id, 'restore')" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded font-bold hover:bg-blue-200 transition">♻️ Restore to Pending</button></template>
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <template v-if="activeTab === 'pending'">
+                    <button 
+                      @click.stop="handleAction(item.id, 'approve')" 
+                      class="p-2 rounded-full text-green-600 hover:bg-green-100 transition-colors"
+                      title="Approve"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                    <button 
+                      @click.stop="handleAction(item.id, 'reject')" 
+                      class="p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors"
+                      title="Reject"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </template>
+                  <template v-else>
+                    <button 
+                      @click.stop="handleAction(item.id, 'restore')" 
+                      class="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
+                      title="Restore to Pending"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  </template>
+                </div>
               </td>
             </tr>
           </tbody>

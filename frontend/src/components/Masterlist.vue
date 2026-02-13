@@ -114,11 +114,11 @@ const {
               v-for="item in paginatedItems" :key="item.id" 
               class="hover:brightness-95 transition border-l-4"
               :class="{
-                'bg-green-50 border-l-green-400': item.status === 'approved',
-                'bg-yellow-50 border-l-yellow-400': item.status === 'pending',
-                'bg-red-50 border-l-red-400': item.status === 'rejected',
-                'bg-gray-200 border-l-gray-400 text-gray-500': item.status === 'archived',
-                'bg-white border-l-gray-200': !['approved','pending','rejected','archived'].includes(item.status)
+                'bg-green-50 border-l-green-400 text-gray-900 font-medium': item.status === 'approved',
+                'bg-yellow-50 border-l-yellow-400 text-gray-900 font-medium': item.status === 'pending',
+                'bg-red-50 border-l-red-400 text-gray-900 font-medium': item.status === 'rejected',
+                'bg-gray-200 border-l-gray-400 text-gray-600 font-medium': item.status === 'archived',
+                'bg-white border-l-gray-200 text-gray-900': !['approved','pending','rejected','archived'].includes(item.status)
               }"
               @click="viewDetails(item)"
             >

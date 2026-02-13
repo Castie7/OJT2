@@ -139,8 +139,8 @@ const toggleFullscreen = () => {
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="item in paginatedResearches" :key="item.id" class="hover:bg-green-50 transition">
                     <td class="px-4 py-4 cursor-pointer" @click="selectedResearch = item">
-                      <div class="font-bold text-gray-900 hover:text-green-700">{{ item.title }}</div>
-                      <div class="text-xs text-gray-500">{{ item.author }}</div>
+                      <div class="font-bold text-gray-900 hover:text-green-700 line-clamp-2 max-w-[300px]" :title="item.title">{{ item.title }}</div>
+                      <div class="text-sm text-gray-500">By: {{ item.author }}</div>
                     </td>
                     <td class="px-4 py-4 cursor-pointer" @click="selectedResearch = item">
                         <span class="inline-block px-2 py-1 text-[10px] font-bold rounded bg-blue-50 text-blue-700 uppercase mb-1">
@@ -161,11 +161,26 @@ const toggleFullscreen = () => {
                     </td>
                     <td class="px-4 py-4">
                         <div class="flex gap-2">
-                          <button v-if="item.file_path" @click.stop="selectedResearch = item" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border">
-                            📄 PDF
+                          <button 
+                            v-if="item.file_path" 
+                            @click.stop="selectedResearch = item" 
+                            class="p-2 rounded-full text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-colors"
+                            title="View PDF"
+                          >
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                             </svg>
                           </button>
-                          <a v-if="item.link" :href="item.link" target="_blank" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200 flex items-center gap-1">
-                            🔗 Link
+                          <a 
+                            v-if="item.link" 
+                            :href="item.link" 
+                            target="_blank" 
+                            class="p-2 rounded-full text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-colors flex items-center justify-center"
+                            title="Open Link"
+                          >
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                               <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                             </svg>
                           </a>
                         </div>
                     </td>
@@ -173,9 +188,15 @@ const toggleFullscreen = () => {
                         <button 
                           v-if="currentUser && currentUser.role === 'admin'"
                           @click.stop="requestArchiveToggle(item)" 
-                          :class="`text-xs px-2 py-1 rounded font-bold border ${showArchived ? 'text-green-600 border-green-200 hover:bg-green-100' : 'text-red-600 border-red-200 hover:bg-red-100'}`"
+                          :class="`p-2 rounded-full transition-colors ${showArchived ? 'text-green-600 hover:bg-green-100' : 'text-red-600 hover:bg-red-100'}`"
+                          :title="showArchived ? 'Restore' : 'Archive'"
                         >
-                          {{ showArchived ? 'Restore' : 'Archive' }}
+                           <svg v-if="showArchived" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                           </svg>
+                           <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                           </svg>
                         </button>
                     </td>
                   </tr>

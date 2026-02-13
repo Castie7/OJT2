@@ -15,6 +15,28 @@ const {
   recentResearches, currentSlide, nextSlide, prevSlide, 
   startSlideTimer, stopSlideTimer 
 } = useHomeView()
+
+// Map crop variation to a local background image
+const getCropImage = (crop?: string): string => {
+  const c = (crop || '').toLowerCase()
+  if (c.includes('sweetpotato') || c.includes('sweet potato') || c.includes('kamote')) {
+    return '/images/crops/sweetpotato.jpg'
+  }
+  if (c.includes('potato')) {
+    return '/images/crops/potato.jpg'
+  }
+  if (c.includes('cassava') || c.includes('kamoteng kahoy')) {
+    return '/images/crops/cassava.jpg'
+  }
+  if (c.includes('yam') || c.includes('ubi')) {
+    return '/images/crops/yam.jpg'
+  }
+  if (c.includes('taro') || c.includes('gabi')) {
+    return '/images/crops/taro.jpg'
+  }
+  // Default: generic agriculture field
+  return '/images/crops/default.jpg'
+}
 </script>
 
 <template>
@@ -67,14 +89,23 @@ const {
           :key="item.id" 
           class="min-w-full h-full relative"
         >
-           <div class="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent z-10"></div>
-           <div class="absolute inset-0 bg-green-900 opacity-30"></div> 
-           <div class="absolute inset-0 opacity-10 bg-pattern-cubes"></div>
+           <img 
+             :src="getCropImage(item.crop_variation)" 
+             :alt="item.crop_variation || 'Root Crops'"
+             class="absolute inset-0 w-full h-full object-cover"
+           />
+           <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-10"></div>
+           <div class="absolute inset-0 bg-green-900/20 z-10"></div>
 
            <div class="absolute bottom-0 left-0 p-8 md:p-12 z-20 max-w-3xl">
-              <span class="inline-block px-3 py-1 bg-yellow-500 text-green-900 text-xs font-bold rounded mb-3">
-                Featured Study
-              </span>
+              <div class="flex items-center gap-2 mb-3">
+                <span class="inline-block px-3 py-1 bg-yellow-500 text-green-900 text-xs font-bold rounded">
+                  Featured Study
+                </span>
+                <span v-if="item.crop_variation" class="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-xs font-bold rounded border border-white/30">
+                  🌱 {{ item.crop_variation }}
+                </span>
+              </div>
               <h2 class="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight drop-shadow-lg">
                 {{ item.title }}
               </h2>

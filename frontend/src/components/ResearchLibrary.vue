@@ -133,7 +133,7 @@ const toggleFullscreen = () => {
                     <th class="px-4 py-3 text-left font-bold text-gray-500 uppercase">Category</th>
                     <th class="px-4 py-3 text-left font-bold text-gray-500 uppercase">Location / Cond.</th>
                     <th class="px-4 py-3 text-left font-bold text-gray-500 uppercase">Access</th>
-                    <th class="px-4 py-3 text-right font-bold text-gray-500 uppercase">Actions</th>
+                    <th v-if="currentUser && currentUser.role === 'admin'" class="px-4 py-3 text-right font-bold text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -184,9 +184,8 @@ const toggleFullscreen = () => {
                           </a>
                         </div>
                     </td>
-                    <td class="px-4 py-4 text-right">
+                    <td v-if="currentUser && currentUser.role === 'admin'" class="px-4 py-4 text-right">
                         <button 
-                          v-if="currentUser && currentUser.role === 'admin'"
                           @click.stop="requestArchiveToggle(item)" 
                           :class="`p-2 rounded-full transition-colors ${showArchived ? 'text-green-600 hover:bg-green-100' : 'text-red-600 hover:bg-red-100'}`"
                           :title="showArchived ? 'Restore' : 'Archive'"

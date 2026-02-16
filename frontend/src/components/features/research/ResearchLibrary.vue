@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRef } from 'vue' 
+import { ref, computed } from 'vue' 
 import { useResearchLibrary } from '../../../composables/useResearchLibrary'
 import type { User } from '../../../types'
 import { useToast } from '../../../composables/useToast'
@@ -20,10 +20,28 @@ const {
   searchQuery, selectedType, startDate, endDate, showArchived, viewMode, selectedResearch,
   isLoading, confirmModal, currentPage, 
   filteredResearches, paginatedResearches, totalPages,
-  nextPage, prevPage, requestArchiveToggle, executeArchiveToggle
+  nextPage, prevPage, requestArchiveToggle, executeArchiveToggle, clearFilters
 } = useResearchLibrary(props.currentUser, emit)
 
 const { showToast } = useToast()
+
+// Check if any filters are active
+const hasActiveFilters = computed(() => {
+  return searchQuery.value !== '' || 
+         selectedType.value !== '' || 
+         startDate.value !== '' || 
+         endDate.value !== ''
+})
+
+// Generate active filters summary
+const activeFiltersList = computed(() => {
+  const filters = []
+  if (searchQuery.value) filters.push(`Search: "${searchQuery.value}"`)
+  if (selectedType.value) filters.push(`Type: ${selectedType.value}`)
+  if (startDate.value) filters.push(`From: ${new Date(startDate.value).toLocaleDateString()}`)
+  if (endDate.value) filters.push(`To: ${new Date(endDate.value).toLocaleDateString()}`)
+  return filters
+})
 
 // Helper to handle both string dates and Backend-returned DateTime objects
 const formatDate = (date: any) => {
@@ -219,6 +237,36 @@ const toggleFullscreen = () => {
                     <div class="flex justify-between"><span>Location:</span> <span class="font-mono font-bold">{{ item.shelf_location || 'N/A' }}</span></div>
                     <div v-if="item.crop_variation" class="flex justify-between text-amber-600"><span>Crop:</span> <span>{{ item.crop_variation }}</span></div>
                  </div>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="paginatedResearches.length === 0" class="flex-1 flex items-center justify-center">
+              <div class="text-center py-12 px-6 max-w-md">
+                <div class="text-6xl mb-4">🔍</div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">No Results Found</h3>
+                <p class="text-gray-600 mb-4">We couldn't find any research items matching your criteria.</p>
+                
+                <!-- Active Filters List -->
+                <div v-if="hasActiveFilters" class="bg-gray-50 rounded-lg p-4 mb-4 text-left">
+                  <p class="text-sm font-semibold text-gray-700 mb-2">Active Filters:</p>
+                  <ul class="text-sm text-gray-600 space-y-1">
+                    <li v-for="filter in activeFiltersList" :key="filter" class="flex items-center gap-2">
+                      <span class="text-green-600">•</span>
+                      <span>{{ filter }}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <!-- Clear Filters Button -->
+                <button 
+                  v-if="hasActiveFilters"
+                  @click="clearFilters" 
+                  class="px-6 py-2.5 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition shadow-md"
+                >
+                  Clear All Filters
+                </button>
+                <p v-else class="text-sm text-gray-500">Try adjusting your search or browse all items.</p>
               </div>
             </div>
 

@@ -190,6 +190,15 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
     fetchResearches() // Start Date/End Date changes trigger fetch
   })
 
+  // Clear all filters
+  const clearFilters = () => {
+    searchQuery.value = ''
+    selectedType.value = ''
+    startDate.value = ''
+    endDate.value = ''
+    currentPage.value = 1
+  }
+
   onMounted(() => {
     fetchResearches()
   })
@@ -221,6 +230,7 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
     requestArchiveToggle,
     executeArchiveToggle,
     formatSimpleDate,
-    showToast
+    showToast,
+    clearFilters
   }
 }

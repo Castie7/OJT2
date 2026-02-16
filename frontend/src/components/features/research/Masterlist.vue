@@ -2,7 +2,7 @@
 import { useMasterlist } from '../../../composables/useMasterlist'
 import { getAssetUrl } from '../../../services/api'
 const ASSET_URL = getAssetUrl()
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const pdfContainer = ref<HTMLElement | null>(null)
 const toggleFullscreen = () => {
@@ -25,6 +25,19 @@ const {
   selectedItem, viewDetails, closeDetails,
   approveResearch, rejectResearch
 } = useMasterlist()
+
+// Check if any filters are active
+const hasActiveFilters = computed(() => {
+  return searchQuery.value !== '' || statusFilter.value !== 'ALL'
+})
+
+// Generate active filters summary
+const activeFiltersList = computed(() => {
+  const filters = []
+  if (searchQuery.value) filters.push(`Search: "${searchQuery.value}"`)
+  if (statusFilter.value !== 'ALL') filters.push(`Status: ${statusFilter.value}`)
+  return filters
+})
 </script>
 
 <template>
@@ -106,8 +119,33 @@ const {
             </tr>
 
             <tr v-else-if="filteredItems.length === 0">
-              <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                No research entries found matching your filters.
+              <td colspan="6" class="px-6 py-12 text-center">
+                <div class="flex flex-col items-center justify-center max-w-md mx-auto">
+                  <div class="text-5xl mb-3">🔍</div>
+                  <h3 class="text-lg font-bold text-gray-800 mb-2">No Results Found</h3>
+                  <p class="text-gray-600 mb-4 text-sm">We couldn't find any research entries matching your filters.</p>
+                  
+                  <!-- Active Filters List -->
+                  <div v-if="hasActiveFilters" class="bg-gray-50 rounded-lg p-4 mb-4 text-left w-full">
+                    <p class="text-sm font-semibold text-gray-700 mb-2">Active Filters:</p>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                      <li v-for="filter in activeFiltersList" :key="filter" class="flex items-center gap-2">
+                        <span class="text-green-600">•</span>
+                        <span>{{ filter }}</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <!-- Clear Filters Button -->
+                  <button 
+                    v-if="hasActiveFilters"
+                    @click="resetFilters" 
+                    class="px-5 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition shadow-md text-sm"
+                  >
+                    Clear All Filters
+                  </button>
+                  <p v-else class="text-sm text-gray-500">Try adjusting your search or check back later.</p>
+                </div>
               </td>
             </tr>
 

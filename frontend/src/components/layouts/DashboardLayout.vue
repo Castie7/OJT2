@@ -278,7 +278,11 @@ const navigateTo = (path: string) => {
         :stats="stats"
         ref="workspaceRef"
         @browse-click="router.push('/library')"
-        @stat-click="(tab: string) => router.push(tab === 'home' ? '/' : `/${tab}`)"
+        @stat-click="(tab: string) => {
+          if (tab === 'home') router.push('/')
+          else if (tab === 'research') router.push('/library')
+          else router.push(`/${tab}`)
+        }"
         @update-stats="updateStats"
         @upload-success="router.push('/library')"
         @update-user="handleUserUpdate"

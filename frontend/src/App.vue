@@ -3,15 +3,10 @@ import { ref, onMounted } from 'vue'
 import api from './services/api' 
 import { RouterView, useRouter } from 'vue-router'
 import Toast from './components/shared/Toast.vue'
+import { useAuth } from './composables/useAuth'
+import type { User } from './types'
 
-interface User {
-  id: number; 
-  name: string; 
-  role: string; 
-  email: string;
-}
-
-const currentUser = ref<User | null>(null)
+const { currentUser, setUser, clearUser } = useAuth()
 const isLoading = ref(true) 
 const router = useRouter()
 
@@ -34,18 +29,18 @@ onMounted(async () => {
     }
     
     if (response.data.status === 'success') {
-      currentUser.value = response.data.user
+      setUser(response.data.user)
       
-      // If already logged in, don't stay on the login page
+      // If already logged in, redirect to home
       if (window.location.pathname === '/login') {
-        router.push('/') // Redirect to Dashboard (Home)
+        router.push('/')
       }
     } else {
-      currentUser.value = null
+      clearUser()
     }
   } catch (error) {
     console.error("Session verification failed:", error)
-    currentUser.value = null
+    clearUser()
   } finally {
     isLoading.value = false
   }
@@ -55,8 +50,8 @@ onMounted(async () => {
 
 const onLoginSuccess = (data: any) => {
   if (data.csrf_token) saveToken(data.csrf_token);
-  currentUser.value = data.user
-  router.push('/') // Move from Login form to Dashboard
+  setUser(data.user)
+  router.push('/') // Redirect to home after login
 }
 
 const handleLogout = async () => {
@@ -67,7 +62,7 @@ const handleLogout = async () => {
   } catch (e) {
     console.warn("Logout request failed, cleaning local state anyway.")
   } finally {
-    currentUser.value = null
+    clearUser()
     // Force a full page refresh to ensure clean state
     window.location.href = '/login'; 
   }

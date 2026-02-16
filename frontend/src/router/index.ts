@@ -1,30 +1,141 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import LoginForm from '../components/features/authentication/LoginForm.vue'
-import Dashboard from '../components/features/dashboard/Dashboard.vue'
+import { useAuth } from '../composables/useAuth'
 
 const routes: Array<RouteRecordRaw> = [
   {
-    path: '/',
-    name: 'Dashboard',
-    component: Dashboard,
-    // This ensures that when you open the site, the Dashboard is the "Home"
-  },
-  {
     path: '/login',
     name: 'Login',
-    component: LoginForm
+    component: () => import('../components/features/authentication/LoginForm.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Login - BSU Research Portal'
+    }
   },
   {
-    // Redirect /dashboard to / to keep your URLs clean 
-    // and prevent users from getting lost
-    path: '/dashboard',
-    redirect: '/'
+    path: '/',
+    component: () => import('../components/layouts/DashboardLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'Home',
+        component: () => import('../components/features/home/Homeview.vue'),
+        meta: {
+          requiresAuth: false,
+          title: 'BSU Research Portal'
+        }
+      },
+      {
+        path: 'library',
+        name: 'ResearchLibrary',
+        component: () => import('../components/features/research/ResearchLibrary.vue'),
+        meta: {
+          requiresAuth: false,
+          title: 'Research Library - BSU Research Portal'
+        }
+      },
+      {
+        path: 'workspace',
+        name: 'MyWorkspace',
+        component: () => import('../components/features/research/MyWorkspace.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'My Workspace - BSU Research Portal'
+        }
+      },
+      {
+        path: 'approval',
+        name: 'Approval',
+        component: () => import('../components/features/research/Approval.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresRole: ['admin'],
+          title: 'Approval - BSU Research Portal'
+        }
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('../components/features/admin/Settings.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'Settings - BSU Research Portal'
+        }
+      },
+      {
+        path: 'import',
+        name: 'ImportCsv',
+        component: () => import('../components/features/import/ImportCsv.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresRole: ['admin'],
+          title: 'Import Data - BSU Research Portal'
+        }
+      },
+      {
+        path: 'users',
+        name: 'UserManagement',
+        component: () => import('../components/features/admin/UserManagement.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresRole: ['admin'],
+          title: 'User Management - BSU Research Portal'
+        }
+      },
+      {
+        path: 'masterlist',
+        name: 'Masterlist',
+        component: () => import('../components/features/research/Masterlist.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresRole: ['admin'],
+          title: 'Masterlist - BSU Research Portal'
+        }
+      },
+      {
+        path: 'logs',
+        name: 'AdminLogs',
+        component: () => import('../components/features/admin/AdminLogs.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresRole: ['admin'],
+          title: 'System Logs - BSU Research Portal'
+        }
+      }
+    ]
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
+})
+
+// Navigation Guard: Authentication & Authorization
+router.beforeEach((to, _from, next) => {
+  const { isAuthenticated } = useAuth()
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+
+  // Check if route requires authentication
+  if (requiresAuth && !isAuthenticated.value) {
+    // User is not authenticated, redirect to login
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath } // Save intended destination
+    })
+  } else if (to.path === '/login' && isAuthenticated.value) {
+    // User is already logged in, redirect to home
+    next('/')
+  } else {
+    // Allow navigation
+    next()
+  }
+})
+
+// Navigation Guard: Update Page Title
+router.afterEach((to) => {
+  // Set page title from route meta or use default
+  const title = (to.meta.title as string) || 'BSU Research Portal'
+  document.title = title
 })
 
 export default router

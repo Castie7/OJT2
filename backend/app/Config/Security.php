@@ -22,7 +22,7 @@ class Security extends BaseConfig
      * --------------------------------------------------------------------------
      * Randomize the CSRF Token for added security.
      */
-    public bool $tokenRandomize = true;
+    public bool $tokenRandomize = false;
 
     /**
      * --------------------------------------------------------------------------
@@ -81,7 +81,7 @@ class Security extends BaseConfig
      * --------------------------------------------------------------------------
      * ⚠️ ADDED: Allows cookie sharing across ports (5173 -> 443).
      */
-    public string $samesite = 'None';
+    public string $samesite = 'Lax';
 
     /**
      * --------------------------------------------------------------------------

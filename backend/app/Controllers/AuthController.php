@@ -14,7 +14,7 @@ class AuthController extends BaseController
     public function __construct()
     {
         $this->authService = new AuthService();
-        helper('activity'); // Load Logging Helper
+        helper(['activity']); // Load Logging Helper
     }
 
     // ------------------------------------------------------------------
@@ -103,6 +103,7 @@ class AuthController extends BaseController
             }
         }
         catch (\Throwable $e) {
+            log_message('critical', '[Login Error] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return $this->failServerError($e->getMessage());
         }
     }

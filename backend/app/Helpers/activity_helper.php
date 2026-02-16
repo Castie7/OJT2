@@ -1,35 +1,24 @@
 <?php
 
-use App\Models\ActivityLogModel;
-
 if (!function_exists('log_activity')) {
-    /**
-     * Log a user activity to the database.
-     *
-     * @param int|null $userId
-     * @param string $userName
-     * @param string $role
-     * @param string $action (e.g., 'LOGIN', 'CREATE')
-     * @param string|null $details
-     */
-    function log_activity($userId, $userName, $role, $action, $details = null)
+    function log_activity($userId, $userName, $userRole, $action, $details)
     {
-        $logModel = new ActivityLogModel();
+        $activityLogModel = new \App\Models\ActivityLogModel();
         
         $data = [
-            'user_id'    => $userId,
-            'user_name'  => $userName ?: 'Guest',
-            'role'       => $role ?: 'guest',
-            'action'     => strtoupper($action),
-            'details'    => $details,
+            'user_id'   => $userId,
+            'user_name' => $userName,
+            'role'      => $userRole, // Fixed: 'user_role' -> 'role'
+            'action'    => $action,
+            'details'   => $details,
             'ip_address' => service('request')->getIPAddress(),
+            // 'created_at' is handled by $useTimestamps in Model
         ];
 
         try {
-            $logModel->insert($data);
+            $activityLogModel->insert($data);
         } catch (\Exception $e) {
-            // Silently fail or log to file if DB logging fails to prevent app crash
-            log_message('error', 'Failed to log activity: ' . $e->getMessage());
+            log_message('error', '[Activity Log] Failed to insert log: ' . $e->getMessage());
         }
     }
 }

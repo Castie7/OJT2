@@ -55,7 +55,7 @@ class Cookie extends BaseConfig
      * --------------------------------------------------------------------------
      * 🔒 SECURED: Prevents JavaScript (XSS) from accessing the cookie.
      */
-    public bool $httponly = true;
+    public bool $httponly = false;
 
     /**
      * --------------------------------------------------------------------------

@@ -68,7 +68,10 @@ class Filters extends BaseFilters
             // -----------------------------------------------------------------
             // Protects against Cross-Site Request Forgery.
             // Your Vue app sends the X-CSRF-TOKEN header to pass this.
-            'csrf', 
+            'csrf' => ['except' => [
+                'auth/verify', // 🔓 Allow fetching the initial token without a token
+                'api/*'        // (Optional) If you have stateless APIs
+            ]], 
 
             // 3. Security Checks
             'invalidchars', 

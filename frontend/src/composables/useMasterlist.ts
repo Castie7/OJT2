@@ -132,6 +132,25 @@ export function useMasterlist() {
     // Reset page when filters change
     watch([searchQuery, statusFilter], () => { currentPage.value = 1 })
 
+    // Helper function to convert date to YYYY-MM-DD format for date inputs
+    const toDateInputFormat = (dateStr?: any) => {
+        if (!dateStr) return ''
+        let dateVal = dateStr
+        // Handle DateTime objects from backend
+        if (typeof dateStr === 'object' && dateStr.date) dateVal = dateStr.date
+        try {
+            const d = new Date(dateVal)
+            if (isNaN(d.getTime())) return ''
+            // Format to YYYY-MM-DD
+            const year = d.getFullYear()
+            const month = String(d.getMonth() + 1).padStart(2, '0')
+            const day = String(d.getDate()).padStart(2, '0')
+            return `${year}-${month}-${day}`
+        } catch {
+            return ''
+        }
+    }
+
     // --- EDIT ---
     const openEdit = (item: Research) => {
         editForm.value = {
@@ -139,10 +158,10 @@ export function useMasterlist() {
             title: item.title,
             author: item.author,
             crop_variation: item.crop_variation || '',
-            start_date: item.start_date || '',
-            deadline_date: item.deadline_date || '',
+            start_date: toDateInputFormat(item.start_date),
+            deadline_date: toDateInputFormat(item.deadline_date),
             knowledge_type: item.knowledge_type ? item.knowledge_type.split(',').map(s => s.trim()) : [],
-            publication_date: item.publication_date || '',
+            publication_date: toDateInputFormat(item.publication_date),
             edition: item.edition || '',
             publisher: item.publisher || '',
             physical_description: item.physical_description || '',

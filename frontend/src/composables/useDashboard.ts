@@ -1,12 +1,7 @@
 import { ref, watch, computed, onMounted, onUnmounted, nextTick, type Ref } from 'vue'
 import api from '../services/api' // ✅ Switched to Secure API
+import type { User } from '../types'
 
-export interface User {
-  id: number
-  name: string
-  role: string
-  email: string
-}
 
 export interface Stat {
   id?: string

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toRef } from 'vue'
-import { useSettings, type User } from '../composables/useSettings'
+import { useSettings } from '../../../composables/useSettings'
+import type { User } from '../../../types'
 
 const props = defineProps<{ currentUser: User | null }>()
 
@@ -132,4 +133,4 @@ const {
   </div>
 </template>
 
-<style scoped src="../assets/styles/Settings.css"></style>
+<style scoped src="../../../assets/styles/Settings.css"></style>

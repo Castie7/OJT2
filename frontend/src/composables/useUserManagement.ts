@@ -1,19 +1,16 @@
 import { ref, reactive, onMounted } from 'vue'
 import api from '../services/api' // ✅ Switch to Secure central API
 import { useToast } from './useToast'
+import type { User } from '../types'
 
-export interface User {
-  id: number
-  name: string
-  email: string
-  role: 'admin' | 'user'
+interface LocalUser extends User {
   created_at: string
 }
 
 export function useUserManagement() {
 
   // --- STATE ---
-  const users = ref<User[]>([])
+  const users = ref<LocalUser[]>([])
   const isLoading = ref(false)
   const isSubmitting = ref(false)
   const showAddForm = ref(false)
@@ -83,7 +80,7 @@ export function useUserManagement() {
 
   // 3. Reset Password
   const resetPassword = async (userId: number, userName: string) => {
-    const newPass = prompt(`Enter new password for ${userName}:`)
+    const newPass = prompt(`Enter new password for ${userName}: `)
     if (!newPass) return
 
     if (newPass.length < 6) {

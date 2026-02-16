@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue' 
+import { ref, toRef } from 'vue' 
 import SubmittedResearches from './SubmittedResearches.vue'
-import { useMyWorkspace, type User } from '../composables/useMyWorkspace' 
+import { useMyWorkspace } from '../../../composables/useMyWorkspace' 
+import type { User } from '../../../types' 
 import ResearchDetailsModal from './ResearchDetailsModal.vue'
 
 const props = defineProps<{
@@ -312,4 +313,4 @@ defineExpose({ openNotification })
   </div>
 </template>
 
-<style scoped src="../assets/styles/MyWorkspace.css"></style>
+<style scoped src="../../../assets/styles/MyWorkspace.css"></style>

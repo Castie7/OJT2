@@ -1,13 +1,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import api from '../services/api' // ✅ Switch to your secure Axios instance
+import type { User } from '../types'
 
 // --- TYPE DEFINITIONS ---
-export interface User {
-  id: number
-  name: string
-  role: string
-}
-
 export interface Stat {
   id?: string
   title: string

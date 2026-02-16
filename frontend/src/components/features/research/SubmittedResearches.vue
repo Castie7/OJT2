@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useSubmittedResearches, type User } from '../composables/useSubmittedResearches' 
+import { useSubmittedResearches } from '../../../composables/useSubmittedResearches' 
+import type { User } from '../../../types' 
 
 // ✅ USE THE DYNAMIC URL
-import { getAssetUrl } from '../services/api'
+import { getAssetUrl } from '../../../services/api'
 const ASSET_URL = getAssetUrl()
 
 const props = defineProps<{
@@ -231,15 +232,15 @@ defineExpose({ fetchData, openNotification })
                 v-for="c in commentModal.list" 
                 :key="c.id" 
                 class="flex flex-col max-w-[85%]"
-                :class="c.role === 'user' ? 'self-end items-end ml-auto' : 'self-start items-start'"
+                :class="c.user_name === currentUser?.name ? 'self-end items-end ml-auto' : 'self-start items-start'"
               >
                 <span class="text-[10px] text-gray-400 mb-1 px-1">
-                  {{ c.user_name }} <span v-if="c.role === 'user'" class="text-green-600 font-bold">(You)</span>
+                  {{ c.user_name }} <span v-if="c.user_name === currentUser?.name" class="text-green-600 font-bold">(You)</span>
                 </span>
                 
                 <div 
                   class="px-4 py-2.5 shadow-sm text-sm break-words relative"
-                  :class="c.role === 'user' 
+                  :class="c.user_name === currentUser?.name
                     ? 'bg-green-600 text-white rounded-2xl rounded-tr-none' 
                     : 'bg-white text-gray-800 rounded-2xl rounded-tl-none border border-gray-100'"
                 >
@@ -325,4 +326,4 @@ defineExpose({ fetchData, openNotification })
   </div>
 </template>
 
-<style scoped src="../assets/styles/SubmittedResearches.css"></style>
+<style scoped src="../../../assets/styles/SubmittedResearches.css"></style>

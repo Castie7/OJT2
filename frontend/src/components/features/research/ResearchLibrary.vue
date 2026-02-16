@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue' 
-import { useResearchLibrary, type User } from '../composables/useResearchLibrary'
-import { useToast } from '../composables/useToast'
+import { ref, toRef } from 'vue' 
+import { useResearchLibrary } from '../../../composables/useResearchLibrary'
+import type { User } from '../../../types'
+import { useToast } from '../../../composables/useToast'
 
 // ✅ USE THE DYNAMIC URL
-import { getAssetUrl } from '../services/api'
+import { getAssetUrl } from '../../../services/api'
 const ASSET_URL = getAssetUrl()
 
 const props = defineProps<{
@@ -330,4 +331,4 @@ const toggleFullscreen = () => {
   </div>
 </template>
 
-<style scoped src="../assets/styles/ResearchLibrary.css"></style>
+<style scoped src="../../../assets/styles/ResearchLibrary.css"></style>

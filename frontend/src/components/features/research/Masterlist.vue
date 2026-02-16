@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useMasterlist } from '../composables/useMasterlist'
-import { getAssetUrl } from '../services/api'
+import { useMasterlist } from '../../../composables/useMasterlist'
+import { getAssetUrl } from '../../../services/api'
 const ASSET_URL = getAssetUrl()
 import { ref } from 'vue'
 
@@ -530,7 +530,7 @@ const {
   </div>
 </template>
 
-<style scoped src="../assets/styles/Masterlist.css"></style>
+<style scoped src="../../../assets/styles/Masterlist.css"></style>
 <style scoped>
 @keyframes spin-refresh {
   from { transform: rotate(0deg); }

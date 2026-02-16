@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useToast } from '../composables/useToast'
+import { useToast } from '../../../composables/useToast'
 
 // ✅ USE THE DYNAMIC URL
-import { getAssetUrl } from '../services/api'
+import { getAssetUrl } from '../../../services/api'
 const ASSET_URL = getAssetUrl()
 
 // Ideally, import your shared 'Research' interface here. 
@@ -139,4 +139,4 @@ const toggleFullscreen = () => {
   </Transition>
 </template>
 
-<style scoped src="../assets/styles/ResearchLibrary.css"></style>
+<style scoped src="../../../assets/styles/ResearchLibrary.css"></style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // ✅ Logic is now moved to Composable
-import { useUserManagement } from '../composables/useUserManagement'
+import { useUserManagement } from '../../../composables/useUserManagement'
 
 // Initialize Logic
 const { 
@@ -97,4 +97,4 @@ const {
   </div>
 </template>
 
-<style scoped src="../assets/styles/UserManagement.css"></style>
+<style scoped src="../../../assets/styles/UserManagement.css"></style>

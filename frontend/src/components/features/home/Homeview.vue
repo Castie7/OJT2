@@ -1,5 +1,5 @@
  <script setup lang="ts">
-import { useHomeView, type User, type Stat } from '../composables/useHomeView'
+import { useHomeView, type User, type Stat } from '../../../composables/useHomeView'
 
 defineProps<{
   currentUser: User | null // id, name, role
@@ -311,4 +311,4 @@ const getCropImage = (crop?: string): string => {
   </div>
 </template>
 
-<style scoped src="../assets/styles/HomeView.css"></style>
+<style scoped src="../../../assets/styles/HomeView.css"></style>

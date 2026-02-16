@@ -1,6 +1,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '../services/api' // ✅ Uses Secure API Service
 import { useToast } from './useToast'
+import type { User } from '../types'
 
 // --- 1. SHARED INTERFACES ---
 export interface Research {
@@ -29,12 +30,6 @@ export interface Research {
   created_at: string
 }
 
-export interface User {
-  id: number
-  name: string
-  role: string
-  email: string
-}
 
 export function useResearchLibrary(_currentUser: User | null, emit: (event: 'update-stats', count: number) => void) {
 

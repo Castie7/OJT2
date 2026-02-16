@@ -1,17 +1,8 @@
 <script setup lang="ts">
-import { toRef, ref } from 'vue' 
-import { useDashboard, type User } from '../composables/useDashboard'
-
-// Import Sub-Components
-import HomeView from '../components/Homeview.vue'
-import ResearchLibrary from '../components/ResearchLibrary.vue'
-import MyWorkspace from '../components/MyWorkspace.vue'
-import Approval from '../components/Approval.vue'
-import Settings from '../components/Settings.vue' 
-import ImportCsv from '../components/ImportCsv.vue' 
-import UserManagement from '../components/UserManagement.vue'
-import AdminLogs from '../components/AdminLogs.vue'
-import Masterlist from '../components/Masterlist.vue'
+import { ref, provide, toRef } from 'vue'
+import { useRouter, useRoute, RouterLink, RouterView } from 'vue-router'
+import { useDashboard } from '../../composables/useDashboard'
+import type { User } from '../../types'
 
 const props = defineProps<{
   currentUser: User | null
@@ -20,39 +11,43 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'login-click'): void
   (e: 'logout-click'): void
-  (e: 'update-user', user: User): void 
+  (e: 'update-user', user: User): void
 }>()
 
-// Mobile Menu State
 const showMobileMenu = ref(false)
+const router = useRouter()
+const route = useRoute()
 
-// ... Initialize Dashboard Logic ...
 const currentUserRef = toRef(props, 'currentUser')
-// ... rest of script ...
 
+// Provide currentUser for child components that need it
+provide('currentUser', currentUserRef)
 
-const { 
-  // State
-  currentTab, 
-  stats, 
-  workspaceRef, 
-  approvalRef, 
-  showAdminMenu, 
-  showNotifications, 
-  notifications, 
+const {
+  stats,
+  showAdminMenu,
+  showNotifications,
+  notifications,
   unreadCount,
-  
-  // Actions
-  updateStats, 
-  setTab, 
-  closeAdminMenu, 
-  toggleNotifications, 
-  handleNotificationClick, 
+  updateStats,
+  closeAdminMenu,
+  toggleNotifications,
+  handleNotificationClick,
   formatTimeAgo
 } = useDashboard(currentUserRef)
 
 const handleUserUpdate = (updatedUser: User) => {
   emit('update-user', updatedUser)
+}
+
+// Helper to check if current route matches
+const isActive = (path: string) => route.path === path
+const isAdminActive = () => ['/import', '/users', '/masterlist', '/logs'].includes(route.path)
+
+const navigateTo = (path: string) => {
+  router.push(path)
+  showMobileMenu.value = false
+  showAdminMenu.value = false
 }
 </script>
 
@@ -78,31 +73,31 @@ const handleUserUpdate = (updatedUser: User) => {
 
           <!-- Desktop Navigation -->
           <div class="hidden md:flex ml-10 space-x-4">
-            <button @click="setTab('home')" :class="['nav-btn', currentTab === 'home' ? 'nav-btn-active' : 'nav-btn-inactive']">
+            <RouterLink to="/" :class="['nav-btn', isActive('/') ? 'nav-btn-active' : 'nav-btn-inactive']">
               Home
-            </button>
-            <button @click="setTab('research')" :class="['nav-btn', currentTab === 'research' ? 'nav-btn-active' : 'nav-btn-inactive']">
+            </RouterLink>
+            <RouterLink to="/library" :class="['nav-btn', isActive('/library') ? 'nav-btn-active' : 'nav-btn-inactive']">
               Research Library
-            </button>
+            </RouterLink>
             
             <template v-if="currentUser">
-              <button @click="setTab('workspace')" :class="['nav-btn', currentTab === 'workspace' ? 'nav-btn-active' : 'nav-btn-inactive']">
+              <RouterLink to="/workspace" :class="['nav-btn', isActive('/workspace') ? 'nav-btn-active' : 'nav-btn-inactive']">
                 My Workspace
-              </button>
+              </RouterLink>
               
               <template v-if="currentUser.role === 'admin'">
-                <button 
-                  @click="setTab('approval')" 
-                  :class="['nav-btn', currentTab === 'approval' ? 'nav-btn-active' : 'nav-btn-inactive']"
+                <RouterLink 
+                  to="/approval" 
+                  :class="['nav-btn', isActive('/approval') ? 'nav-btn-active' : 'nav-btn-inactive']"
                 >
                   Approvals
-                </button>
+                </RouterLink>
 
                 <div class="relative group">
                     <button 
                         @click="showAdminMenu = !showAdminMenu" 
                         @blur="closeAdminMenu"
-                        :class="['nav-btn flex items-center gap-1', (currentTab === 'import' || currentTab === 'users' || currentTab === 'masterlist' || showAdminMenu) ? 'nav-btn-active' : 'nav-btn-inactive']"
+                        :class="['nav-btn flex items-center gap-1', isAdminActive() || showAdminMenu ? 'nav-btn-active' : 'nav-btn-inactive']"
                     >
                         Admin Tools ▾
                     </button>
@@ -110,7 +105,7 @@ const handleUserUpdate = (updatedUser: User) => {
                     <div v-if="showAdminMenu" class="absolute top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden text-sm z-50 animate-fade-in">
                         <div class="py-1">
                             <button 
-                                @click="setTab('import'); showAdminMenu = false"
+                                @click="navigateTo('/import')"
                                 class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
                             >
                                 📂 Upload Data Researches
@@ -119,7 +114,7 @@ const handleUserUpdate = (updatedUser: User) => {
                             <div class="border-t border-gray-100 my-1"></div>
 
                             <button 
-                                @click="setTab('users'); showAdminMenu = false"
+                                @click="navigateTo('/users')"
                                 class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
                             >
                                 👥 Add/Reset Accounts
@@ -128,7 +123,7 @@ const handleUserUpdate = (updatedUser: User) => {
                             <div class="border-t border-gray-100 my-1"></div>
 
                             <button 
-                                @click="setTab('masterlist'); showAdminMenu = false"
+                                @click="navigateTo('/masterlist')"
                                 class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
                             >
                                 📋 Masterlist
@@ -137,7 +132,7 @@ const handleUserUpdate = (updatedUser: User) => {
                             <div class="border-t border-gray-100 my-1"></div>
 
                             <button 
-                                @click="setTab('logs'); showAdminMenu = false"
+                                @click="navigateTo('/logs')"
                                 class="w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-700 font-bold border-l-4 border-transparent hover:border-green-600 transition flex items-center gap-2"
                             >
                                 📜 System Logs
@@ -206,9 +201,9 @@ const handleUserUpdate = (updatedUser: User) => {
 
               <!-- Desktop Settings/Logout -->
               <div class="hidden md:flex gap-2">
-                <button @click="setTab('settings')" class="btn-settings" title="Settings">
+                <RouterLink to="/settings" class="btn-settings" title="Settings">
                   ⚙️
-                </button>
+                </RouterLink>
 
                 <button @click="$emit('logout-click')" class="btn-logout">
                   Logout
@@ -225,42 +220,42 @@ const handleUserUpdate = (updatedUser: User) => {
 
         <!-- Mobile Menu (Dropdown) -->
         <div v-if="showMobileMenu" class="md:hidden pb-4 pt-2 border-t border-green-700">
-            <button @click="setTab('home'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'home' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+            <button @click="navigateTo('/')" :class="['w-full text-left px-3 py-2 rounded-md font-medium', isActive('/') ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
               Home
             </button>
-            <button @click="setTab('research'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'research' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+            <button @click="navigateTo('/library')" :class="['w-full text-left px-3 py-2 rounded-md font-medium', isActive('/library') ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
               Research Library
             </button>
             
             <template v-if="currentUser">
-              <button @click="setTab('workspace'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'workspace' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+              <button @click="navigateTo('/workspace')" :class="['w-full text-left px-3 py-2 rounded-md font-medium', isActive('/workspace') ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                 My Workspace
               </button>
               
               <template v-if="currentUser.role === 'admin'">
-                <button @click="setTab('approval'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'approval' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                <button @click="navigateTo('/approval')" :class="['w-full text-left px-3 py-2 rounded-md font-medium', isActive('/approval') ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                   Approvals
                 </button>
                 
                 <div class="pl-4 mt-2 mb-2 border-l-2 border-green-600">
                     <p class="text-xs text-green-300 px-3 uppercase font-bold mb-1">Admin Tools</p>
-                    <button @click="setTab('import'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'import' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                    <button @click="navigateTo('/import')" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', isActive('/import') ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                         📂 Upload Data
                     </button>
-                    <button @click="setTab('users'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'users' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                    <button @click="navigateTo('/users')" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', isActive('/users') ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                         👥 Users
                     </button>
-                    <button @click="setTab('masterlist'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'masterlist' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                    <button @click="navigateTo('/masterlist')" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', isActive('/masterlist') ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                         📋 Masterlist
                     </button>
-                    <button @click="setTab('logs'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', currentTab === 'logs' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                    <button @click="navigateTo('/logs')" :class="['w-full text-left px-3 py-2 rounded-md font-medium text-sm', isActive('/logs') ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                         📜 Logs
                     </button>
                 </div>
               </template>
 
               <div class="border-t border-green-700 my-2 pt-2">
-                 <button @click="setTab('settings'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'settings' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
+                 <button @click="navigateTo('/settings')" :class="['w-full text-left px-3 py-2 rounded-md font-medium', isActive('/settings') ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                   ⚙️ Settings
                  </button>
                  <button @click="$emit('logout-click'); showMobileMenu = false" class="w-full text-left px-3 py-2 rounded-md font-medium text-red-100 hover:bg-red-600 hover:text-white mt-1">
@@ -278,59 +273,19 @@ const handleUserUpdate = (updatedUser: User) => {
     </nav>
 
     <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      
-      <HomeView 
-        v-if="currentTab === 'home'" 
-        :currentUser="currentUser" 
-        :stats="stats" 
-        @browse-click="setTab('research')"
-        @stat-click="setTab"
-      />
-
-      <ResearchLibrary 
-        v-if="currentTab === 'research'" 
-        :currentUser="currentUser" 
-        @update-stats="updateStats" 
-      />
-
-      <MyWorkspace 
-        v-if="currentTab === 'workspace'" 
-        ref="workspaceRef"
-        :currentUser="currentUser" 
-      />
-
-      <Approval 
-        v-if="currentTab === 'approval' && currentUser && currentUser.role === 'admin'" 
-        ref="approvalRef"
-        :currentUser="currentUser" 
-      />
-
-      <ImportCsv 
-        v-if="currentTab === 'import' && currentUser && currentUser.role === 'admin'"
-        @upload-success="setTab('research')" 
-      />
-
-      <UserManagement 
-        v-if="currentTab === 'users' && currentUser && currentUser.role === 'admin'"
-      />
-      
-      <Masterlist 
-        v-if="currentTab === 'masterlist' && currentUser && currentUser.role === 'admin'"
-      />
-
-      <AdminLogs 
-        v-if="currentTab === 'logs' && currentUser && currentUser.role === 'admin'"
-      />
-
-      <Settings 
-        v-if="currentTab === 'settings'"
+      <RouterView 
         :currentUser="currentUser"
+        :stats="stats"
+        ref="workspaceRef"
+        @browse-click="router.push('/library')"
+        @stat-click="(tab: string) => router.push(tab === 'home' ? '/' : `/${tab}`)"
+        @update-stats="updateStats"
+        @upload-success="router.push('/library')"
         @update-user="handleUserUpdate"
-        @trigger-logout="$emit('logout-click')" 
+        @trigger-logout="$emit('logout-click')"
       />
-
     </main>
   </div>
 </template>
 
-<style scoped src="../assets/styles/Dashboard.css"></style>
+<style scoped src="../../assets/styles/Dashboard.css"></style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useLoginForm } from '../composables/useLoginForm'
+import { useLoginForm } from '../../../composables/useLoginForm'
 
 // 1. Define Emits
 const emit = defineEmits<{
@@ -123,4 +123,4 @@ const {
   </div>
 </template>
 
-<style scoped src="../assets/styles/LoginForm.css"></style>
+<style scoped src="../../../assets/styles/LoginForm.css"></style>

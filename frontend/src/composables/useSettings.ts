@@ -1,13 +1,8 @@
 import { ref, reactive, watch, type Ref } from 'vue'
 import api from '../services/api' // ✅ Switch to Secure API Service
 import { useToast } from './useToast'
+import type { User } from '../types'
 
-export interface User {
-  id: number
-  name: string
-  email: string
-  role: string
-}
 
 // 1. Add 'triggerLogout' to arguments
 export function useSettings(
@@ -37,7 +32,7 @@ export function useSettings(
   watch(currentUserRef, (newUser) => {
     if (newUser) {
       profileForm.name = newUser.name
-      profileForm.email = newUser.email
+      profileForm.email = newUser.email || ''
     }
   }, { immediate: true, deep: true })
 

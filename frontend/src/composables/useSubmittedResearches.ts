@@ -1,6 +1,7 @@
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import api from '../services/api' // ✅ Secure API Service
 import { useToast } from './useToast'
+import type { User } from '../types'
 
 // --- TYPE DEFINITIONS ---
 export interface Research {
@@ -17,12 +18,6 @@ export interface Research {
     approved_at?: string
     updated_at?: string
     created_at: string
-}
-
-export interface User {
-    id: number
-    name: string
-    role: string
 }
 
 interface Comment {

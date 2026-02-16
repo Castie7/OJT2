@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import LoginForm from '../components/LoginForm.vue'
-import Dashboard from '../components/Dashboard.vue'
+import LoginForm from '../components/features/authentication/LoginForm.vue'
+import Dashboard from '../components/features/dashboard/Dashboard.vue'
 
 const routes: Array<RouteRecordRaw> = [
   {

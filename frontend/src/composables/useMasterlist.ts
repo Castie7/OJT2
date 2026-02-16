@@ -1,6 +1,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '../services/api'
 import { useToast } from './useToast'
+import type { User } from '../types'
 
 export interface Research {
     id: number
@@ -27,13 +28,6 @@ export interface Research {
     shelf_location?: string
     item_condition?: string
     link?: string
-}
-
-export interface User {
-    id: number
-    name: string
-    role: string
-    email?: string
 }
 
 export function useMasterlist() {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useAdminLogs } from '../composables/useAdminLogs'
+import { useAdminLogs } from '../../../composables/useAdminLogs'
 
 const { logs, loading, pagination, filters, fetchLogs, downloadLogs, formatActionColor } = useAdminLogs()
 

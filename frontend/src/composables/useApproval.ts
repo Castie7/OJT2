@@ -1,6 +1,7 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
 import api from '../services/api' // ✅ Switch to Secure API Service
 import { useToast } from './useToast'
+import type { User } from '../types'
 
 // --- TYPES ---
 export interface Research {
@@ -11,12 +12,6 @@ export interface Research {
   rejected_at?: string
   file_path: string
   created_at: string
-}
-
-export interface User {
-  id: number
-  name: string
-  role: string
 }
 
 interface Comment {

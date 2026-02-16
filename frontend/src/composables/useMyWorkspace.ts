@@ -1,13 +1,8 @@
 import { ref, reactive, watch } from 'vue'
 import api from '../services/api' // ✅ Switch to Secure API Service
 import { useToast } from './useToast'
+import type { User } from '../types'
 
-export interface User {
-  id: number
-  name: string
-  role: string
-  email: string
-}
 
 export interface Research {
   id: number

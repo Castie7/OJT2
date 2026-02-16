@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import api from './services/api' 
 import { RouterView, useRouter } from 'vue-router'
-import Toast from './components/Toast.vue'
+import Toast from './components/shared/Toast.vue'
 
 interface User {
   id: number; 

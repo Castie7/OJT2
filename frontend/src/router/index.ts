@@ -132,8 +132,8 @@ router.beforeEach(async (to, _from, next) => {
         setUser(response.data.user)
         // Handle CSRF if needed (App.vue does it)
         if (response.data.csrf_token) {
-          document.cookie = `csrf_cookie_name=${response.data.csrf_token}; path=/; domain=${window.location.hostname}; secure; samesite=None`;
-          localStorage.setItem('csrf_token_backup', response.data.csrf_token);
+          document.cookie = `csrf_cookie_name=${response.data.csrf_token}; path=/; domain=${window.location.hostname}; secure; samesite=Lax`;
+          sessionStorage.setItem('csrf_token_backup', response.data.csrf_token);
         }
       }
     } catch (e) {

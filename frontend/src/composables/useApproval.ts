@@ -1,6 +1,7 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { researchService, commentService } from '../services'
 import { useToast } from './useToast'
+import { useErrorHandler } from './useErrorHandler'
 import type { User, Research, Comment } from '../types'
 
 export function useApproval(currentUser: User | null) {
@@ -11,6 +12,7 @@ export function useApproval(currentUser: User | null) {
   const isLoading = ref(false)
   const selectedResearch = ref<Research | null>(null)
   const { showToast } = useToast()
+  const { handleError } = useErrorHandler()
 
   const currentPage = ref(1)
   const itemsPerPage = 10
@@ -74,7 +76,7 @@ export function useApproval(currentUser: User | null) {
       currentPage.value = 1
 
     } catch (error) {
-      console.error("Error fetching data:", error)
+      handleError(error, 'Failed to load approval data')
     } finally {
       isLoading.value = false
     }
@@ -137,7 +139,7 @@ export function useApproval(currentUser: User | null) {
       confirmModal.value.show = false
 
     } catch (error) {
-      showToast("Action failed", 'error')
+      handleError(error, 'Action failed')
     } finally {
       confirmModal.value.isProcessing = false
     }
@@ -186,7 +188,7 @@ export function useApproval(currentUser: User | null) {
       commentModal.value.list = await researchService.getComments(item.id)
       scrollToBottom()
     } catch (e) {
-      console.error("Error loading comments")
+      handleError(e, 'Failed to load comments')
     }
   }
 

@@ -23,7 +23,7 @@ export const authService = {
 
     // Store CSRF token if provided
     if (response.data.csrf_token) {
-      localStorage.setItem('csrf_token_backup', response.data.csrf_token)
+      sessionStorage.setItem('csrf_token_backup', response.data.csrf_token)
     }
 
     return response.data
@@ -34,7 +34,7 @@ export const authService = {
    */
   async logout(): Promise<void> {
     await api.post('/auth/logout')
-    localStorage.removeItem('csrf_token_backup')
+    sessionStorage.removeItem('csrf_token_backup')
   },
 
   /**
@@ -45,7 +45,7 @@ export const authService = {
 
     // Store CSRF token if provided
     if (response.data.csrf_token) {
-      localStorage.setItem('csrf_token_backup', response.data.csrf_token)
+      sessionStorage.setItem('csrf_token_backup', response.data.csrf_token)
     }
 
     return response.data

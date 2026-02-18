@@ -1,6 +1,7 @@
 // src/services/research.service.ts
 
 import api from './api'
+import { apiCache } from '../utils/apiCache'
 import type {
   Research,
   ResearchFilters,
@@ -23,17 +24,22 @@ export const researchService = {
 
     const queryString = params.toString()
     const endpoint = queryString ? `/research?${queryString}` : '/research'
+    const cacheKey = `research:all:${queryString}`
 
-    const response = await api.get<Research[]>(endpoint)
-    return response.data
+    return apiCache.get(cacheKey, async () => {
+      const response = await api.get<Research[]>(endpoint)
+      return response.data
+    })
   },
 
   /**
    * Get all research items for admin masterlist (includes all statuses)
    */
   async getMasterlist(): Promise<Research[]> {
-    const response = await api.get<Research[]>('/research/masterlist')
-    return response.data
+    return apiCache.get('research:masterlist', async () => {
+      const response = await api.get<Research[]>('/research/masterlist')
+      return response.data
+    })
   },
 
   /**
@@ -46,41 +52,52 @@ export const researchService = {
 
     const queryString = params.toString()
     const endpoint = queryString ? `/research/archived?${queryString}` : '/research/archived'
+    const cacheKey = `research:archived:${queryString}`
 
-    const response = await api.get<Research[]>(endpoint)
-    return response.data
+    return apiCache.get(cacheKey, async () => {
+      const response = await api.get<Research[]>(endpoint)
+      return response.data
+    })
   },
 
   /**
    * Get pending research submissions (admin only)
    */
   async getPending(): Promise<Research[]> {
-    const response = await api.get<Research[]>('/research/pending')
-    return response.data
+    return apiCache.get('research:pending', async () => {
+      const response = await api.get<Research[]>('/research/pending')
+      return response.data
+    })
   },
 
   /**
    * Get rejected research submissions (admin only)
    */
   async getRejected(): Promise<Research[]> {
-    const response = await api.get<Research[]>('/research/rejected')
-    return response.data
+    return apiCache.get('research:rejected', async () => {
+      const response = await api.get<Research[]>('/research/rejected')
+      return response.data
+    })
   },
 
   /**
    * Get current user's research submissions
    */
   async getMySubmissions(): Promise<Research[]> {
-    const response = await api.get<Research[]>('/research/my-submissions')
-    return response.data
+    return apiCache.get('research:my-submissions', async () => {
+      const response = await api.get<Research[]>('/research/my-submissions')
+      return response.data
+    })
   },
 
   /**
    * Get current user's archived submissions
    */
   async getMyArchived(): Promise<Research[]> {
-    const response = await api.get<Research[]>('/research/my-archived')
-    return response.data
+    return apiCache.get('research:my-archived', async () => {
+      const response = await api.get<Research[]>('/research/my-archived')
+      return response.data
+    })
   },
 
   /**
@@ -88,6 +105,7 @@ export const researchService = {
    */
   async create(data: FormData): Promise<ApiResponse<Research>> {
     const response = await api.post<ApiResponse<Research>>('/research/create', data)
+    apiCache.invalidate('research')
     return response.data
   },
 
@@ -96,6 +114,7 @@ export const researchService = {
    */
   async update(id: number, data: FormData): Promise<ApiResponse<Research>> {
     const response = await api.post<ApiResponse<Research>>(`/research/update/${id}`, data)
+    apiCache.invalidate('research')
     return response.data
   },
 
@@ -104,6 +123,7 @@ export const researchService = {
    */
   async approve(id: number): Promise<ApiResponse<void>> {
     const response = await api.post<ApiResponse<void>>(`/research/approve/${id}`)
+    apiCache.invalidate('research')
     return response.data
   },
 
@@ -112,6 +132,7 @@ export const researchService = {
    */
   async reject(id: number): Promise<ApiResponse<void>> {
     const response = await api.post<ApiResponse<void>>(`/research/reject/${id}`)
+    apiCache.invalidate('research')
     return response.data
   },
 
@@ -120,6 +141,7 @@ export const researchService = {
    */
   async restore(id: number): Promise<ApiResponse<void>> {
     const response = await api.post<ApiResponse<void>>(`/research/restore/${id}`)
+    apiCache.invalidate('research')
     return response.data
   },
 
@@ -128,6 +150,7 @@ export const researchService = {
    */
   async archive(id: number): Promise<ApiResponse<void>> {
     const response = await api.post<ApiResponse<void>>(`/research/archive/${id}`)
+    apiCache.invalidate('research')
     return response.data
   },
 
@@ -139,6 +162,7 @@ export const researchService = {
     formData.append('new_deadline', newDeadline)
 
     const response = await api.post<ApiResponse<void>>(`/research/extend-deadline/${id}`, formData)
+    apiCache.invalidate('research')
     return response.data
   },
 
@@ -146,7 +170,9 @@ export const researchService = {
    * Get comments for a research item
    */
   async getComments(id: number): Promise<Comment[]> {
-    const response = await api.get<Comment[]>(`/research/comments/${id}`)
-    return response.data
+    return apiCache.get(`research:comments:${id}`, async () => {
+      const response = await api.get<Comment[]>(`/research/comments/${id}`)
+      return response.data
+    }, 60_000) // 1-min TTL for comments (more dynamic data)
   }
 }

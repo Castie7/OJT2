@@ -1,5 +1,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { authService } from '../services'
+import { useRateLimiter } from './useRateLimiter'
 
 export function useLoginForm(emit: {
   (e: 'login-success', data: any): void;
@@ -16,6 +17,9 @@ export function useLoginForm(emit: {
   const lockoutSeconds = ref(0)
 
   let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+  // Client-side rate limiter (complements the backend's rate limiting)
+  const rateLimiter = useRateLimiter(5, 60_000)
 
   // --- LOCKOUT COUNTDOWN ---
   const startLockoutCountdown = (seconds: number) => {
@@ -65,6 +69,12 @@ export function useLoginForm(emit: {
   const handleLogin = async () => {
     if (isLockedOut.value) return
 
+    // Client-side rate check
+    if (!rateLimiter.canProceed()) {
+      message.value = 'Too many attempts. Please wait before trying again.'
+      return
+    }
+
     isLoading.value = true
     message.value = ""
 
@@ -77,6 +87,7 @@ export function useLoginForm(emit: {
       if (data.status === 'success') {
         isSuccess.value = true
         message.value = "Login Successful!"
+        rateLimiter.reset()
 
         // Pass the data (including the new CSRF token) up to App.vue
         setTimeout(() => {
@@ -90,9 +101,9 @@ export function useLoginForm(emit: {
       }
 
     } catch (error: any) {
-      console.error('Login error:', error)
       isSuccess.value = false
       isLoading.value = false
+      rateLimiter.recordAttempt()
 
       if (error.response) {
         if (error.response.status === 429) {

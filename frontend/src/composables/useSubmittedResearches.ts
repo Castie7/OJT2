@@ -1,6 +1,7 @@
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import { researchService, commentService } from '../services'
 import { useToast } from './useToast'
+import { useErrorHandler } from './useErrorHandler'
 import type { User, Research, Comment } from '../types'
 
 export function useSubmittedResearches(props: { currentUser: User | null, statusFilter: string }) {
@@ -18,6 +19,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
     const isSaving = ref(false)
     const selectedResearch = ref<Research | null>(null)
     const { showToast } = useToast()
+    const { handleError } = useErrorHandler()
 
     // Modal State
     const commentModal = ref({
@@ -99,7 +101,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
             searchQuery.value = ''
 
         } catch (error) {
-            console.error("Error fetching items:", error)
+            handleError(error, 'Failed to load submissions')
         } finally {
             isLoading.value = false
         }
@@ -176,7 +178,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
             fetchData()
 
         } catch (e) {
-            showToast("Action Failed.", "error")
+            handleError(e, 'Archive action failed')
         } finally {
             confirmModal.value.isProcessing = false
         }
@@ -257,7 +259,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
             fetchData()
 
         } catch (e) {
-            showToast("Server Error", "error")
+            handleError(e, 'Failed to update research')
         } finally {
             isSaving.value = false
         }

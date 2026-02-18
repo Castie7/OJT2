@@ -1,6 +1,8 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { researchService } from '../services'
 import { useToast } from './useToast'
+import { useErrorHandler } from './useErrorHandler'
+import { debounce } from '../utils/debounce'
 import type { User, Research } from '../types'
 
 
@@ -22,6 +24,7 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
   // UI State
   const isLoading = ref(false)
   const { showToast } = useToast()
+  const { handleError } = useErrorHandler()
   const confirmModal = ref({
     show: false,
     id: null as number | null,
@@ -61,12 +64,10 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
       }
 
     } catch (error: any) {
-      console.error(error)
-      // Check for specific error codes if needed
       if (showArchived.value && error.response?.status === 403) {
-        showToast("Access Denied to Archives", "error")
+        showToast('Access Denied to Archives', 'error')
       } else {
-        showToast("Failed to load data.", "error")
+        handleError(error, 'Failed to load data')
       }
     } finally {
       isLoading.value = false
@@ -133,9 +134,7 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
       confirmModal.value.show = false
 
     } catch (error: any) {
-      console.error(error)
-      const msg = error.response?.data?.message || "Error updating status"
-      showToast("Failed: " + msg, "error")
+      handleError(error, 'Failed to update status')
     } finally {
       confirmModal.value.isProcessing = false
     }
@@ -149,11 +148,17 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
     fetchResearches()
   })
 
-  // Reset pagination on filter change
-  watch([searchQuery, selectedType, startDate, endDate], () => {
+  // Reset pagination on client-side filter change (no API call needed)
+  watch([searchQuery, selectedType], () => {
     currentPage.value = 1
-    fetchResearches() // Start Date/End Date changes trigger fetch
   })
+
+  // Debounce date-filter changes that trigger API calls
+  const debouncedFetch = debounce(() => {
+    currentPage.value = 1
+    fetchResearches()
+  }, 400)
+  watch([startDate, endDate], () => debouncedFetch())
 
   // Clear all filters
   const clearFilters = () => {

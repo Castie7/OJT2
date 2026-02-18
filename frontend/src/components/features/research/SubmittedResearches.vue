@@ -59,12 +59,6 @@ const openNotification = async (researchId: number) => {
 // Expose functions to parent (MyWorkspace.vue)
 defineExpose({ fetchData, openNotification })
 
-import { onMounted } from 'vue'
-onMounted(() => {
-    // Silence potential unused vars
-    console.log("Assets:", ASSET_URL)
-    console.log(chatContainer.value) 
-})
 </script>
 
 <template>
@@ -96,7 +90,7 @@ onMounted(() => {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition cursor-pointer" @click="$emit('view', item)">
+            <tr v-for="item in paginatedItems" :key="item.id" v-memo="[item.id, item.status, item.title]" class="hover:bg-green-50 transition cursor-pointer" @click="$emit('view', item)">
               
               <td class="px-6 py-4">
                  <div class="font-medium text-gray-900 line-clamp-2 max-w-[300px]" :title="item.title">{{ item.title }}</div>

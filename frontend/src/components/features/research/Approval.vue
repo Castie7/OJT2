@@ -43,12 +43,6 @@ const openNotification = async (researchId: number) => {
 // Expose this function so Dashboard.vue can call it via ref
 defineExpose({ openNotification })
 
-import { onMounted } from 'vue'
-onMounted(() => {
-    if (chatContainer.value) {
-        // silence unused var
-    }
-})
 </script>
 
 <template>
@@ -79,7 +73,7 @@ onMounted(() => {
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-green-50 transition cursor-pointer" @click="selectedResearch = item">
+            <tr v-for="item in paginatedItems" :key="item.id" v-memo="[item.id, item.status, item.title]" class="hover:bg-green-50 transition cursor-pointer" @click="selectedResearch = item">
               <td class="px-6 py-4">
                 <div class="font-bold text-gray-900 line-clamp-2 max-w-[300px]" :title="item.title">{{ item.title }}</div>
                 <div class="text-sm text-gray-500">By: {{ item.author }}</div>

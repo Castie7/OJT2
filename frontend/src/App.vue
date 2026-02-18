@@ -20,9 +20,9 @@ watch(isInitialized, (newVal) => {
 const saveToken = (token: string) => {
     if (!token) return;
     // Save to cookie for backend compatibility
-    document.cookie = `csrf_cookie_name=${token}; path=/; domain=${window.location.hostname}; secure; samesite=None`;
-    // Save to LocalStorage as a "Bridge" for our Axios interceptor
-    localStorage.setItem('csrf_token_backup', token);
+    document.cookie = `csrf_cookie_name=${token}; path=/; domain=${window.location.hostname}; secure; samesite=Lax`;
+    // Save to SessionStorage as a "Bridge" for our Axios interceptor
+    sessionStorage.setItem('csrf_token_backup', token);
 }
 
 onMounted(async () => {
@@ -68,7 +68,7 @@ const onLoginSuccess = (data: any) => {
 const handleLogout = async () => {
   try {
     await api.post('/auth/logout')
-    localStorage.removeItem('csrf_token_backup');
+    sessionStorage.removeItem('csrf_token_backup');
     delete api.defaults.headers.common['X-CSRF-TOKEN'];
   } catch (e) {
     console.warn("Logout request failed, cleaning local state anyway.")

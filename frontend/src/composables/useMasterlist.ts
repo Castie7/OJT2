@@ -1,6 +1,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { researchService } from '../services'
 import { useToast } from './useToast'
+import { useErrorHandler } from './useErrorHandler'
 import type { Research } from '../types'
 
 export function useMasterlist() {
@@ -17,6 +18,7 @@ export function useMasterlist() {
     const isEditModalOpen = ref(false)
     const isSaving = ref(false)
     const { showToast } = useToast()
+    const { handleError } = useErrorHandler()
     const editForm = ref<any>({
         id: null,
         title: '',
@@ -66,7 +68,7 @@ export function useMasterlist() {
             allItems.value = await researchService.getMasterlist()
             currentPage.value = 1
         } catch (error) {
-            console.error('Failed to fetch masterlist:', error)
+            handleError(error, 'Failed to load masterlist')
         } finally {
             isLoading.value = false
         }

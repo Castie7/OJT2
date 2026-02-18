@@ -2,12 +2,11 @@
 
 import axios, { type InternalAxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios';
 import type { ApiResponse } from '../types';
+import { RETRY } from '../constants';
+import { useGlobalLoading } from '../composables/useGlobalLoading';
 
 // 1. Dynamic Base URL (Auto-detects IP)
-// This overrides the .env file so you don't need to change it when your IP changes.
 export const getBaseUrl = () => {
-  // Dynamically construct URL from browser location
-  // Assumption: Backend is at the same hostname, but on standard port 80/443 (via XAMPP)
   const hostname = window.location.hostname;
   const protocol = window.location.protocol;
   return `${protocol}//${hostname}/OJT2/backend/public/index.php`;
@@ -28,14 +27,21 @@ const api = axios.create({
 });
 
 // ============================================================================
-// REQUEST INTERCEPTOR - CSRF Token Handling
+// GLOBAL LOADING STATE
+// ============================================================================
+const { startLoading, stopLoading } = useGlobalLoading();
+
+// ============================================================================
+// REQUEST INTERCEPTOR - CSRF Token + Loading State
 // ============================================================================
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  startLoading();
+
   const match = document.cookie.match(new RegExp('(^| )csrf_cookie_name=([^;]+)'));
   let token = match ? match[2] : null;
 
   if (!token) {
-    token = localStorage.getItem('csrf_token_backup');
+    token = sessionStorage.getItem('csrf_token_backup');
   }
 
   if (token && config.headers) {
@@ -44,40 +50,67 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
   return config;
 }, (error) => {
+  stopLoading();
   return Promise.reject(error);
 });
 
 // ============================================================================
-// RESPONSE INTERCEPTOR - Error Handling
+// RESPONSE INTERCEPTOR - Error Handling + Retry Logic + Loading State
 // ============================================================================
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Successful response - pass through
+    stopLoading();
     return response;
   },
-  (error: AxiosError<ApiResponse>) => {
-    // Centralized error handling
-    if (error.response) {
-      // Server responded with error status
-      const status = error.response.status;
-      const data = error.response.data;
+  async (error: AxiosError<ApiResponse>) => {
+    stopLoading();
 
-      // Log specific error cases for debugging
-      if (status === 401) {
-        console.warn('Unauthorized request - user may need to log in');
-      } else if (status === 403) {
-        console.warn('Forbidden - CSRF token may be invalid or permissions insufficient');
-      } else if (status === 429) {
-        console.warn('Too many requests - rate limit exceeded');
-      } else if (status >= 500) {
-        console.error('Server error:', data?.message || 'Internal server error');
+    const config = error.config as InternalAxiosRequestConfig & { __retryCount?: number };
+
+    // --- Retry Logic ---
+    // Only retry on network errors or specific server errors (502/503/504)
+    const isRetryable =
+      !error.response                                          // Network error
+      || RETRY.RETRYABLE_STATUSES.includes(error.response.status); // Gateway errors
+
+    // Only auto-retry GET requests (idempotent); POST may cause duplicates
+    const isGet = config?.method?.toUpperCase() === 'GET';
+
+    if (config && isRetryable && isGet) {
+      config.__retryCount = config.__retryCount || 0;
+
+      if (config.__retryCount < RETRY.MAX_RETRIES) {
+        config.__retryCount++;
+        const delay = RETRY.BASE_DELAY_MS * Math.pow(2, config.__retryCount - 1);
+
+        if (import.meta.env.DEV) {
+          console.warn(`[Retry] Attempt ${config.__retryCount}/${RETRY.MAX_RETRIES} for ${config.url} in ${delay}ms`);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+        startLoading(); // re-entering request flow
+        return api(config);
       }
-    } else if (error.request) {
-      // Request made but no response received
-      console.error('Network error - no response from server');
-    } else {
-      // Something else happened
-      console.error('Request error:', error.message);
+    }
+
+    // --- Error Logging (dev only) ---
+    if (import.meta.env.DEV) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          console.warn('Unauthorized request - user may need to log in');
+        } else if (status === 403) {
+          console.warn('Forbidden - CSRF token may be invalid or permissions insufficient');
+        } else if (status === 429) {
+          console.warn('Too many requests - rate limit exceeded');
+        } else if (status >= 500) {
+          console.error('Server error:', error.response.data?.message || 'Internal server error');
+        }
+      } else if (error.request) {
+        console.error('Network error - no response from server');
+      } else {
+        console.error('Request error:', error.message);
+      }
     }
 
     return Promise.reject(error);

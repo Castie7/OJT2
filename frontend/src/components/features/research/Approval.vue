@@ -90,7 +90,7 @@ defineExpose({ openNotification })
                   <template v-if="activeTab === 'pending'">
                     <button 
                       @click.stop="handleAction(item.id, 'approve')" 
-                      class="p-2 rounded-full text-green-600 hover:bg-green-100 transition-colors"
+                      class="p-2.5 rounded-full text-green-600 hover:bg-green-100 transition-colors"
                       title="Approve"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -99,7 +99,7 @@ defineExpose({ openNotification })
                     </button>
                     <button 
                       @click.stop="handleAction(item.id, 'reject')" 
-                      class="p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors"
+                      class="p-2.5 rounded-full text-red-500 hover:bg-red-100 transition-colors"
                       title="Reject"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -110,7 +110,7 @@ defineExpose({ openNotification })
                   <template v-else>
                     <button 
                       @click.stop="handleAction(item.id, 'restore')" 
-                      class="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
+                      class="p-2.5 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
                       title="Restore to Pending"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

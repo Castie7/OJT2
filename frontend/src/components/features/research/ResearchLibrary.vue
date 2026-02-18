@@ -183,10 +183,10 @@ const toggleFullscreen = () => {
                           <button 
                             v-if="item.file_path" 
                             @click.stop="selectedResearch = item" 
-                            class="p-2 rounded-full text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-colors"
+                            class="p-2.5 rounded-full text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-colors"
                             title="View PDF"
                           >
-                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                              </svg>
                           </button>
@@ -194,10 +194,10 @@ const toggleFullscreen = () => {
                             v-if="item.link" 
                             :href="item.link" 
                             target="_blank" 
-                            class="p-2 rounded-full text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-colors flex items-center justify-center"
+                            class="p-2.5 rounded-full text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-colors flex items-center justify-center"
                             title="Open Link"
                           >
-                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                              </svg>
                           </a>
@@ -206,13 +206,13 @@ const toggleFullscreen = () => {
                     <td v-if="currentUser && currentUser.role === 'admin'" class="px-4 py-4 text-right">
                         <button 
                           @click.stop="requestArchiveToggle(item)" 
-                          :class="`p-2 rounded-full transition-colors ${showArchived ? 'text-green-600 hover:bg-green-100' : 'text-red-600 hover:bg-red-100'}`"
+                          :class="`p-2.5 rounded-full transition-colors ${showArchived ? 'text-green-600 hover:bg-green-100' : 'text-red-600 hover:bg-red-100'}`"
                           :title="showArchived ? 'Restore' : 'Archive'"
                         >
-                           <svg v-if="showArchived" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                           <svg v-if="showArchived" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                               <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                            </svg>
-                           <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                           <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                               <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                            </svg>
                         </button>

@@ -1,15 +1,6 @@
 import { ref } from 'vue'
-import api from '../services/api'
-
-export interface ActivityLog {
-    id: number
-    user_name: string
-    role: string
-    action: string
-    details: string
-    ip_address: string
-    created_at: string
-}
+import { adminService } from '../services'
+import type { ActivityLog } from '../types'
 
 export function useAdminLogs() {
     const logs = ref<ActivityLog[]>([])
@@ -32,22 +23,20 @@ export function useAdminLogs() {
     const fetchLogs = async (page = 1) => {
         loading.value = true
         try {
-            const params = {
+            const response = await adminService.getLogs({
                 page,
                 limit: pagination.value.perPage,
                 search: filters.value.search,
-                action: filters.value.action !== 'ALL' ? filters.value.action : undefined,
-                start_date: filters.value.startDate || undefined,
-                end_date: filters.value.endDate || undefined
-            }
+                action: filters.value.action,
+                start_date: filters.value.startDate,
+                end_date: filters.value.endDate
+            })
 
-            const response = await api.get('/api/logs', { params })
+            logs.value = response.data
 
-            logs.value = response.data.data
-
-            if (response.data.pager) {
-                pagination.value.currentPage = response.data.pager.currentPage
-                pagination.value.totalPages = response.data.pager.pageCount
+            if (response.pager) {
+                pagination.value.currentPage = response.pager.currentPage
+                pagination.value.totalPages = response.pager.pageCount
             }
         } catch (error) {
             console.error("Failed to fetch activity logs", error)
@@ -58,15 +47,12 @@ export function useAdminLogs() {
     }
 
     const downloadLogs = () => {
-        const params = new URLSearchParams()
-        if (filters.value.search) params.append('search', filters.value.search)
-        if (filters.value.action !== 'ALL') params.append('action', filters.value.action)
-        if (filters.value.startDate) params.append('start_date', filters.value.startDate)
-        if (filters.value.endDate) params.append('end_date', filters.value.endDate)
-
-        // Explicitly use FULL URL for window.open to ensure it hits backend
-        const baseUrl = api.defaults.baseURL || ''
-        const url = `${baseUrl}/api/logs/export?${params.toString()}`
+        const url = adminService.getExportLogsUrl({
+            search: filters.value.search,
+            action: filters.value.action,
+            start_date: filters.value.startDate,
+            end_date: filters.value.endDate
+        })
 
         window.open(url, '_blank')
     }

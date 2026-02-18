@@ -16,7 +16,6 @@ const {
   isSuccess, 
   isLoading, 
   isLockedOut,
-  lockoutSeconds,
   handleLogin 
 } = useLoginForm(emit)
 </script>

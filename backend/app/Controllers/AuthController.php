@@ -67,6 +67,7 @@ class AuthController extends BaseController
                     'user' => [
                         'id' => $user->id,
                         'name' => $user->name,
+                        'email' => $user->email,
                         'role' => $user->role
                     ],
                     'csrf_token' => csrf_hash()

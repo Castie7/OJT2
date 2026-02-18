@@ -1,34 +1,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
-import api from '../services/api'
+import { researchService } from '../services'
 import { useToast } from './useToast'
-import type { User } from '../types'
-
-export interface Research {
-    id: number
-    title: string
-    author: string
-    crop_variation: string
-    abstract: string
-    status: 'pending' | 'approved' | 'rejected' | 'archived'
-    file_path: string
-    start_date?: string
-    deadline_date?: string
-    archived_at?: string
-    approved_at?: string
-    updated_at?: string
-    created_at: string
-    // Details
-    knowledge_type?: string
-    publication_date?: string
-    edition?: string
-    publisher?: string
-    physical_description?: string
-    isbn_issn?: string
-    subjects?: string
-    shelf_location?: string
-    item_condition?: string
-    link?: string
-}
+import type { Research } from '../types'
 
 export function useMasterlist() {
 
@@ -84,11 +57,13 @@ export function useMasterlist() {
     })
 
     // --- FETCH ---
+    // --- FETCH ---
     const fetchData = async () => {
         isLoading.value = true
         try {
-            const response = await api.get('/research/masterlist')
-            allItems.value = response.data
+            // The original code fetched '/research/masterlist' which implies a specific endpoint. 
+            // We now have a dedicated service method for this.
+            allItems.value = await researchService.getMasterlist()
             currentPage.value = 1
         } catch (error) {
             console.error('Failed to fetch masterlist:', error)
@@ -223,17 +198,18 @@ export function useMasterlist() {
         if (form.pdf_file) formData.append('pdf_file', form.pdf_file)
 
         try {
-            await api.post(`/research/update/${form.id}`, formData)
+            await researchService.update(form.id, formData)
             showToast('✅ Research updated successfully!', 'success')
             isEditModalOpen.value = false
             fetchData()
             return true
         } catch (error: any) {
             let msg = 'Update Failed'
-            if (error.response?.data?.messages) {
-                msg = Object.values(error.response.data.messages).join('\n')
-            } else if (error.response?.data?.message) {
-                msg = error.response.data.message
+            const errData = error.response?.data
+            if (errData?.messages) {
+                msg = Object.values(errData.messages).join('\n')
+            } else if (errData?.message) {
+                msg = errData.message
             }
             showToast('❌ Error: ' + msg, 'error')
             return false
@@ -260,16 +236,16 @@ export function useMasterlist() {
 
         confirmModal.value.isProcessing = true
         try {
-            let endpoint = ''
+            if (confirmModal.value.action === 'Restore') {
+                await researchService.restore(confirmModal.value.id)
+            } else if (confirmModal.value.action === 'Archive') {
+                await researchService.archive(confirmModal.value.id)
+            } else if (confirmModal.value.action === 'Approve') {
+                await researchService.approve(confirmModal.value.id)
+            } else if (confirmModal.value.action === 'Reject') {
+                await researchService.reject(confirmModal.value.id)
+            }
 
-            // Standard Archive/Restore
-            if (confirmModal.value.action === 'Restore') endpoint = `/research/restore/${confirmModal.value.id}`
-            else if (confirmModal.value.action === 'Archive') endpoint = `/research/archive/${confirmModal.value.id}`
-            // Approve/Reject
-            else if (confirmModal.value.action === 'Approve') endpoint = `/research/approve/${confirmModal.value.id}`
-            else if (confirmModal.value.action === 'Reject') endpoint = `/research/reject/${confirmModal.value.id}`
-
-            await api.post(endpoint)
             showToast(`${confirmModal.value.action} successful!`, 'success')
             confirmModal.value.show = false
 

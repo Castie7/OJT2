@@ -1,5 +1,6 @@
  <script setup lang="ts">
-import { useHomeView, type User, type Stat } from '../../../composables/useHomeView'
+import { useHomeView } from '../../../composables/useHomeView'
+import type { User, Stat } from '../../../types'
 
 defineProps<{
   currentUser: User | null // id, name, role

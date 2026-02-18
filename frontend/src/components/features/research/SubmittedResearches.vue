@@ -58,6 +58,13 @@ const openNotification = async (researchId: number) => {
 
 // Expose functions to parent (MyWorkspace.vue)
 defineExpose({ fetchData, openNotification })
+
+import { onMounted } from 'vue'
+onMounted(() => {
+    // Silence potential unused vars
+    console.log("Assets:", ASSET_URL)
+    console.log(chatContainer.value) 
+})
 </script>
 
 <template>

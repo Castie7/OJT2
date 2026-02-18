@@ -1,16 +1,12 @@
 import { ref, reactive, onMounted } from 'vue'
-import api from '../services/api' // ✅ Switch to Secure central API
+import { adminService, authService } from '../services'
 import { useToast } from './useToast'
 import type { User } from '../types'
-
-interface LocalUser extends User {
-  created_at: string
-}
 
 export function useUserManagement() {
 
   // --- STATE ---
-  const users = ref<LocalUser[]>([])
+  const users = ref<User[]>([])
   const isLoading = ref(false)
   const isSubmitting = ref(false)
   const showAddForm = ref(false)
@@ -30,9 +26,7 @@ export function useUserManagement() {
   const fetchUsers = async () => {
     isLoading.value = true
     try {
-      // ✅ Axios automatically handles baseURL and auth cookies
-      const response = await api.get('/admin/users')
-      users.value = response.data
+      users.value = await adminService.getUsers()
     } catch (error) {
       console.error("Fetch error:", error)
     } finally {
@@ -49,15 +43,14 @@ export function useUserManagement() {
 
     isSubmitting.value = true
     try {
-      // ✅ Uses central API POST with CSRF protection
-      const response = await api.post('/auth/register', {
+      const response = await authService.register({
         name: form.name,
         email: form.email,
         password: form.password,
         role: form.role
       })
 
-      if (response.data.status === 'success' || response.status === 200) {
+      if (response.status === 'success') {
         showToast("✅ User added successfully!", "success")
 
         // Reset Form
@@ -89,13 +82,12 @@ export function useUserManagement() {
     }
 
     try {
-      // ✅ Endpoints updated to use the secure axios instance
-      const response = await api.post('/admin/reset-password', {
+      const response = await adminService.resetPassword({
         user_id: userId,
         new_password: newPass
       })
 
-      if (response.status === 200) {
+      if (response.status === 'success') {
         showToast(`✅ Password for ${userName} has been reset.`, "success")
       }
     } catch (error: any) {

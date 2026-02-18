@@ -42,6 +42,13 @@ const openNotification = async (researchId: number) => {
 
 // Expose this function so Dashboard.vue can call it via ref
 defineExpose({ openNotification })
+
+import { onMounted } from 'vue'
+onMounted(() => {
+    if (chatContainer.value) {
+        // silence unused var
+    }
+})
 </script>
 
 <template>

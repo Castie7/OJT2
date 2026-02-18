@@ -8,6 +8,7 @@ import type { User } from '../types'
 
 // Global authentication state (shared across the app)
 const currentUser = ref<User | null>(null)
+const isInitialized = ref(false)
 
 export function useAuth() {
   // Computed properties
@@ -42,6 +43,7 @@ export function useAuth() {
   return {
     // State
     currentUser: getCurrentUser(),
+    isInitialized,
 
     // Computed
     isAuthenticated,
@@ -51,6 +53,7 @@ export function useAuth() {
     // Methods
     setUser,
     clearUser,
-    hasRole
+    hasRole,
+    setInitialized: (value: boolean) => isInitialized.value = value
   }
 }

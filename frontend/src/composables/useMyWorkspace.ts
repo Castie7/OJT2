@@ -1,31 +1,8 @@
 import { ref, reactive, watch } from 'vue'
-import api from '../services/api' // ✅ Switch to Secure API Service
+import { researchService } from '../services'
 import { useToast } from './useToast'
-import type { User } from '../types'
+import type { User, Research } from '../types'
 
-
-export interface Research {
-  id: number
-  title: string
-  author: string
-  status: string
-  crop_variation: string
-  start_date: string
-  deadline_date: string
-  knowledge_type: string
-  publication_date: string
-  edition: string
-  publisher: string
-  physical_description: string
-  isbn_issn: string
-  subjects: string
-  shelf_location: string
-  item_condition: string
-  link: string
-  file_path?: string
-  rejected_at?: string
-  archived_at?: string
-}
 
 export function useMyWorkspace(_currentUser: User | null) {
 
@@ -117,18 +94,9 @@ export function useMyWorkspace(_currentUser: User | null) {
   const fetchMyResearches = async () => {
     isLoading.value = true
     try {
-      // ✅ Use api.get()
-      let endpoint = '';
-      switch (activeTab.value) {
-        case 'archived':
-          endpoint = '/research/my-archived'
-          break
-        default:
-          endpoint = '/research/my-submissions'
-      }
-
-      const response = await api.get(endpoint);
-      myResearches.value = response.data;
+      myResearches.value = activeTab.value === 'archived'
+        ? await researchService.getMyArchived()
+        : await researchService.getMySubmissions()
 
     } catch (e) {
       console.error("Failed to fetch data", e);
@@ -252,12 +220,11 @@ export function useMyWorkspace(_currentUser: User | null) {
     if (form.pdf_file) formData.append('pdf_file', form.pdf_file)
 
     try {
-      // ✅ Use api.post()
-      const url = form.id
-        ? `/research/update/${form.id}`
-        : `/research/create`
-
-      await api.post(url, formData)
+      if (form.id) {
+        await researchService.update(form.id, formData)
+      } else {
+        await researchService.create(formData)
+      }
 
       showToast(form.id ? "Success! Research Updated." : "Success! Research Submitted.", "success")
       isModalOpen.value = false

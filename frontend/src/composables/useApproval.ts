@@ -1,26 +1,7 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
-import api from '../services/api' // ✅ Switch to Secure API Service
+import { researchService, commentService } from '../services'
 import { useToast } from './useToast'
-import type { User } from '../types'
-
-// --- TYPES ---
-export interface Research {
-  id: number
-  title: string
-  author: string
-  deadline_date: string
-  rejected_at?: string
-  file_path: string
-  created_at: string
-}
-
-interface Comment {
-  id: number
-  user_name: string
-  role: string
-  comment: string
-  created_at: string
-}
+import type { User, Research, Comment } from '../types'
 
 export function useApproval(currentUser: User | null) {
 
@@ -86,14 +67,10 @@ export function useApproval(currentUser: User | null) {
     isLoading.value = true
     items.value = []
     try {
-      // ✅ Use api.get()
-      // The service handles the Base URL automatically
-      const endpoint = activeTab.value === 'pending'
-        ? '/research/pending'
-        : '/research/rejected'
+      items.value = activeTab.value === 'pending'
+        ? await researchService.getPending()
+        : await researchService.getRejected()
 
-      const response = await api.get(endpoint)
-      items.value = response.data
       currentPage.value = 1
 
     } catch (error) {
@@ -147,13 +124,13 @@ export function useApproval(currentUser: User | null) {
     const { id, action } = confirmModal.value
 
     try {
-      let endpoint = ''
-      if (action === 'approve') endpoint = 'approve'
-      else if (action === 'reject') endpoint = 'reject'
-      else if (action === 'restore') endpoint = 'restore'
-
-      // ✅ Use api.post()
-      await api.post(`/research/${endpoint}/${id}`)
+      if (action === 'approve') {
+        await researchService.approve(id)
+      } else if (action === 'reject') {
+        await researchService.reject(id)
+      } else if (action === 'restore') {
+        await researchService.restore(id)
+      }
 
       showToast(`Action ${action} successful!`, 'success')
       fetchData()
@@ -178,17 +155,19 @@ export function useApproval(currentUser: User | null) {
 
   // --- DEADLINE LOGIC ---
   const openDeadlineModal = (item: Research) => {
-    deadlineModal.value = { show: true, id: item.id, title: item.title, currentDate: item.deadline_date, newDate: item.deadline_date }
+    deadlineModal.value = {
+      show: true,
+      id: item.id,
+      title: item.title,
+      currentDate: item.deadline_date || '',
+      newDate: item.deadline_date || ''
+    }
   }
 
   const saveNewDeadline = async () => {
     if (!deadlineModal.value.newDate || !deadlineModal.value.id) return
     try {
-      const formData = new FormData()
-      formData.append('new_deadline', deadlineModal.value.newDate)
-
-      // ✅ Use api.post() with FormData
-      await api.post(`/research/extend-deadline/${deadlineModal.value.id}`, formData)
+      await researchService.extendDeadline(deadlineModal.value.id, deadlineModal.value.newDate)
 
       showToast("Deadline Updated!", 'success')
       deadlineModal.value.show = false
@@ -204,9 +183,7 @@ export function useApproval(currentUser: User | null) {
   const openComments = async (item: Research) => {
     commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
     try {
-      // ✅ Use api.get()
-      const res = await api.get(`/research/comments/${item.id}`)
-      commentModal.value.list = res.data
+      commentModal.value.list = await researchService.getComments(item.id)
       scrollToBottom()
     } catch (e) {
       console.error("Error loading comments")
@@ -217,10 +194,8 @@ export function useApproval(currentUser: User | null) {
     if (isSendingComment.value || !commentModal.value.newComment.trim() || !currentUser) return
     isSendingComment.value = true
     try {
-      // ✅ Use api.post()
-      // Automatically adds JSON headers and CSRF token
-      await api.post('/api/comments', {
-        research_id: commentModal.value.researchId,
+      await commentService.create({
+        research_id: commentModal.value.researchId!,
         user_id: currentUser.id,
         user_name: currentUser.name,
         role: 'admin',
@@ -228,8 +203,7 @@ export function useApproval(currentUser: User | null) {
       })
 
       // Refresh comments
-      const refreshRes = await api.get(`/research/comments/${commentModal.value.researchId}`)
-      commentModal.value.list = refreshRes.data
+      commentModal.value.list = await researchService.getComments(commentModal.value.researchId!)
       commentModal.value.newComment = ''
       scrollToBottom()
 

@@ -1,5 +1,5 @@
 import { ref, reactive, watch, type Ref } from 'vue'
-import api from '../services/api' // ✅ Switch to Secure API Service
+import api from '../services/api'
 import { useToast } from './useToast'
 import type { User } from '../types'
 

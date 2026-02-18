@@ -1,0 +1,5 @@
+
+> frontend@0.0.0 build
+> vue-tsc -b && vite build
+
+src/components/features/research/Approval.vue(13,50): error TS6133: 'chatContainer' is declared but its value is never read.

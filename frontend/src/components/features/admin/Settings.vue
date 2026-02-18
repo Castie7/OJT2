@@ -1,20 +1,18 @@
 <script setup lang="ts">
-import { toRef } from 'vue'
 import { useSettings } from '../../../composables/useSettings'
+import { useAuth } from '../../../composables/useAuth'
 import type { User } from '../../../types'
 
-const props = defineProps<{ currentUser: User | null }>()
+// 1. Get Global Auth State directly (No more props)
+const { currentUser } = useAuth()
 
-// 1. Define Emits
+// 2. Define Emits
 const emit = defineEmits<{ 
   (e: 'update-user', user: User): void
   (e: 'trigger-logout'): void 
 }>()
 
-// Create a reactive reference to the prop so the composable can watch it
-const currentUserRef = toRef(props, 'currentUser') 
-
-// 2. Use Composable
+// 3. Use Composable
 // We pass callbacks so the composable can trigger parent events
 const { 
   profileForm, passForm, 
@@ -22,7 +20,7 @@ const {
   saveProfile, changePassword,
   showCurrentPass, showNewPass
 } = useSettings(
-    currentUserRef, 
+    currentUser, 
     (u) => emit('update-user', u), // Success Callback: Update Parent State
     () => emit('trigger-logout')   // Success Callback: Logout User
 )

@@ -1,34 +1,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
-import api from '../services/api' // ✅ Uses Secure API Service
+import { researchService } from '../services'
 import { useToast } from './useToast'
-import type { User } from '../types'
-
-// --- 1. SHARED INTERFACES ---
-export interface Research {
-  id: number
-  title: string
-  author: string
-  status: 'pending' | 'approved' | 'rejected' | 'archived'
-
-  // Library Catalog Fields
-  knowledge_type: string
-  crop_variation: string
-  publication_date: string
-  edition: string
-  publisher: string
-  physical_description: string
-  isbn_issn: string
-  subjects: string
-  shelf_location: string
-  item_condition: string
-  link: string
-  file_path: string
-
-  // Dates
-  approved_at?: string
-  archived_at?: string
-  created_at: string
-}
+import type { User, Research } from '../types'
 
 
 export function useResearchLibrary(_currentUser: User | null, emit: (event: 'update-stats', count: number) => void) {
@@ -74,20 +47,14 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
   const fetchResearches = async () => {
     isLoading.value = true
     try {
-      // ✅ Use api.get()
-      // The secure service handles Base URL and Cookies automatically.
-      const endpoint = showArchived.value
-        ? '/research/archived'
-        : '/research'
+      const filters = {
+        start_date: startDate.value,
+        end_date: endDate.value
+      }
 
-      // Build Query Params
-      const params = new URLSearchParams()
-      if (startDate.value) params.append('start_date', startDate.value)
-      if (endDate.value) params.append('end_date', endDate.value)
-
-      const response = await api.get(`${endpoint}?${params.toString()}`)
-
-      researches.value = response.data
+      researches.value = showArchived.value
+        ? await researchService.getArchived(filters)
+        : await researchService.getAll(filters)
 
       if (!showArchived.value) {
         emit('update-stats', researches.value.length)
@@ -155,13 +122,11 @@ export function useResearchLibrary(_currentUser: User | null, emit: (event: 'upd
 
     confirmModal.value.isProcessing = true
     try {
-      // ✅ Use api.post()
-      // CSRF headers are automatically handled by the api.ts interceptor
-      const endpoint = confirmModal.value.action === 'Restore'
-        ? `/research/restore/${confirmModal.value.id}`
-        : `/research/archive/${confirmModal.value.id}`
-
-      await api.post(endpoint)
+      if (confirmModal.value.action === 'Restore') {
+        await researchService.restore(confirmModal.value.id)
+      } else {
+        await researchService.archive(confirmModal.value.id)
+      }
 
       fetchResearches()
       showToast(`Item ${confirmModal.value.action}d successfully!`, "success")

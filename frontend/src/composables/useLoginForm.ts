@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import api from '../services/api' // ✅ Secure API Service
+import { authService } from '../services'
 
 export function useLoginForm(emit: {
   (e: 'login-success', data: any): void;
@@ -51,10 +51,7 @@ export function useLoginForm(emit: {
   // --- ACTIONS ---
   const fetchCsrfToken = async () => {
     try {
-      const response = await api.get('/auth/verify')
-      if (response.data.csrf_token) {
-        localStorage.setItem('csrf_token_backup', response.data.csrf_token)
-      }
+      await authService.verify()
     } catch (e) {
       console.warn("Failed to init CSRF token", e)
     }
@@ -72,13 +69,10 @@ export function useLoginForm(emit: {
     message.value = ""
 
     try {
-      // ✅ SECURE POST REQUEST
-      const response = await api.post('/auth/login', {
+      const data = await authService.login({
         email: email.value,
         password: password.value
       })
-
-      const data = response.data
 
       if (data.status === 'success') {
         isSuccess.value = true

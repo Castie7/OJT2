@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRef } from 'vue' 
+import { ref } from 'vue' 
 import SubmittedResearches from './SubmittedResearches.vue'
 import { useMyWorkspace } from '../../../composables/useMyWorkspace' 
 import type { User } from '../../../types' 

@@ -4,11 +4,17 @@ import api from './services/api'
 import { RouterView, useRouter } from 'vue-router'
 import Toast from './components/shared/Toast.vue'
 import { useAuth } from './composables/useAuth'
-import type { User } from './types'
 
-const { currentUser, setUser, clearUser } = useAuth()
-const isLoading = ref(true) 
+
+const { currentUser, setUser, clearUser, isInitialized, setInitialized } = useAuth()
+const isLoading = ref(!isInitialized.value) 
 const router = useRouter()
+
+/* Watch for initialization from router guard */
+import { watch } from 'vue'
+watch(isInitialized, (newVal) => {
+    if (newVal) isLoading.value = false
+}, { immediate: true })
 
 // --- Token Management ---
 const saveToken = (token: string) => {
@@ -20,18 +26,22 @@ const saveToken = (token: string) => {
 }
 
 onMounted(async () => {
+  // If router guard already handled initialization, just stop loading
+  if (isInitialized.value) {
+    isLoading.value = false
+    return
+  }
+
+  // Fallback for cases where router guard didn't run (e.g. 404 page if exists outside routes)
   try {
     const response = await api.get('/auth/verify')
     
-    // Refresh security token if provided
     if (response.data.csrf_token) {
        saveToken(response.data.csrf_token);
     }
     
     if (response.data.status === 'success') {
       setUser(response.data.user)
-      
-      // If already logged in, redirect to home
       if (window.location.pathname === '/login') {
         router.push('/')
       }
@@ -43,6 +53,7 @@ onMounted(async () => {
     clearUser()
   } finally {
     isLoading.value = false
+    setInitialized(true)
   }
 })
 

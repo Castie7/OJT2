@@ -1,15 +1,7 @@
 import { ref, watch, computed, onMounted, onUnmounted, nextTick, type Ref } from 'vue'
-import api from '../services/api' // ✅ Switched to Secure API
-import type { User } from '../types'
-
-
-export interface Stat {
-  id?: string
-  title: string
-  value: string | number
-  color: string
-  action?: string
-}
+import { dashboardService, notificationService } from '../services'
+import api from '../services/api'
+import type { User, Stat } from '../types'
 
 export function useDashboard(currentUserRef: Ref<User | null>) {
 
@@ -50,16 +42,16 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
 
     try {
       let response;
-      // ✅ SECURE API CALLS (Cookies attached automatically)
       if (user.role === 'admin') {
-        response = await api.get('/research/stats')
+        const data = await dashboardService.getStats()
 
         stats.value = [
-          { id: 'stat-1', title: 'Total Researches', value: response.data.total, color: 'text-green-600', action: 'research' },
+          { id: 'stat-1', title: 'Total Researches', value: data.total, color: 'text-green-600', action: 'research' },
           { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
-          { id: 'stat-3', title: 'Pending Reviews', value: response.data.pending, color: 'text-red-600', action: 'approval' }
+          { id: 'stat-3', title: 'Pending Reviews', value: data.pending, color: 'text-red-600', action: 'approval' }
         ]
       } else {
+        // For non-admin users, still use api directly as there's no service method for user-specific stats
         response = await api.get(`/research/user-stats/${user.id}`)
 
         stats.value = [
@@ -125,9 +117,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     const user = currentUserRef.value
     if (!user) return
     try {
-      // ✅ Secure API Call
-      const response = await api.get(`/api/notifications?user_id=${user.id}`)
-      notifications.value = response.data
+      notifications.value = await notificationService.getAll(user.id)
     } catch (error) {
       console.error("Failed to fetch notifications", error)
     }
@@ -142,8 +132,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
         // Optimistic update
         notifications.value.forEach(n => n.is_read = 1)
 
-        // ✅ Secure POST (Sends CSRF Token automatically)
-        await api.post('/api/notifications/read', { user_id: user.id })
+        await notificationService.markAllAsRead(user.id)
       } catch (e) { console.error(e) }
     }
   }

@@ -1,31 +1,7 @@
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
-import api from '../services/api' // ✅ Secure API Service
+import { researchService, commentService } from '../services'
 import { useToast } from './useToast'
-import type { User } from '../types'
-
-// --- TYPE DEFINITIONS ---
-export interface Research {
-    id: number
-    title: string
-    author: string
-    crop_variation: string
-    abstract: string
-    status: 'pending' | 'approved' | 'rejected' | 'archived'
-    file_path: string
-    start_date?: string
-    deadline_date?: string
-    archived_at?: string
-    approved_at?: string
-    updated_at?: string
-    created_at: string
-}
-
-interface Comment {
-    id: number
-    user_name: string
-    role: string
-    comment: string
-}
+import type { User, Research, Comment } from '../types'
 
 export function useSubmittedResearches(props: { currentUser: User | null, statusFilter: string }) {
 
@@ -112,14 +88,13 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
     const fetchData = async () => {
         isLoading.value = true
         try {
-            // ✅ Use api.get()
-            // The service handles Base URL and Cookies automatically
-            const endpoint = props.statusFilter === 'archived'
-                ? '/research/my-archived'
-                : '/research/my-submissions'
+            // Use getMyArchived or getMySubmissions based on filter
+            if (props.statusFilter === 'archived') {
+                myItems.value = await researchService.getMyArchived()
+            } else {
+                myItems.value = await researchService.getMySubmissions()
+            }
 
-            const response = await api.get(endpoint)
-            myItems.value = response.data
             currentPage.value = 1
             searchQuery.value = ''
 
@@ -188,12 +163,13 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
         if (!confirmModal.value.id || confirmModal.value.isProcessing) return
         confirmModal.value.isProcessing = true
         try {
-            // ✅ Use api.post()
-            const endpoint = props.statusFilter === 'archived'
-                ? `/research/restore/${confirmModal.value.id}`
-                : `/research/archive/${confirmModal.value.id}`
-
-            await api.post(endpoint)
+            if (props.statusFilter === 'archived') {
+                // Restore
+                await researchService.restore(confirmModal.value.id)
+            } else {
+                // Archive
+                await researchService.archive(confirmModal.value.id)
+            }
 
             confirmModal.value.show = false
             showToast(`${confirmModal.value.action} successful!`, 'success')
@@ -210,20 +186,16 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
     const openComments = async (item: Research) => {
         commentModal.value = { show: true, researchId: item.id, title: item.title, list: [], newComment: '' }
         try {
-            // ✅ Use api.get()
-            const res = await api.get(`/research/comments/${item.id}`)
-            commentModal.value.list = res.data
+            commentModal.value.list = await researchService.getComments(item.id)
             nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight })
         } catch (e) { }
     }
 
     const postComment = async () => {
-        if (isSendingComment.value || !commentModal.value.newComment.trim() || !props.currentUser) return
+        if (isSendingComment.value || !commentModal.value.newComment.trim() || !props.currentUser || !commentModal.value.researchId) return
         isSendingComment.value = true
         try {
-            // ✅ Use api.post()
-            // CSRF token is attached automatically by interceptor
-            await api.post('/api/comments', {
+            await commentService.create({
                 research_id: commentModal.value.researchId,
                 user_id: props.currentUser.id,
                 user_name: props.currentUser.name,
@@ -232,8 +204,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
             })
 
             // Refresh comments
-            const refreshRes = await api.get(`/research/comments/${commentModal.value.researchId}`)
-            commentModal.value.list = refreshRes.data
+            commentModal.value.list = await researchService.getComments(commentModal.value.researchId)
             commentModal.value.newComment = ''
             nextTick(() => { if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight })
         } catch (e: any) {
@@ -280,10 +251,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
         if (editPdfFile.value) formData.append('pdf_file', editPdfFile.value)
 
         try {
-            // ✅ Use api.post() for FormData
-            // Axios handles multipart/form-data automatically when passed FormData
-            await api.post(`/research/update/${item.id}`, formData)
-
+            await researchService.update(item.id, formData)
             showToast("✅ Updated!", "success")
             editingItem.value = null
             fetchData()

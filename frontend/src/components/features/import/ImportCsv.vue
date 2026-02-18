@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import api from '../../../services/api' // ✅ Switch to Secure API Service
+import { apiCache } from '../../../utils/apiCache'
 import { useToast } from '../../../composables/useToast'
 import Papa from 'papaparse'
 
@@ -119,6 +120,7 @@ const uploadCsv = () => {
             
             selectedFile.value = null
             if(fileInput.value) fileInput.value.value = ''
+            apiCache.invalidate('research') // clear stale cache so UI shows new data
             emit('upload-success')
         },
         error: (error) => {
@@ -201,6 +203,7 @@ const uploadPdfs = async () => {
             
             selectedPdfs.value = [] // Clear selection
             if(pdfInput.value) pdfInput.value.value = ''
+            apiCache.invalidate('research') // clear stale cache
         } else {
             pdfStatus.value = { message: `❌ Error: ${result.message || 'Unknown Error'}`, type: 'error' }
             showToast("Upload Failed", 'error')

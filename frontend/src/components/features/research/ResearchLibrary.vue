@@ -4,7 +4,6 @@ import { useResearchLibrary } from '../../../composables/useResearchLibrary'
 import type { User } from '../../../types'
 import { useToast } from '../../../composables/useToast'
 import BaseButton from '../../ui/BaseButton.vue'
-import BaseCard from '../../ui/BaseCard.vue'
 import BaseInput from '../../ui/BaseInput.vue'
 import BaseSelect from '../../ui/BaseSelect.vue'
 
@@ -137,9 +136,9 @@ void confirmModal
         
         <!-- SIDEBAR FILTERS -->
         <div class="w-full lg:w-64 shrink-0 space-y-6">
-            <BaseCard class="!p-5 space-y-4 sticky top-24">
+            <div class="p-6 space-y-8 sticky top-24 bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/40">
                 <div>
-                     <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Search</label>
+                     <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Search</label>
                      <BaseInput 
                         v-model="searchQuery" 
                         placeholder="Title, author, keywords..." 
@@ -149,7 +148,7 @@ void confirmModal
                 </div>
 
                 <div>
-                     <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Type</label>
+                     <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Type</label>
                      <BaseSelect 
                         v-model="selectedType" 
                         :options="typeOptions" 
@@ -160,19 +159,19 @@ void confirmModal
                 </div>
 
                 <div>
-                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Date Range</label>
-                    <div class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Date Range</label>
+                    <div class="space-y-3">
                         <BaseInput v-model="startDate" type="date" class="w-full" />
                         <BaseInput v-model="endDate" type="date" class="w-full" />
                     </div>
                 </div>
 
-                <div v-if="hasActiveFilters" class="pt-4 border-t border-gray-100">
-                    <button @click="clearFilters" class="w-full text-sm text-red-600 hover:text-red-700 font-medium flex items-center justify-center gap-1">
+                <div v-if="hasActiveFilters" class="pt-6 border-t border-gray-200/50">
+                    <button @click="clearFilters" class="w-full text-sm text-red-600 hover:text-red-700 font-medium flex items-center justify-center gap-1 transition-colors">
                         <span>✕</span> Clear Filters
                     </button>
                 </div>
-            </BaseCard>
+            </div>
         </div>
 
         <!-- MAIN CONTENT -->

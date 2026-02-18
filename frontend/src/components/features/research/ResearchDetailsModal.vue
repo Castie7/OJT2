@@ -61,15 +61,15 @@ const toggleFullscreen = () => {
     <div v-if="research" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm overflow-y-auto">
       
       <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden" @click.stop>
-        
-        <div class="bg-green-800 text-white p-5 flex justify-between items-start shrink-0">
-          <div>
-            <span class="bg-green-900 text-green-100 text-[10px] uppercase font-bold px-2 py-1 rounded mb-2 inline-block">
-              {{ research.knowledge_type }}
-            </span>
-            <h2 class="text-2xl font-bold leading-tight">{{ research.title }}</h2>
-            <p class="text-green-200 text-sm mt-1">Author: {{ research.author }}</p>
-          </div>
+                <div class="bg-emerald-900 text-white p-6 flex justify-between items-start shrink-0">
+            <div class="pr-8">
+              <div class="flex gap-2 mb-3">
+                  <span class="bg-white/20 text-white backdrop-blur-md text-[10px] uppercase font-bold px-2 py-1 rounded">{{ research.knowledge_type }}</span>
+                  <span v-if="research.crop_variation" class="bg-teal-500 text-emerald-900 text-[10px] uppercase font-bold px-2 py-1 rounded">{{ research.crop_variation }}</span>
+              </div>
+              <h2 class="text-2xl font-bold leading-tight">{{ research.title }}</h2>
+              <p class="text-emerald-200 text-sm mt-2 font-medium">By {{ research.author }}</p>
+            </div>
           <button @click="$emit('close')" class="text-white hover:text-gray-300 text-3xl font-bold leading-none">&times;</button>
         </div>
 
@@ -89,10 +89,10 @@ const toggleFullscreen = () => {
              </div>
 
              <div class="bg-white p-5 rounded-lg border shadow-sm space-y-3">
-                 <h3 class="font-bold text-gray-800 border-b pb-2 mb-2">📍 Location & Topic</h3>
-                 <div class="grid grid-cols-3 gap-2 text-sm">
-                    <span class="text-gray-500">Shelf Loc:</span> <span class="col-span-2 font-mono font-bold text-green-700 text-lg">{{ research.shelf_location || 'Unknown' }}</span>
-                    <span class="text-gray-500">Condition:</span> <span class="col-span-2">{{ research.item_condition }}</span>
+                   <h3 class="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><span>📍</span> Location & Topic</h3>
+                   <div class="grid grid-cols-3 gap-y-3 text-sm">
+                      <span class="text-gray-500">Shelf Loc:</span> <span class="col-span-2 font-mono font-bold text-emerald-700 text-lg">{{ research.shelf_location || 'Unknown' }}</span>
+                      <span class="text-gray-500">Condition:</span> <span class="col-span-2">{{ research.item_condition }}</span>
                     <span class="text-gray-500">Crop:</span> <span class="col-span-2 text-amber-600 font-medium">{{ research.crop_variation || 'General' }}</span>
                     <span class="text-gray-500">Subjects:</span> <span class="col-span-2 italic text-gray-600">{{ research.subjects || 'No keywords' }}</span>
                  </div>
@@ -139,4 +139,3 @@ const toggleFullscreen = () => {
   </Transition>
 </template>
 
-<style scoped src="../../../assets/styles/ResearchLibrary.css"></style>

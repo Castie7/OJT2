@@ -46,8 +46,8 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
         const data = await dashboardService.getStats()
 
         stats.value = [
-          { id: 'stat-1', title: 'Total Researches', value: data.total, color: 'text-green-600', action: 'research' },
-          { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
+          { id: 'stat-1', title: 'Total Researches', value: data.total, color: 'text-primary-600', action: 'research' },
+          { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-secondary-600', action: 'home' },
           { id: 'stat-3', title: 'Pending Reviews', value: data.pending, color: 'text-red-600', action: 'approval' }
         ]
       } else {
@@ -55,8 +55,8 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
         response = await api.get(`/research/user-stats/${user.id}`)
 
         stats.value = [
-          { id: 'stat-1', title: 'My Published Works', value: response.data.published, color: 'text-green-600', action: 'workspace' },
-          { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-yellow-600', action: 'home' },
+          { id: 'stat-1', title: 'My Published Works', value: response.data.published, color: 'text-primary-600', action: 'workspace' },
+          { id: 'stat-2', title: 'Root Crop Varieties', value: '8', color: 'text-secondary-600', action: 'home' },
           { id: 'stat-3', title: 'My Pending Submissions', value: response.data.pending, color: 'text-orange-500', action: 'workspace' }
         ]
       }

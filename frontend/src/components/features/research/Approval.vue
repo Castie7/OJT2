@@ -43,6 +43,10 @@ const openNotification = async (researchId: number) => {
 // Expose this function so Dashboard.vue can call it via ref
 defineExpose({ openNotification })
 
+// Fix for vue-tsc unused variable error
+void chatContainer
+void confirmModal
+void isSendingComment
 </script>
 
 <template>

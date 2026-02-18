@@ -4,6 +4,10 @@ import SubmittedResearches from './SubmittedResearches.vue'
 import { useMyWorkspace } from '../../../composables/useMyWorkspace' 
 import type { User } from '../../../types' 
 import ResearchDetailsModal from './ResearchDetailsModal.vue'
+import BaseButton from '../../ui/BaseButton.vue'
+import BaseCard from '../../ui/BaseCard.vue'
+import BaseInput from '../../ui/BaseInput.vue'
+import BaseSelect from '../../ui/BaseSelect.vue'
 
 const props = defineProps<{
   currentUser: User | null
@@ -22,7 +26,6 @@ const {
 } = useMyWorkspace(props.currentUser)
 
 // Reference to the child component (the list of researches)
-// This allows us to call methods inside SubmittedResearches.vue
 const submissionsRef = ref<InstanceType<typeof SubmittedResearches> | null>(null)
 const selectedResearch = ref(null)
 
@@ -41,266 +44,222 @@ const handleSubmit = async () => {
 }
 
 // --- HANDLE NOTIFICATION CLICKS ---
-// This is called by Dashboard.vue when a user clicks a notification
 const openNotification = (id: number) => {
-    // Pass the ID down to the inner component to open the comments
     if (submissionsRef.value) {
         submissionsRef.value.openNotification(id)
     }
 }
 
-// Expose this function to the parent (Dashboard.vue)
 defineExpose({ openNotification })
+
+const variationOptions = [
+  { value: 'Sweet Potato', label: 'Sweet Potato' },
+  { value: 'Potato', label: 'Potato' },
+  { value: 'Yam Aeroponics', label: 'Yam Aeroponics' },
+  { value: 'Yam Minisetts', label: 'Yam Minisetts' },
+  { value: 'Taro', label: 'Taro' },
+  { value: 'Cassava', label: 'Cassava' },
+  { value: 'Yacon', label: 'Yacon' },
+  { value: 'Ginger', label: 'Ginger' },
+  { value: 'Canna', label: 'Canna' },
+  { value: 'Arrowroot', label: 'Arrowroot' },
+  { value: 'Turmeric', label: 'Turmeric' },
+  { value: 'Tannia', label: 'Tannia' },
+  { value: 'Kinampay', label: 'Kinampay' },
+  { value: 'Zambal', label: 'Zambal' },
+  { value: 'Bengueta', label: 'Bengueta' },
+  { value: 'Immitlog', label: 'Immitlog' },
+  { value: 'Beniazuma', label: 'Beniazuma' },
+  { value: 'Haponita', label: 'Haponita' },
+  { value: 'Ganza', label: 'Ganza' },
+  { value: 'Montanosa', label: 'Montanosa' },
+  { value: 'Igorota', label: 'Igorota' },
+  { value: 'Solibao', label: 'Solibao' },
+  { value: 'Raniag', label: 'Raniag' },
+  { value: 'Dalisay', label: 'Dalisay' },
+  { value: 'Others', label: 'Others' },
+]
+
+const conditionOptions = [
+    { value: 'New', label: 'New' },
+    { value: 'Good', label: 'Good' },
+    { value: 'Fair', label: 'Fair' },
+    { value: 'Poor', label: 'Poor' },
+    { value: 'Damaged', label: 'Damaged' },
+]
 </script>
 
 <template>
-  <div class="bg-white p-6 rounded-lg shadow-lg min-h-[500px]">
+  <div class="space-y-6 animate-fade-in">
     
-    <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b pb-4 gap-4">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
       <div>
-        <h2 class="text-xl font-bold text-gray-800">👤 My Workspace</h2>
-        <p class="text-sm text-gray-500">Managing uploads for: <span class="font-bold text-green-700">{{ currentUser?.name }}</span></p>
+        <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <span>👤</span> My Workspace
+        </h2>
+        <p class="text-sm text-gray-500">Managing uploads for <span class="font-bold text-emerald-700">{{ currentUser?.name }}</span></p>
       </div>
-      <div class="flex items-center gap-4">
-        <button 
-            @click="openSubmitModal" 
-            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-bold text-sm flex items-center gap-2 shadow hover:shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95"
-        >
-          <span>➕</span> Submit New Item
-        </button>
-      </div>
+      <BaseButton 
+          @click="openSubmitModal" 
+          variant="primary"
+          class="shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+      >
+        <span>➕</span> Submit New Item
+      </BaseButton>
     </div>
 
-    <div class="flex space-x-2 border-b mb-6 overflow-x-auto">
+    <!-- Tabs -->
+    <div class="bg-gray-100 p-1 rounded-xl inline-flex gap-1 overflow-x-auto max-w-full">
       <button 
         @click="activeTab = 'pending'" 
-        :class="`pb-2 px-4 font-medium text-sm transition whitespace-nowrap ${activeTab === 'pending' ? 'border-b-2 border-yellow-500 text-yellow-600' : 'text-gray-500 hover:text-gray-700'}`"
+        :class="`px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'pending' ? 'bg-white text-yellow-700 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`"
       >
         ⏳ Pending
       </button>
       <button 
         @click="activeTab = 'approved'" 
-        :class="`pb-2 px-4 font-medium text-sm transition whitespace-nowrap ${activeTab === 'approved' ? 'border-b-2 border-green-600 text-green-700' : 'text-gray-500 hover:text-gray-700'}`"
+        :class="`px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'approved' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`"
       >
         ✅ Approved
       </button>
       <button 
         @click="activeTab = 'rejected'" 
-        :class="`pb-2 px-4 font-medium text-sm transition whitespace-nowrap ${activeTab === 'rejected' ? 'border-b-2 border-red-500 text-red-600' : 'text-gray-500 hover:text-gray-700'}`"
+        :class="`px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'rejected' ? 'bg-white text-red-700 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`"
       >
         ❌ Rejected
       </button>
       <button 
         @click="activeTab = 'archived'" 
-        :class="`pb-2 px-4 font-medium text-sm transition whitespace-nowrap ${activeTab === 'archived' ? 'border-b-2 border-gray-500 text-gray-600' : 'text-gray-500 hover:text-gray-700'}`"
+        :class="`px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'archived' ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`"
       >
         🗑️ Archived
       </button>
     </div>
 
-    <SubmittedResearches 
-        ref="submissionsRef" 
-        :currentUser="currentUser" 
-        :statusFilter="activeTab" 
-        @edit="openEditModal"
-        @view="handleViewResearch"
-    />
+    <BaseCard class="min-h-[500px] !p-0 overflow-hidden">
+        <SubmittedResearches 
+            ref="submissionsRef" 
+            :currentUser="currentUser" 
+            :statusFilter="activeTab" 
+            @edit="openEditModal"
+            @view="handleViewResearch"
+        />
+    </BaseCard>
 
-    <Transition name="modal-pop">
-      <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm overflow-y-auto">
-        <div class="bg-white rounded-xl w-full max-w-4xl overflow-hidden shadow-2xl transform transition-all flex flex-col max-h-[90vh]">
+    <!-- Modal: Form -->
+    <Transition name="fade">
+      <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl transform transition-all flex flex-col max-h-[90vh] animate-pop" @click.stop>
           
-          <div class="bg-green-700 text-white p-4 flex justify-between items-center shrink-0">
-              <h2 class="font-bold text-lg">
-                  {{ form.id ? '✏️ Edit Knowledge Product' : '📤 Submit Knowledge Product' }}
+          <div class="bg-emerald-900 text-white p-4 flex justify-between items-center shrink-0">
+              <h2 class="font-bold text-lg flex items-center gap-2">
+                  <span>{{ form.id ? '✏️' : '📤' }}</span>
+                  {{ form.id ? 'Edit Knowledge Product' : 'Submit Knowledge Product' }}
               </h2>
-              <button @click="isModalOpen = false" class="text-green-100 hover:text-white text-2xl font-bold transition-transform hover:rotate-90">&times;</button>
+              <button @click="isModalOpen = false" class="text-white/70 hover:text-white transition bg-white/10 hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold">&times;</button>
           </div>
           
-          <div class="p-6 overflow-y-auto custom-scrollbar">
-            <form @submit.prevent="handleSubmit" class="space-y-4">
+          <div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50">
+            <form @submit.prevent="handleSubmit" class="space-y-6">
               
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type <span class="text-red-500">*</span></label>
-                    <div :class="{'border-red-500 bg-red-50': errors.knowledge_type}" class="flex flex-col gap-2 p-2 border rounded bg-white max-h-32 overflow-y-auto">
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" v-model="form.knowledge_type" value="Research Paper" class="accent-green-600">
-                            <span class="text-sm">Research Paper</span>
-                        </label>
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" v-model="form.knowledge_type" value="Book" class="accent-green-600">
-                            <span class="text-sm">Book</span>
-                        </label>
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" v-model="form.knowledge_type" value="Journal" class="accent-green-600">
-                            <span class="text-sm">Journal</span>
-                        </label>
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" v-model="form.knowledge_type" value="IEC Material" class="accent-green-600">
-                            <span class="text-sm">IEC Material</span>
-                        </label>
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" v-model="form.knowledge_type" value="Thesis" class="accent-green-600">
-                            <span class="text-sm">Thesis</span>
-                        </label>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <!-- Type -->
+                 <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Type <span class="text-red-500">*</span></label>
+                    <div class="space-y-2">
+                         <label v-for="type in ['Research Paper', 'Book', 'Journal', 'IEC Material', 'Thesis']" :key="type" class="flex items-center gap-3 p-2 rounded hover:bg-emerald-50 cursor-pointer transition">
+                            <input type="checkbox" v-model="form.knowledge_type" :value="type" class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+                            <span class="text-sm font-medium text-gray-700">{{ type }}</span>
+                         </label>
                     </div>
-                    <span v-if="errors.knowledge_type" class="text-red-500 text-xs mt-1 block">{{ errors.knowledge_type }}</span>
+                    <span v-if="errors.knowledge_type" class="text-red-500 text-xs mt-2 block font-medium">{{ errors.knowledge_type }}</span>
                  </div>
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Crop Variation (Optional)</label>
-                    <select v-model="form.crop_variation" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white">
-                      <option value="" disabled>Select Variation</option>
-                      <option>Sweet Potato</option>
-                      <option>Potato</option>
-                      <option>Yam Aeroponics</option>
-                      <option>Yam Minisetts</option>
-                      <option>Taro</option>
-                      <option>Cassava</option>
-                      <option>Yacon</option>
-                      <option>Ginger</option>
-                      <option>Canna</option>
-                      <option>Arrowroot</option>
-                      <option>Turmeric</option>
-                      <option>Tannia</option>
-                      <option>Kinampay</option>
-                      <option>Zambal</option>
-                      <option>Bengueta</option>
-                      <option>Immitlog</option>
-                      <option>Beniazuma</option>
-                      <option>Haponita</option>
-                      <option>Ganza</option>
-                      <option>Montanosa</option>
-                      <option>Igorota</option>
-                      <option>Solibao</option>
-                      <option>Raniag</option>
-                      <option>Dalisay</option>
-                      <option>Others</option>
-                    </select>
-                 </div>
-              </div>
 
-              <div>
-                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Title / Name of Product <span class="text-red-500">*</span></label>
-                 <input 
-                   v-model="form.title" 
-                   type="text" 
-                   :class="{'border-red-500 focus:ring-red-500': errors.title}"
-                   class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" 
-                   placeholder="Enter title" 
-                   required 
-                 />
-                 <span v-if="errors.title" class="text-red-500 text-xs mt-1 block">{{ errors.title }}</span>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Author(s) <span class="text-red-500">*</span></label>
-                    <input 
-                       v-model="form.author" 
-                       type="text" 
-                       :class="{'border-red-500 focus:ring-red-500': errors.author}"
-                       class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none transition" 
-                       placeholder="e.g. Juan Cruz" 
-                       required 
+                 <!-- Basic Info -->
+                 <div class="space-y-4">
+                    <BaseSelect 
+                        v-model="form.crop_variation" 
+                        :options="variationOptions" 
+                        label="Crop Variation" 
+                        placeholder="Select Variation (Optional)"
                     />
-                    <span v-if="errors.author" class="text-red-500 text-xs mt-1 block">{{ errors.author }}</span>
-                 </div>
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Publication / Creation Date</label>
-                    <input v-model="form.publication_date" type="date" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" />
+                    
+                    <BaseInput 
+                        v-model="form.title" 
+                        label="Title / Name of Product *" 
+                        placeholder="Enter full title..."
+                        :error="errors.title"
+                    />
+
+                    <BaseInput 
+                        v-model="form.author" 
+                        label="Author(s) *" 
+                        placeholder="e.g. Juan Cruz, Maria Santos"
+                        :error="errors.author"
+                    />
                  </div>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-3 rounded border border-gray-200">
-                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Date Started (Optional)</label>
-                    <input v-model="form.start_date" type="date" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white" />
-                 </div>
-                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Deadline Date (Optional)</label>
-                    <input v-model="form.deadline_date" type="date" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white" />
-                 </div>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Publisher / Producer</label>
-                    <input v-model="form.publisher" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" />
-                 </div>
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Edition (Optional)</label>
-                    <input v-model="form.edition" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 2nd Edition" />
-                 </div>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Physical Description</label>
-                    <input v-model="form.physical_description" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. 150 pages" />
-                 </div>
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ISBN / ISSN</label>
-                    <input v-model="form.isbn_issn" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" />
-                 </div>
-              </div>
-
-              <div>
-                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Subject(s) / Keywords</label>
-                 <textarea v-model="form.subjects" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="Keywords describing content..." rows="2"></textarea>
-              </div>
-
+              <!-- Dates -->
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Shelf Location</label>
-                    <input v-model="form.shelf_location" type="text" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="e.g. Shelf A-1" />
-                 </div>
-                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Condition</label>
-                    <select v-model="form.item_condition" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none bg-white">
-                      <option>New</option>
-                      <option>Good</option>
-                      <option>Fair</option>
-                      <option>Poor</option>
-                      <option>Damaged</option>
-                    </select>
-                 </div>
-                 <div>
-                      <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Link (Optional)</label>
-                      <input v-model="form.link" type="url" class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 outline-none" placeholder="https://..." />
-                 </div>
+                 <BaseInput v-model="form.publication_date" type="date" label="Publication Date" />
+                 <BaseInput v-model="form.start_date" type="date" label="Date Started (Optional)" />
+                 <BaseInput v-model="form.deadline_date" type="date" label="Deadline (Optional)" />
               </div>
 
-              <div class="bg-gray-50 p-4 rounded border border-dashed border-gray-300">
-                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">
+              <!-- Publishing Details -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <BaseInput v-model="form.publisher" label="Publisher / Producer" placeholder="Name of publisher" />
+                 <BaseInput v-model="form.edition" label="Edition" placeholder="e.g. 2nd Edition" />
+                 <BaseInput v-model="form.physical_description" label="Physical Description" placeholder="e.g. 150 pages, PDF" />
+                 <BaseInput v-model="form.isbn_issn" label="ISBN / ISSN" placeholder="Identifier code" />
+              </div>
+
+              <div class="space-y-1">
+                 <label class="block text-xs font-bold text-gray-700 mb-1 ml-1">Subject(s) / Keywords</label>
+                 <textarea v-model="form.subjects" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition text-sm shadow-sm" placeholder="Enter keywords describing the content..." rows="2"></textarea>
+              </div>
+
+              <!-- Location & Condition -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <BaseInput v-model="form.shelf_location" label="Shelf Location" placeholder="e.g. A-1" />
+                 <BaseSelect v-model="form.item_condition" :options="conditionOptions" label="Condition" placeholder="Select Condition" />
+                 <BaseInput v-model="form.link" type="url" label="External Link" placeholder="https://..." />
+              </div>
+
+              <!-- File Upload -->
+              <div class="bg-emerald-50 p-6 rounded-xl border border-dashed border-emerald-300 text-center hover:bg-emerald-100/50 transition-colors">
+                 <label class="block text-sm font-bold text-emerald-800 uppercase mb-2">
                     {{ form.id ? 'Replace File (Optional)' : 'Upload File (PDF/Image) (Optional)' }}
                  </label>
                  <input 
                     type="file" 
                     @change="handleFileChange" 
                     accept=".pdf, .jpg, .jpeg, .png" 
-                    class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 cursor-pointer"
+                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
                  />
+                 <p class="text-xs text-emerald-600 mt-2">Accepted formats: PDF, JPG, PNG</p>
               </div>
 
             </form>
           </div>
 
-          <div class="bg-gray-50 p-4 border-t flex justify-end gap-3 shrink-0">
-              <button 
+          <div class="bg-gray-50 p-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+              <BaseButton 
                 @click="isModalOpen = false" 
-                class="px-5 py-2 rounded-lg font-bold text-gray-600 bg-white border border-gray-200 shadow-sm hover:bg-gray-100 hover:text-gray-800 transition"
+                variant="ghost"
               >
                 Cancel
-              </button>
+              </BaseButton>
 
-              <button 
+              <BaseButton 
                 @click="handleSubmit" 
                 :disabled="isSubmitting" 
-                class="px-6 py-2 rounded-lg font-bold text-white bg-green-600 shadow-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="primary"
+                class="min-w-[120px]"
               >
-                  {{ isSubmitting ? 'Saving...' : (form.id ? 'Update Item 💾' : 'Submit 🚀') }}
-              </button>
+                  {{ isSubmitting ? 'Saving...' : (form.id ? 'Update Item' : 'Submit Item') }}
+              </BaseButton>
           </div>
         </div>
       </div>
@@ -313,4 +272,25 @@ defineExpose({ openNotification })
   </div>
 </template>
 
-<style scoped src="../../../assets/styles/MyWorkspace.css"></style>
+<style scoped>
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-pop {
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+</style>

@@ -161,7 +161,7 @@ export function useMasterlist() {
         const fileExtension = file.name.split('.').pop()?.toLowerCase() || ''
 
         if (!allowedExtensions.includes(fileExtension)) {
-            showToast('❌ Invalid File! Please upload a PDF or an Image.', 'error')
+            showToast('Invalid File! Please upload a PDF or an Image.', 'error')
             target.value = ''
             editForm.value.pdf_file = null
             return
@@ -173,8 +173,8 @@ export function useMasterlist() {
         if (isSaving.value || !editForm.value.id) return false
         const form = editForm.value
 
-        if (!form.title.trim()) { showToast('⚠️ Title is required.', 'warning'); return false }
-        if (!form.author.trim()) { showToast('⚠️ Author is required.', 'warning'); return false }
+        if (!form.title.trim()) { showToast('Title is required.', 'warning'); return false }
+        if (!form.author.trim()) { showToast('Author is required.', 'warning'); return false }
 
         isSaving.value = true
         const formData = new FormData()
@@ -201,7 +201,7 @@ export function useMasterlist() {
 
         try {
             await researchService.update(form.id, formData)
-            showToast('✅ Research updated successfully!', 'success')
+            showToast('Research updated successfully!', 'success')
             isEditModalOpen.value = false
             fetchData()
             return true
@@ -213,7 +213,7 @@ export function useMasterlist() {
             } else if (errData?.message) {
                 msg = errData.message
             }
-            showToast('❌ Error: ' + msg, 'error')
+            showToast('Error: ' + msg, 'error')
             return false
         } finally {
             isSaving.value = false

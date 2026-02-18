@@ -37,7 +37,7 @@ export function useUserManagement() {
   // 2. Add New User
   const addUser = async () => {
     if (!form.name || !form.email || !form.password) {
-      showToast("⚠️ Please fill in all required fields.", "warning")
+      showToast("Please fill in all required fields.", "warning")
       return
     }
 
@@ -51,7 +51,7 @@ export function useUserManagement() {
       })
 
       if (response.status === 'success') {
-        showToast("✅ User added successfully!", "success")
+        showToast("User added successfully!", "success")
 
         // Reset Form
         form.name = ''
@@ -65,7 +65,7 @@ export function useUserManagement() {
     } catch (error: any) {
       console.error(error)
       const msg = error.response?.data?.message || "Failed to create user"
-      showToast("❌ Error: " + msg, "error")
+      showToast("Error: " + msg, "error")
     } finally {
       isSubmitting.value = false
     }
@@ -77,7 +77,7 @@ export function useUserManagement() {
     if (!newPass) return
 
     if (newPass.length < 6) {
-      showToast("⚠️ Password must be at least 6 characters.", "warning")
+      showToast("Password must be at least 6 characters.", "warning")
       return
     }
 
@@ -88,11 +88,11 @@ export function useUserManagement() {
       })
 
       if (response.status === 'success') {
-        showToast(`✅ Password for ${userName} has been reset.`, "success")
+        showToast(`Password for ${userName} has been reset.`, "success")
       }
     } catch (error: any) {
       console.error(error)
-      showToast("❌ Failed to reset password. Check admin permissions.", "error")
+      showToast("Failed to reset password. Check admin permissions.", "error")
     }
   }
 

@@ -156,7 +156,7 @@ const toggleFullscreen = () => {
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="item in paginatedResearches" :key="item.id" v-memo="[item.id, item.status, item.title]" class="hover:bg-green-50 transition">
+                  <tr v-for="item in paginatedResearches" :key="item.id" v-memo="[item.id, item.status, item.title, item.updated_at]" class="hover:bg-green-50 transition">
                     <td class="px-4 py-4 cursor-pointer" @click="selectedResearch = item">
                       <div class="font-bold text-gray-900 hover:text-green-700 line-clamp-2 max-w-[300px]" :title="item.title">{{ item.title }}</div>
                       <div class="text-sm text-gray-500">By: {{ item.author }}</div>

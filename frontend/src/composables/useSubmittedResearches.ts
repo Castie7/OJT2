@@ -226,7 +226,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
 
         const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png']
         if (!allowedExtensions.includes(file.name.split('.').pop()?.toLowerCase() || '')) {
-            showToast("❌ Invalid File!", "error")
+            showToast("Invalid File!", "error")
             target.value = ''
             editPdfFile.value = null
             return
@@ -239,7 +239,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
         const item = editingItem.value
 
         if (!item.title.trim() || !item.author.trim() || !item.deadline_date) {
-            showToast("⚠️ Missing Fields", "warning")
+            showToast("Missing Fields", "warning")
             return
         }
 
@@ -254,7 +254,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
 
         try {
             await researchService.update(item.id, formData)
-            showToast("✅ Updated!", "success")
+            showToast("Updated!", "success")
             editingItem.value = null
             fetchData()
 

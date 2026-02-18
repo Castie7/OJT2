@@ -150,7 +150,7 @@ const activeFiltersList = computed(() => {
             </tr>
 
             <tr 
-              v-for="item in paginatedItems" :key="item.id" v-memo="[item.id, item.status, item.title]"
+              v-for="item in paginatedItems" :key="item.id" v-memo="[item.id, item.status, item.title, item.updated_at]"
               class="hover:brightness-95 transition border-l-4"
               :class="{
                 'bg-green-50 border-l-green-400 text-gray-900 font-medium': item.status === 'approved',

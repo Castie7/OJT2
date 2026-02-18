@@ -53,17 +53,17 @@ export function useSettings(
       })
 
       if (response.data.status === 'success') {
-        showToast("✅ Profile updated successfully! The page will now refresh.", "success")
+        showToast("Profile updated successfully! The page will now refresh.", "success")
         // FORCE PAGE RELOAD to reflect changes in session
         window.location.reload()
       } else {
-        showToast("❌ " + (response.data.message || "Failed"), "error")
+        showToast((response.data.message || "Failed"), "error")
       }
 
     } catch (error: any) {
       console.error(error)
       const msg = error.response?.data?.message || "Server Error"
-      showToast("❌ " + msg, "error")
+      showToast(msg, "error")
     } finally {
       isProfileLoading.value = false
     }
@@ -74,9 +74,9 @@ export function useSettings(
     const user = currentUserRef.value
     if (!user) return
 
-    if (!passForm.current) { showToast("⚠️ Enter current password", "warning"); return }
-    if (passForm.new.length < 6) { showToast("⚠️ Password must be 6+ chars", "warning"); return }
-    if (passForm.new !== passForm.confirm) { showToast("⚠️ Passwords do not match", "warning"); return }
+    if (!passForm.current) { showToast("Enter current password", "warning"); return }
+    if (passForm.new.length < 6) { showToast("Password must be 6+ chars", "warning"); return }
+    if (passForm.new !== passForm.confirm) { showToast("Passwords do not match", "warning"); return }
 
     isPasswordLoading.value = true
 
@@ -89,17 +89,17 @@ export function useSettings(
       })
 
       if (response.data.status === 'success') {
-        showToast("✅ Password changed successfully! Please login again.", "success")
+        showToast("Password changed successfully! Please login again.", "success")
         // TRIGGER LOGOUT
         triggerLogout()
       } else {
-        showToast("❌ " + (response.data.message || "Failed"), "error")
+        showToast((response.data.message || "Failed"), "error")
       }
 
     } catch (error: any) {
       console.error(error)
       const msg = error.response?.data?.message || "Server Error"
-      showToast("❌ " + msg, "error")
+      showToast(msg, "error")
     } finally {
       isPasswordLoading.value = false
     }

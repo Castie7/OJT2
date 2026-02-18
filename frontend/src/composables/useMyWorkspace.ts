@@ -1,6 +1,7 @@
 import { ref, reactive, watch } from 'vue'
 import { researchService } from '../services'
 import { useToast } from './useToast'
+import { useErrorHandler } from './useErrorHandler'
 import type { User, Research } from '../types'
 
 
@@ -12,6 +13,7 @@ export function useMyWorkspace(_currentUser: User | null) {
   const isLoading = ref(false)
   const myResearches = ref<Research[]>([])
   const { showToast } = useToast()
+  const { handleError } = useErrorHandler()
 
   // VALIDATION STATE
   const errors = reactive({
@@ -99,7 +101,7 @@ export function useMyWorkspace(_currentUser: User | null) {
         : await researchService.getMySubmissions()
 
     } catch (e) {
-      console.error("Failed to fetch data", e);
+      handleError(e, 'Failed to load workspace data')
     } finally {
       isLoading.value = false;
     }
@@ -231,7 +233,7 @@ export function useMyWorkspace(_currentUser: User | null) {
       return true // Indicate success
 
     } catch (error: any) {
-      console.error(error)
+      if (import.meta.env.DEV) console.error(error)
 
       // ✅ Improved Error Handling
       let msg = "Action Failed";

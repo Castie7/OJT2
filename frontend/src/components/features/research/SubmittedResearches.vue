@@ -90,7 +90,7 @@ defineExpose({ fetchData, openNotification })
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="item in paginatedItems" :key="item.id" v-memo="[item.id, item.status, item.title]" class="hover:bg-green-50 transition cursor-pointer" @click="$emit('view', item)">
+            <tr v-for="item in paginatedItems" :key="item.id" v-memo="[item.id, item.status, item.title, item.updated_at]" class="hover:bg-green-50 transition cursor-pointer" @click="$emit('view', item)">
               
               <td class="px-6 py-4">
                  <div class="font-medium text-gray-900 line-clamp-2 max-w-[300px]" :title="item.title">{{ item.title }}</div>

@@ -1,11 +1,17 @@
 <script setup lang="ts">
+import { watch, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useApproval } from '../../../composables/useApproval'
+import { researchService } from '../../../services'
 import type { User } from '../../../types'
 import ResearchDetailsModal from './ResearchDetailsModal.vue'
 
 const props = defineProps<{
   currentUser: User | null
 }>()
+
+const route = useRoute()
+
 
 const {
   activeTab, items, isLoading, selectedResearch, 
@@ -18,30 +24,51 @@ const {
 
 // --- NEW: Handle Notification Clicks from Dashboard ---
 const openNotification = async (researchId: number) => {
-  // 1. Ensure data is loaded
-  if (items.value.length === 0) {
-      await fetchData()
-  }
-  
-  // 2. Find the item in the current list
-  const targetItem = items.value.find(i => i.id === researchId)
-  
-  // 3. Open the comment modal if found
-  if (targetItem) {
-    openComments(targetItem)
-  } else {
-    // Optional: Switch tabs if not found in pending
-    if (activeTab.value === 'pending') {
-         activeTab.value = 'rejected'
-         await fetchData()
-         const rejectedItem = items.value.find(i => i.id === researchId)
-         if (rejectedItem) openComments(rejectedItem)
-    }
+  try {
+      // 1. Fetch item to know status
+      const item = await researchService.getById(researchId)
+      if (!item) return
+
+      // 2. Determine Tab
+      const targetTab = (item.status === 'rejected') ? 'rejected' : 'pending' // Default to pending for approved/pending items in this view? 
+      // Actually Approval view only shows Pending and Rejected (and maybe Approved are hidden or history?)
+      // The tabs are 'pending' and 'rejected'.
+      // If it's approved, it shouldn't be here? Admin usually sees pending. 
+      // If it's approved, maybe we shouldn't redirect or just show it in pending if it's there?
+      // Assuming notification is for pending/rejected/feedback.
+
+      // 3. Switch if needed
+      if (activeTab.value !== targetTab) {
+          activeTab.value = targetTab
+          await nextTick()
+          await fetchData()
+      } else {
+          // Even if tab is same, refresh to ensure we have the item
+          await fetchData()
+      }
+
+      // 4. Find and Open
+      const targetItem = items.value.find(i => i.id === researchId)
+      if (targetItem) {
+          openComments(targetItem)
+      } else {
+          // If still not found (e.g. approved item not in pending list), maybe warn or ignore?
+          // But user said it IS pending. So it should be found now.
+      }
+      
+  } catch (e) {
+      console.error(e)
   }
 }
 
 // Expose this function so Dashboard.vue can call it via ref
 defineExpose({ openNotification })
+
+// Watch for query param changes
+watch(() => route.query.open, (newId) => {
+    if (newId) openNotification(Number(newId))
+}, { immediate: true })
+
 
 // Fix for vue-tsc unused variable error
 void chatContainer

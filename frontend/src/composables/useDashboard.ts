@@ -1,9 +1,12 @@
 import { ref, watch, computed, onMounted, onUnmounted, nextTick, type Ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { dashboardService, notificationService } from '../services'
 import api from '../services/api'
 import type { User, Stat } from '../types'
 
 export function useDashboard(currentUserRef: Ref<User | null>) {
+  const router = useRouter()
+
 
   // --- 1. CORE STATE ---
   const currentTab = ref('home')
@@ -147,19 +150,11 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
 
     // 1. If User is Admin -> Go to Approval Tab
     if (user?.role === 'admin') {
-      setTab('approval')
-      await nextTick()
-      if (approvalRef.value) {
-        approvalRef.value.openNotification(targetId)
-      }
+      router.push({ path: '/approval', query: { open: targetId } })
     }
     // 2. If User is Student -> Go to Workspace Tab
     else {
-      setTab('workspace')
-      await nextTick()
-      if (workspaceRef.value) {
-        workspaceRef.value.openNotification(targetId)
-      }
+      router.push({ path: '/workspace', query: { open: targetId } })
     }
   }
 

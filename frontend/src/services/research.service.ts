@@ -17,6 +17,13 @@ export const researchService = {
   /**
    * Get all approved research items (for library/public view)
    */
+  async getById(id: number): Promise<Research> {
+    return apiCache.get(`research:${id}`, async () => {
+      const response = await api.get<Research>(`/research/${id}`)
+      return response.data
+    })
+  },
+
   async getAll(filters?: ResearchFilters): Promise<Research[]> {
     const params = new URLSearchParams()
     if (filters?.start_date) params.append('start_date', filters.start_date)

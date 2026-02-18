@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue' 
+import { ref, watch, onMounted, nextTick } from 'vue' 
+import { useRoute, useRouter } from 'vue-router'
+import { researchService } from '../../../services'
 import SubmittedResearches from './SubmittedResearches.vue'
 import { useMyWorkspace } from '../../../composables/useMyWorkspace' 
 import type { User } from '../../../types' 
@@ -12,6 +14,10 @@ import BaseSelect from '../../ui/BaseSelect.vue'
 const props = defineProps<{
   currentUser: User | null
 }>()
+
+const route = useRoute()
+const router = useRouter()
+
 
 const { 
   activeTab, 
@@ -44,11 +50,57 @@ const handleSubmit = async () => {
 }
 
 // --- HANDLE NOTIFICATION CLICKS ---
-const openNotification = (id: number) => {
-    if (submissionsRef.value) {
+const openNotification = async (id: number) => {
+    if (!submissionsRef.value) return
+
+    try {
+        // 1. Fetch the specific item first to know its status
+        const item = await researchService.getById(id)
+        if (!item) return
+
+        // 2. Map item status to tab
+        let targetTab = 'pending'
+        if (item.status === 'approved') targetTab = 'approved'
+        else if (item.status === 'rejected') targetTab = 'rejected'
+        else if (item.archived_at) targetTab = 'archived' // Handle archived differently if needed
+        
+        // 3. Switch tab if different
+        if (activeTab.value !== targetTab) {
+             activeTab.value = targetTab as any
+             // Wait for watcher to trigger fetch and fetch to complete
+             // Since we don't have a promise for the watcher's fetch, we might need to manually call fetch
+             await nextTick()
+             if (submissionsRef.value) {
+                 await submissionsRef.value.fetchData()
+             }
+        }
+
+        // 4. Open the notification in the child component
+        // Pass the item object if possible to avoid re-finding, but child expects ID
+        // The child's openNotification finds it in the list.
+        // Since we just fetched data for that tab, it should be in there.
+        await nextTick()
         submissionsRef.value.openNotification(id)
+        
+    } catch (e) {
+        console.error("Failed to open notification", e)
     }
 }
+
+// Watch for query param changes
+watch(() => route.query.open, (newId) => {
+    if (newId) {
+        // Wait for component to be ready or just call it
+        // We might need to wait for fetch if not loaded, but openNotification handles that in SubmittedResearches
+        openNotification(Number(newId))
+        
+        // Clear query param to avoid reopening on refresh (optional but good UX)
+        // router.replace({ query: { ...route.query, open: undefined } }) 
+        // User asked for "direct" link, maybe keeping it is fine? 
+        // If we keep it, it stays open on refresh.
+    }
+}, { immediate: true })
+
 
 defineExpose({ openNotification })
 

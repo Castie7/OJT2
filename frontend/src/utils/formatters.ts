@@ -35,3 +35,26 @@ export function getStatusBadge(status: string) {
     default: return { label: status, classes: 'bg-gray-100 text-gray-700 border-gray-200' }
   }
 }
+
+/**
+ * Returns the image path based on the crop variation.
+ */
+export const getCropImage = (crop?: string): string => {
+  const c = (crop || '').toLowerCase()
+  if (c.includes('sweetpotato') || c.includes('sweet potato') || c.includes('kamote')) {
+    return '/images/crops/sweetpotato.jpg'
+  }
+  if (c.includes('potato')) {
+    return '/images/crops/potato.jpg'
+  }
+  if (c.includes('cassava') || c.includes('kamoteng kahoy')) {
+    return '/images/crops/cassava.jpg'
+  }
+  if (c.includes('yam') || c.includes('ubi')) {
+    return '/images/crops/yam.jpg'
+  }
+  if (c.includes('taro') || c.includes('gabi')) {
+    return '/images/crops/taro.jpg'
+  }
+  return '/images/crops/default.jpg'
+}

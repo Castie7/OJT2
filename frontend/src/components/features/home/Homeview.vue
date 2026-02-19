@@ -1,13 +1,15 @@
  <script setup lang="ts">
 import { useHomeView } from '../../../composables/useHomeView'
-import type { User, Stat } from '../../../types'
+import type { Stat } from '../../../types'
+import { useAuthStore } from '../../../stores/auth'
 import BaseButton from '../../ui/BaseButton.vue'
 import BaseCard from '../../ui/BaseCard.vue'
 
 defineProps<{
-  currentUser: User | null // id, name, role
   stats: Stat[] // title, value, color
 }>()
+
+const authStore = useAuthStore()
 
 const emit = defineEmits<{
   (e: 'browse-click'): void
@@ -45,9 +47,9 @@ const getCropImage = (crop?: string): string => {
 <template>
   <div class="space-y-8 animate-fade-in"> 
     
-    <div v-if="currentUser">
+    <div v-if="authStore.currentUser">
       <h1 class="text-2xl font-bold text-gray-900 mb-6">
-        {{ currentUser.role === 'admin' ? '📢 System Overview' : '👋 My Research Overview' }}
+        {{ authStore.currentUser.role === 'admin' ? '📢 System Overview' : '👋 My Research Overview' }}
       </h1>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

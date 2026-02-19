@@ -1,12 +1,13 @@
-import { ref, watch, computed, onMounted, onUnmounted, nextTick, type Ref } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { dashboardService, notificationService } from '../services'
 import api from '../services/api'
-import type { User, Stat } from '../types'
+import type { Stat } from '../types'
+import { useAuthStore } from '../stores/auth'
 
-export function useDashboard(currentUserRef: Ref<User | null>) {
+export function useDashboard() {
   const router = useRouter()
-
+  const authStore = useAuthStore()
 
   // --- 1. CORE STATE ---
   const currentTab = ref('home')
@@ -40,7 +41,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   }
 
   const fetchDashboardStats = async () => {
-    const user = currentUserRef.value
+    const user = authStore.currentUser
     if (!user) return
 
     try {
@@ -117,7 +118,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
   const unreadCount = computed(() => notifications.value.filter(n => n.is_read == 0).length)
 
   const fetchNotifications = async () => {
-    const user = currentUserRef.value
+    const user = authStore.currentUser
     if (!user) return
     try {
       notifications.value = await notificationService.getAll(user.id)
@@ -128,7 +129,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
 
   const toggleNotifications = async () => {
     showNotifications.value = !showNotifications.value
-    const user = currentUserRef.value
+    const user = authStore.currentUser
 
     if (showNotifications.value && unreadCount.value > 0 && user) {
       try {
@@ -146,7 +147,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
     if (!targetId) return
 
     showNotifications.value = false // Close dropdown
-    const user = currentUserRef.value
+    const user = authStore.currentUser
 
     // 1. If User is Admin -> Go to Approval Tab
     if (user?.role === 'admin') {
@@ -199,7 +200,7 @@ export function useDashboard(currentUserRef: Ref<User | null>) {
 
   // --- 6. WATCHERS & LIFECYCLE ---
 
-  watch(currentUserRef, (newUser) => {
+  watch(() => authStore.currentUser, (newUser) => {
     if (newUser) {
       fetchDashboardStats()
       fetchNotifications().then(() => {

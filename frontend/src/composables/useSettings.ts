@@ -1,15 +1,15 @@
-import { ref, reactive, watch, type Ref } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import api from '../services/api'
 import { useToast } from './useToast'
-import type { User } from '../types'
+// import type { User } from '../types'
 
+
+import { useAuthStore } from '../stores/auth'
 
 // 1. Add 'triggerLogout' to arguments
-export function useSettings(
-  currentUserRef: Ref<User | null>,
-  _updateSessionUser: (u: User) => void,
-  triggerLogout: () => void
-) {
+export function useSettings() {
+  const authStore = useAuthStore()
+  const currentUserRef = computed(() => authStore.currentUser)
 
   const isProfileLoading = ref(false)
   const isPasswordLoading = ref(false)
@@ -91,7 +91,7 @@ export function useSettings(
       if (response.data.status === 'success') {
         showToast("Password changed successfully! Please login again.", "success")
         // TRIGGER LOGOUT
-        triggerLogout()
+        authStore.logout()
       } else {
         showToast((response.data.message || "Failed"), "error")
       }

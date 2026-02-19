@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue' 
 import { useResearchLibrary } from '../../../composables/useResearchLibrary'
-import type { User } from '../../../types'
+import { useAuthStore } from '../../../stores/auth'
 import { useToast } from '../../../composables/useToast'
 import BaseButton from '../../ui/BaseButton.vue'
 import BaseInput from '../../ui/BaseInput.vue'
@@ -11,20 +11,20 @@ import BaseSelect from '../../ui/BaseSelect.vue'
 import { getAssetUrl } from '../../../services/api'
 const ASSET_URL = getAssetUrl()
 
-const props = defineProps<{
-  currentUser: User | null
-}>()
+// Props removed (currentUser is in store)
 
 const emit = defineEmits<{
   (e: 'update-stats', count: number): void
 }>()
+
+const authStore = useAuthStore()
 
 const {
   searchQuery, selectedType, startDate, endDate, showArchived, viewMode, selectedResearch,
   isLoading, confirmModal, currentPage, 
   filteredResearches, paginatedResearches, totalPages,
   nextPage, prevPage, requestArchiveToggle, executeArchiveToggle, clearFilters
-} = useResearchLibrary(props.currentUser, emit)
+} = useResearchLibrary(emit)
 
 const { showToast } = useToast()
 
@@ -122,7 +122,7 @@ void confirmModal
          </h1>
          <div class="flex items-center gap-2">
             <BaseButton 
-                v-if="currentUser && currentUser.role === 'admin'" 
+                v-if="authStore.currentUser && authStore.currentUser.role === 'admin'" 
                 @click="showArchived = !showArchived" 
                 :variant="showArchived ? 'danger' : 'secondary'"
                 size="sm"
@@ -256,7 +256,7 @@ void confirmModal
                                 <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono font-bold">{{ item.shelf_location || 'N/A' }}</span>
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <button v-if="currentUser && currentUser.role === 'admin'" @click.stop="requestArchiveToggle(item)" class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 hover:bg-red-50 rounded">Archive</button>
+                                <button v-if="authStore.currentUser && authStore.currentUser.role === 'admin'" @click.stop="requestArchiveToggle(item)" class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 hover:bg-red-50 rounded">Archive</button>
                             </td>
                         </tr>
                       </tbody>

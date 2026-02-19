@@ -3,14 +3,11 @@ import { watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useApproval } from '../../../composables/useApproval'
 import { researchService } from '../../../services'
-import type { User } from '../../../types'
+import { useAuthStore } from '../../../stores/auth'
 import ResearchDetailsModal from './ResearchDetailsModal.vue'
 
-const props = defineProps<{
-  currentUser: User | null
-}>()
-
 const route = useRoute()
+const authStore = useAuthStore()
 
 
 const {
@@ -20,7 +17,7 @@ const {
   fetchData, handleAction, executeAction, formatDate, getDaysLeft,
   openDeadlineModal, saveNewDeadline, openComments, postComment,
   confirmModal
-} = useApproval(props.currentUser)
+} = useApproval()
 
 // --- NEW: Handle Notification Clicks from Dashboard ---
 const openNotification = async (researchId: number) => {
@@ -212,15 +209,15 @@ void isSendingComment
                 v-for="c in commentModal.list" 
                 :key="c.id" 
                 class="flex flex-col max-w-[85%]"
-                :class="c.user_name === currentUser?.name ? 'self-end items-end ml-auto' : 'self-start items-start'"
+                :class="c.user_name === authStore.currentUser?.name ? 'self-end items-end ml-auto' : 'self-start items-start'"
               >
                 <span class="text-[10px] text-gray-400 mb-1 px-1">
-                  {{ c.user_name }} <span v-if="c.user_name === currentUser?.name" class="text-green-600 font-bold">(You)</span>
+                  {{ c.user_name }} <span v-if="c.user_name === authStore.currentUser?.name" class="text-green-600 font-bold">(You)</span>
                 </span>
                 
                 <div 
                   class="px-4 py-2.5 shadow-sm text-sm break-words relative"
-                  :class="c.user_name === currentUser?.name
+                  :class="c.user_name === authStore.currentUser?.name
                     ? 'bg-green-600 text-white rounded-2xl rounded-tr-none' 
                     : 'bg-white text-gray-800 rounded-2xl rounded-tl-none border border-gray-100'"
                 >

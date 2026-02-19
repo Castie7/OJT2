@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { toRef, ref } from 'vue' 
+import { ref, onMounted } from 'vue' 
 import { useDashboard } from '../../../composables/useDashboard'
+import { useAuthStore } from '../../../stores/auth'
 import type { User } from '../../../types'
 
 // Import Sub-Components
@@ -14,9 +15,7 @@ import UserManagement from '../admin/UserManagement.vue'
 import AdminLogs from '../admin/AdminLogs.vue'
 import Masterlist from '../research/Masterlist.vue'
 
-const props = defineProps<{
-  currentUser: User | null
-}>()
+// Props removed
 
 const emit = defineEmits<{
   (e: 'login-click'): void
@@ -26,11 +25,10 @@ const emit = defineEmits<{
 
 // Mobile Menu State
 const showMobileMenu = ref(false)
+const authStore = useAuthStore()
 
 // ... Initialize Dashboard Logic ...
-const currentUserRef = toRef(props, 'currentUser')
-// ... rest of script ...
-
+// const currentUserRef = toRef(props, 'currentUser') // Removed
 
 const { 
   // State
@@ -50,14 +48,14 @@ const {
   toggleNotifications, 
   handleNotificationClick, 
   formatTimeAgo
-} = useDashboard(currentUserRef)
+} = useDashboard()
 
 const handleUserUpdate = (updatedUser: User) => {
   emit('update-user', updatedUser)
 }
 
 // Silence unused variable warning for template ref
-import { onMounted } from 'vue';
+// onMounted moved to top
 onMounted(() => {
     // console.log(approvalRef.value) 
 })
@@ -111,12 +109,12 @@ onMounted(() => {
               Research Library
             </button>
             
-            <template v-if="currentUser">
+            <template v-if="authStore.currentUser">
               <button @click="setTab('workspace')" :class="['nav-btn', currentTab === 'workspace' ? 'nav-btn-active' : 'nav-btn-inactive']">
                 My Workspace
               </button>
               
-              <template v-if="currentUser.role === 'admin'">
+              <template v-if="authStore.currentUser.role === 'admin'">
                 <button 
                   @click="setTab('approval')" 
                   :class="['nav-btn', currentTab === 'approval' ? 'nav-btn-active' : 'nav-btn-inactive']"
@@ -177,8 +175,8 @@ onMounted(() => {
 
           <!-- User Profile & Actions -->
           <div>
-            <div v-if="currentUser" class="flex items-center gap-4">
-              <span class="text-sm font-light hidden sm:block">Welcome, {{ currentUser.name }}</span>
+            <div v-if="authStore.currentUser" class="flex items-center gap-4">
+              <span class="text-sm font-light hidden sm:block">Welcome, {{ authStore.currentUser.name }}</span>
               
               <div class="relative">
                 <button 
@@ -258,12 +256,12 @@ onMounted(() => {
               Research Library
             </button>
             
-            <template v-if="currentUser">
+            <template v-if="authStore.currentUser">
               <button @click="setTab('workspace'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'workspace' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                 My Workspace
               </button>
               
-              <template v-if="currentUser.role === 'admin'">
+              <template v-if="authStore.currentUser.role === 'admin'">
                 <button @click="setTab('approval'); showMobileMenu = false" :class="['w-full text-left px-3 py-2 rounded-md font-medium', currentTab === 'approval' ? 'bg-green-900 text-white' : 'text-white hover:bg-green-700']">
                   Approvals
                 </button>
@@ -307,7 +305,6 @@ onMounted(() => {
       
       <HomeView 
         v-if="currentTab === 'home'" 
-        :currentUser="currentUser" 
         :stats="stats" 
         @browse-click="setTab('research')"
         @stat-click="setTab"
@@ -315,42 +312,41 @@ onMounted(() => {
 
       <ResearchLibrary 
         v-if="currentTab === 'research'" 
-        :currentUser="currentUser" 
         @update-stats="updateStats" 
       />
 
       <MyWorkspace 
         v-if="currentTab === 'workspace'" 
         ref="workspaceRef"
-        :currentUser="currentUser" 
+        :currentUser="authStore.currentUser" 
       />
 
       <Approval 
-        v-if="currentTab === 'approval' && currentUser && currentUser.role === 'admin'" 
+        v-if="currentTab === 'approval' && authStore.currentUser && authStore.currentUser.role === 'admin'" 
         ref="approvalRef"
-        :currentUser="currentUser" 
+        :currentUser="authStore.currentUser" 
       />
 
       <ImportCsv 
-        v-if="currentTab === 'import' && currentUser && currentUser.role === 'admin'"
+        v-if="currentTab === 'import' && authStore.currentUser && authStore.currentUser.role === 'admin'"
         @upload-success="setTab('research')" 
       />
 
       <UserManagement 
-        v-if="currentTab === 'users' && currentUser && currentUser.role === 'admin'"
+        v-if="currentTab === 'users' && authStore.currentUser && authStore.currentUser.role === 'admin'"
       />
       
       <Masterlist 
-        v-if="currentTab === 'masterlist' && currentUser && currentUser.role === 'admin'"
+        v-if="currentTab === 'masterlist' && authStore.currentUser && authStore.currentUser.role === 'admin'"
       />
 
       <AdminLogs 
-        v-if="currentTab === 'logs' && currentUser && currentUser.role === 'admin'"
+        v-if="currentTab === 'logs' && authStore.currentUser && authStore.currentUser.role === 'admin'"
       />
 
       <Settings 
         v-if="currentTab === 'settings'"
-        :currentUser="currentUser"
+        :currentUser="authStore.currentUser"
         @update-user="handleUserUpdate"
         @trigger-logout="$emit('logout-click')" 
       />

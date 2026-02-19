@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { ref, provide, toRef, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute, RouterView } from 'vue-router'
 import { useDashboard } from '../../composables/useDashboard'
-import type { User } from '../../types'
-import BaseButton from '../ui/BaseButton.vue'
+import { useAuthStore } from '../../stores/auth'
+import type { User } from '../../types' // Keeping User type if needed for emits or other logic
+// import BaseButton from '../ui/BaseButton.vue' // Removed unused
 
-const props = defineProps<{
-  currentUser: User | null
-}>()
-
+// Props removed (currentUser is in store)
 const emit = defineEmits<{
   (e: 'login-click'): void
   (e: 'logout-click'): void
@@ -16,18 +14,18 @@ const emit = defineEmits<{
 }>()
 
 // State
+const authStore = useAuthStore()
 const isMobileSidebarOpen = ref(false)
 const isSidebarCollapsed = ref(false)
 const router = useRouter()
 const route = useRoute()
-const currentUserRef = toRef(props, 'currentUser')
+// const currentUserRef = toRef(props, 'currentUser') // Removed
 
 const toggleSidebar = () => {
     isSidebarCollapsed.value = !isSidebarCollapsed.value
 }
 
-// Provide
-provide('currentUser', currentUserRef)
+// Provide removed (use store in children)
 
 const {
   stats,
@@ -38,7 +36,7 @@ const {
   toggleNotifications,
   handleNotificationClick,
   formatTimeAgo
-} = useDashboard(currentUserRef)
+} = useDashboard() // No arguments
 
 // Actions
 const handleUserUpdate = (updatedUser: User) => {
@@ -102,12 +100,12 @@ const pageTitle = computed(() => {
 
         <!-- Navigation Links -->
         <div class="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar">
-            <div v-if="!currentUser && !isSidebarCollapsed" class="mb-6 px-3">
+            <div v-if="!authStore.currentUser && !isSidebarCollapsed" class="mb-6 px-3">
                  <button @click="$emit('login-click')" class="w-full bg-yellow-400 hover:bg-yellow-500 text-emerald-900 font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 shadow-md transition-all hover:scale-[1.02]">
                     <span>🔐</span> Login Area
                 </button>
             </div>
-            <div v-if="!currentUser && isSidebarCollapsed" class="mb-6 flex justify-center">
+            <div v-if="!authStore.currentUser && isSidebarCollapsed" class="mb-6 flex justify-center">
                  <button @click="$emit('login-click')" class="size-10 bg-yellow-400 hover:bg-yellow-500 text-emerald-900 font-bold rounded-lg flex items-center justify-center shadow-md transition-all" title="Login">
                     <span>🔐</span>
                 </button>
@@ -124,7 +122,7 @@ const pageTitle = computed(() => {
                 <span class="text-xl">📚</span> <span v-if="!isSidebarCollapsed">Research Library</span>
             </button>
 
-            <template v-if="currentUser">
+            <template v-if="authStore.currentUser">
                  <p v-if="!isSidebarCollapsed" class="px-3 text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 mt-6">Workspace</p>
                  <div v-else class="my-2 border-t border-emerald-800/30"></div>
                  
@@ -133,7 +131,7 @@ const pageTitle = computed(() => {
                  </button>
 
                  <!-- Admin Section -->
-                 <template v-if="currentUser.role === 'admin'">
+                 <template v-if="authStore.currentUser.role === 'admin'">
                     <p v-if="!isSidebarCollapsed" class="px-3 text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 mt-6">Administration</p>
                     <div v-else class="my-2 border-t border-emerald-800/30"></div>
                     
@@ -157,14 +155,14 @@ const pageTitle = computed(() => {
         </div>
 
         <!-- User Profile (Bottom) -->
-        <div v-if="currentUser" class="border-t border-emerald-800/50 bg-emerald-950/30 transition-all duration-300" :class="isSidebarCollapsed ? 'p-2' : 'p-4'">
+        <div v-if="authStore.currentUser" class="border-t border-emerald-800/50 bg-emerald-950/30 transition-all duration-300" :class="isSidebarCollapsed ? 'p-2' : 'p-4'">
             <div class="flex items-center gap-3 mb-3" :class="isSidebarCollapsed ? 'justify-center' : ''">
                 <div class="h-10 w-10 shrink-0 rounded-full bg-emerald-700 flex items-center justify-center text-emerald-100 font-bold border-2 border-emerald-500">
-                    {{ currentUser.name.charAt(0).toUpperCase() }}
+                    {{ authStore.currentUser.name.charAt(0).toUpperCase() }}
                 </div>
                 <div v-if="!isSidebarCollapsed" class="overflow-hidden">
-                    <p class="text-sm font-bold text-white truncate">{{ currentUser.name }}</p>
-                    <p class="text-xs text-emerald-300 truncate capitalize">{{ currentUser.role }}</p>
+                    <p class="text-sm font-bold text-white truncate">{{ authStore.currentUser.name }}</p>
+                    <p class="text-xs text-emerald-300 truncate capitalize">{{ authStore.currentUser.role }}</p>
                 </div>
             </div>
             
@@ -201,11 +199,11 @@ const pageTitle = computed(() => {
                  <button @click="navigateTo('/')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">Home</button>
                  <button @click="navigateTo('/library')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/library') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">Research Library</button>
                  
-                 <template v-if="currentUser">
+                 <template v-if="authStore.currentUser">
                      <div class="my-4 border-t border-emerald-800/50"></div>
                      <button @click="navigateTo('/workspace')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/workspace') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">My Workspace</button>
                      
-                     <template v-if="currentUser.role === 'admin'">
+                     <template v-if="authStore.currentUser.role === 'admin'">
                         <div class="my-4 border-t border-emerald-800/50"></div>
                         <p class="px-3 text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2">Admin</p>
                         <button @click="navigateTo('/approval')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/approval') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">Approvals</button>
@@ -242,7 +240,7 @@ const pageTitle = computed(() => {
 
             <!-- Header Actions -->
             <div class="flex items-center gap-4">
-                <template v-if="currentUser">
+                <template v-if="authStore.currentUser">
                      <!-- Notifications -->
                      <div class="relative">
                         <button @click="toggleNotifications" class="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-emerald-600 transition relative">
@@ -275,7 +273,6 @@ const pageTitle = computed(() => {
         <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 custom-scrollbar">
             <div class="max-w-7xl mx-auto w-full">
                 <RouterView 
-                    :currentUser="currentUser"
                     :stats="stats"
                     ref="workspaceRef"
                     @browse-click="router.push('/library')"

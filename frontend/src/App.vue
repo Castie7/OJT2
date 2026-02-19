@@ -1,82 +1,37 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import api from './services/api' 
+import { ref, onMounted, watch } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import Toast from './components/shared/Toast.vue'
-import { useAuth } from './composables/useAuth'
+import { useAuthStore } from './stores/auth' // Import the store
 
-
-const { currentUser, setUser, clearUser, isInitialized, setInitialized } = useAuth()
-const isLoading = ref(!isInitialized.value) 
+const authStore = useAuthStore() // Initialize store
+const isLoading = ref(!authStore.isInitialized) 
 const router = useRouter()
 
-/* Watch for initialization from router guard */
-import { watch } from 'vue'
-watch(isInitialized, (newVal) => {
+/* Watch for initialization */
+watch(() => authStore.isInitialized, (newVal) => {
     if (newVal) isLoading.value = false
 }, { immediate: true })
 
-// --- Token Management ---
-const saveToken = (token: string) => {
-    if (!token) return;
-    // Save to cookie for backend compatibility
-    document.cookie = `csrf_cookie_name=${token}; path=/; domain=${window.location.hostname}; secure; samesite=Lax`;
-    // Save to SessionStorage as a "Bridge" for our Axios interceptor
-    sessionStorage.setItem('csrf_token_backup', token);
-}
-
 onMounted(async () => {
-  // If router guard already handled initialization, just stop loading
-  if (isInitialized.value) {
-    isLoading.value = false
-    return
-  }
-
-  // Fallback for cases where router guard didn't run (e.g. 404 page if exists outside routes)
-  try {
-    const response = await api.get('/auth/verify')
-    
-    if (response.data.csrf_token) {
-       saveToken(response.data.csrf_token);
+    // Check initialization on mount
+    if (!authStore.isInitialized) {
+        await authStore.init()
     }
-    
-    if (response.data.status === 'success') {
-      setUser(response.data.user)
-      if (window.location.pathname === '/login') {
-        router.push('/')
-      }
-    } else {
-      clearUser()
-    }
-  } catch (error) {
-    console.error("Session verification failed:", error)
-    clearUser()
-  } finally {
-    isLoading.value = false
-    setInitialized(true)
-  }
 })
 
 // --- Event Handlers ---
-
+// Most logic is now in the store or components, but we keep high-level routing here if needed
 const onLoginSuccess = (data: any) => {
-  if (data.csrf_token) saveToken(data.csrf_token);
-  setUser(data.user)
-  router.push('/') // Redirect to home after login
+  // Store handles user setting, we just redirect
+  if (data.csrf_token) authStore.saveToken(data.csrf_token);
+  authStore.setUser(data.user)
+  router.push('/') 
 }
 
 const handleLogout = async () => {
-  try {
-    await api.post('/auth/logout')
-    sessionStorage.removeItem('csrf_token_backup');
-    delete api.defaults.headers.common['X-CSRF-TOKEN'];
-  } catch (e) {
-    console.warn("Logout request failed, cleaning local state anyway.")
-  } finally {
-    clearUser()
-    // Force a full page refresh to ensure clean state
+    await authStore.logout() // Use store action
     window.location.href = '/login'; 
-  }
 }
 
 const goToLogin = () => {
@@ -93,12 +48,12 @@ const goToLogin = () => {
   </div>
 
   <template v-else>
+    <!-- Removed currentUser props -->
     <RouterView 
-      :currentUser="currentUser" 
       @login-success="onLoginSuccess"
       @login-click="goToLogin"
       @logout-click="handleLogout"
-      @update-user="(u: any) => currentUser = u"
+      @update-user="(u: any) => authStore.setUser(u)"
       @back="router.push('/')"
     />
     <Toast />

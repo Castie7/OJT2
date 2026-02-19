@@ -1,22 +1,21 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue' 
-import { useRoute, useRouter } from 'vue-router'
+import { ref, watch, nextTick } from 'vue' 
+import { useRoute } from 'vue-router'
 import { researchService } from '../../../services'
 import SubmittedResearches from './SubmittedResearches.vue'
 import { useMyWorkspace } from '../../../composables/useMyWorkspace' 
-import type { User } from '../../../types' 
+import { useAuthStore } from '../../../stores/auth'
 import ResearchDetailsModal from './ResearchDetailsModal.vue'
 import BaseButton from '../../ui/BaseButton.vue'
 import BaseCard from '../../ui/BaseCard.vue'
 import BaseInput from '../../ui/BaseInput.vue'
 import BaseSelect from '../../ui/BaseSelect.vue'
 
-const props = defineProps<{
-  currentUser: User | null
-}>()
+// Props removed
 
 const route = useRoute()
-const router = useRouter()
+
+const authStore = useAuthStore()
 
 
 const { 
@@ -29,7 +28,7 @@ const {
   openEditModal,
   submitResearch,
   handleFileChange
-} = useMyWorkspace(props.currentUser)
+} = useMyWorkspace()
 
 // Reference to the child component (the list of researches)
 const submissionsRef = ref<InstanceType<typeof SubmittedResearches> | null>(null)
@@ -149,7 +148,7 @@ const conditionOptions = [
         <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <span>👤</span> My Workspace
         </h2>
-        <p class="text-sm text-gray-500">Managing uploads for <span class="font-bold text-emerald-700">{{ currentUser?.name }}</span></p>
+        <p class="text-sm text-gray-500">Managing uploads for <span class="font-bold text-emerald-700">{{ authStore.currentUser?.name }}</span></p>
       </div>
       <BaseButton 
           @click="openSubmitModal" 
@@ -191,7 +190,7 @@ const conditionOptions = [
     <BaseCard class="min-h-[500px] !p-0 overflow-hidden">
         <SubmittedResearches 
             ref="submissionsRef" 
-            :currentUser="currentUser" 
+            :currentUser="authStore.currentUser" 
             :statusFilter="activeTab" 
             @edit="openEditModal"
             @view="handleViewResearch"

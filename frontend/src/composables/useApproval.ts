@@ -2,9 +2,12 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import { researchService, commentService } from '../services'
 import { useToast } from './useToast'
 import { useErrorHandler } from './useErrorHandler'
-import type { User, Research, Comment } from '../types'
+import type { Research, Comment } from '../types'
 
-export function useApproval(currentUser: User | null) {
+import { useAuthStore } from '../stores/auth'
+
+export function useApproval() {
+  const authStore = useAuthStore()
 
   // --- STATE ---
   const activeTab = ref<'pending' | 'rejected'>('pending')
@@ -193,13 +196,13 @@ export function useApproval(currentUser: User | null) {
   }
 
   const postComment = async () => {
-    if (isSendingComment.value || !commentModal.value.newComment.trim() || !currentUser) return
+    if (isSendingComment.value || !commentModal.value.newComment.trim() || !authStore.currentUser) return
     isSendingComment.value = true
     try {
       await commentService.create({
         research_id: commentModal.value.researchId!,
-        user_id: currentUser.id,
-        user_name: currentUser.name,
+        user_id: authStore.currentUser.id,
+        user_name: authStore.currentUser.name,
         role: 'admin',
         comment: commentModal.value.newComment
       })

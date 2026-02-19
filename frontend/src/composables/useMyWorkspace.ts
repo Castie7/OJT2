@@ -2,10 +2,10 @@ import { ref, reactive, watch } from 'vue'
 import { researchService } from '../services'
 import { useToast } from './useToast'
 import { useErrorHandler } from './useErrorHandler'
-import type { User, Research } from '../types'
+import type { Research } from '../types'
 
 
-export function useMyWorkspace(_currentUser: User | null) {
+export function useMyWorkspace() {
 
   const activeTab = ref<'pending' | 'approved' | 'rejected' | 'archived'>('pending')
   const isModalOpen = ref(false)

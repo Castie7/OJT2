@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSubmittedResearches } from '../../../composables/useSubmittedResearches' 
-import type { User } from '../../../types' 
+
+import { useAuthStore } from '../../../stores/auth'
 
 // ✅ USE THE DYNAMIC URL
 import { getAssetUrl } from '../../../services/api'
 const ASSET_URL = getAssetUrl()
 
 const props = defineProps<{
-  currentUser: User | null
   statusFilter: string
 }>()
+
+const authStore = useAuthStore()
 
 const isArchived = computed(() => props.statusFilter === 'archived')
 
@@ -108,7 +110,7 @@ void isSendingComment
               
               <td class="px-6 py-4">
                  <div class="font-bold text-gray-900 line-clamp-2 leading-snug group-hover:text-emerald-700 transition-colors" :title="item.title">{{ item.title }}</div>
-                 <div class="text-xs text-gray-400 mt-1">Ref: #{{ item.id }}</div>
+                 <div class="text-xs text-gray-500 mt-1 font-medium">By: {{ item.author }}</div>
               </td>
               
               <td class="px-6 py-4">
@@ -249,20 +251,20 @@ void isSendingComment
                 v-for="c in commentModal.list" 
                 :key="c.id" 
                 class="flex flex-col max-w-[85%]"
-                :class="c.user_name === currentUser?.name ? 'self-end items-end ml-auto' : 'self-start items-start'"
+                :class="c.user_name === authStore.currentUser?.name ? 'self-end items-end ml-auto' : 'self-start items-start'"
               >
                 <div class="flex items-center gap-2 mb-1 px-1">
-                     <div v-if="c.user_name !== currentUser?.name" class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
+                     <div v-if="c.user_name !== authStore.currentUser?.name" class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
                          {{ c.user_name.charAt(0) }}
                      </div>
                      <span class="text-[10px] font-bold text-gray-500">
-                        {{ c.user_name }} <span v-if="c.user_name === currentUser?.name" class="text-emerald-600">(You)</span>
+                        {{ c.user_name }} <span v-if="c.user_name === authStore.currentUser?.name" class="text-emerald-600">(You)</span>
                      </span>
                 </div>
                 
                 <div 
                   class="px-4 py-2.5 shadow-sm text-sm break-words relative leading-relaxed"
-                  :class="c.user_name === currentUser?.name
+                  :class="c.user_name === authStore.currentUser?.name
                     ? 'bg-emerald-600 text-white rounded-2xl rounded-tr-sm' 
                     : 'bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-gray-100'"
                 >

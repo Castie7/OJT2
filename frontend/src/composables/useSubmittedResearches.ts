@@ -1,10 +1,14 @@
+
 import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import { researchService, commentService } from '../services'
 import { useToast } from './useToast'
 import { useErrorHandler } from './useErrorHandler'
-import type { User, Research, Comment } from '../types'
+import type { Research, Comment } from '../types'
 
-export function useSubmittedResearches(props: { currentUser: User | null, statusFilter: string }) {
+import { useAuthStore } from '../stores/auth'
+
+export function useSubmittedResearches(props: { statusFilter: string }) {
+    const authStore = useAuthStore()
 
     // --- STATE ---
     const myItems = ref<Research[]>([])
@@ -156,7 +160,7 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
         confirmModal.value = {
             show: true, id: item.id, action: action,
             title: action === 'Archive' ? 'Move to Trash?' : 'Restore File?',
-            subtext: action === 'Archive' ? `Remove "${item.title}"?` : `Restore "${item.title}"?`,
+            subtext: action === 'Archive' ? `Remove "${item.title}" ? ` : `Restore "${item.title}" ? `,
             isProcessing: false
         }
     }
@@ -194,14 +198,14 @@ export function useSubmittedResearches(props: { currentUser: User | null, status
     }
 
     const postComment = async () => {
-        if (isSendingComment.value || !commentModal.value.newComment.trim() || !props.currentUser || !commentModal.value.researchId) return
+        if (isSendingComment.value || !commentModal.value.newComment.trim() || !authStore.currentUser || !commentModal.value.researchId) return
         isSendingComment.value = true
         try {
             await commentService.create({
                 research_id: commentModal.value.researchId,
-                user_id: props.currentUser.id,
-                user_name: props.currentUser.name,
-                role: props.currentUser.role,
+                user_id: authStore.currentUser.id,
+                user_name: authStore.currentUser.name,
+                role: authStore.currentUser.role,
                 comment: commentModal.value.newComment
             })
 

@@ -3,10 +3,10 @@ import { researchService } from '../services'
 import { useToast } from './useToast'
 import { useErrorHandler } from './useErrorHandler'
 import { debounce } from '../utils/debounce'
-import type { User, Research } from '../types'
+import type { Research } from '../types'
 
 
-export function useResearchLibrary(_currentUser: User | null, emit: (event: 'update-stats', count: number) => void) {
+export function useResearchLibrary(emit: (event: 'update-stats', count: number) => void) {
 
   // --- STATE ---
   const researches = ref<Research[]>([])

@@ -1,32 +1,31 @@
 <script setup lang="ts">
 import { useSettings } from '../../../composables/useSettings'
-import { useAuth } from '../../../composables/useAuth'
+import { useAuthStore } from '../../../stores/auth'
 import type { User } from '../../../types'
 import BaseButton from '../../ui/BaseButton.vue'
 import BaseCard from '../../ui/BaseCard.vue'
 import BaseInput from '../../ui/BaseInput.vue'
 
-// 1. Get Global Auth State directly (No more props)
-const { currentUser } = useAuth()
+// 1. Get Global Auth State directly
+const authStore = useAuthStore()
 
 // 2. Define Emits
 const emit = defineEmits<{ 
-  (e: 'update-user', user: User): void
-  (e: 'trigger-logout'): void 
+  (e: 'update-user', user: User): void;
+  (e: 'trigger-logout'): void;
 }>()
 
 // 3. Use Composable
-// We pass callbacks so the composable can trigger parent events
 const { 
-  profileForm, passForm, 
-  isProfileLoading, isPasswordLoading,
-  saveProfile, changePassword,
-  showCurrentPass, showNewPass
-} = useSettings(
-    currentUser, 
-    (u) => emit('update-user', u), // Success Callback: Update Parent State
-    () => emit('trigger-logout')   // Success Callback: Logout User
-)
+  profileForm, 
+  passForm, 
+  isProfileLoading, 
+  isPasswordLoading,
+  saveProfile, 
+  changePassword,
+  showCurrentPass, 
+  showNewPass
+} = useSettings()
 </script>
 
 <template>
@@ -47,15 +46,15 @@ const {
         
         <div class="flex items-center gap-4 bg-emerald-50 px-6 py-4 rounded-xl border border-emerald-100 shadow-sm w-full md:w-auto">
            <div class="h-14 w-14 bg-emerald-200 text-emerald-800 rounded-full flex items-center justify-center font-bold text-2xl border-4 border-white shadow-sm shrink-0">
-             {{ currentUser?.name?.charAt(0).toUpperCase() || 'U' }}
+             {{ authStore.currentUser?.name?.charAt(0).toUpperCase() || 'U' }}
            </div>
            <div class="flex flex-col">
              <span class="text-[10px] text-emerald-600 uppercase font-bold tracking-wider mb-0.5">Currently Logged In</span>
              <div class="font-bold text-gray-900 text-lg leading-tight">
-                {{ currentUser?.name || 'Unknown User' }}
+                {{ authStore.currentUser?.name || 'Unknown User' }}
              </div>
              <div class="text-sm text-gray-600 font-medium">
-                {{ currentUser?.email || 'No Email Found' }}
+                {{ authStore.currentUser?.email || 'No Email Found' }}
              </div>
            </div>
         </div>
@@ -67,13 +66,13 @@ const {
             <BaseInput 
                 v-model="profileForm.name" 
                 label="Display Name" 
-                :placeholder="currentUser?.name"
+                :placeholder="authStore.currentUser?.name"
             />
             <BaseInput 
                 v-model="profileForm.email" 
                 type="email" 
                 label="Email Address" 
-                :placeholder="currentUser?.email"
+                :placeholder="authStore.currentUser?.email"
             />
           </div>
           <div class="flex justify-end mt-8">

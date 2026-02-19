@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import Toast from './components/shared/Toast.vue'
 import { useAuthStore } from './stores/auth' // Import the store
@@ -13,12 +13,7 @@ watch(() => authStore.isInitialized, (newVal) => {
     if (newVal) isLoading.value = false
 }, { immediate: true })
 
-onMounted(async () => {
-    // Check initialization on mount
-    if (!authStore.isInitialized) {
-        await authStore.init()
-    }
-})
+// onMounted removed - Auth init is handled by Router Guard
 
 // --- Event Handlers ---
 // Most logic is now in the store or components, but we keep high-level routing here if needed

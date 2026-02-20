@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
-=======
-import { ref, watch, computed, onMounted, onUnmounted, type Ref } from 'vue'
->>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 import { useRouter } from 'vue-router'
 import { dashboardService, notificationService } from '../services'
 import api from '../services/api'

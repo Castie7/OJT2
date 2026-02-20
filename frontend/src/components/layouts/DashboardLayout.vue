@@ -2,17 +2,9 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute, RouterView } from 'vue-router'
 import { useDashboard } from '../../composables/useDashboard'
-<<<<<<< HEAD
 import { useAuthStore } from '../../stores/auth'
 import type { User } from '../../types' // Keeping User type if needed for emits or other logic
 // import BaseButton from '../ui/BaseButton.vue' // Removed unused
-=======
-import type { User } from '../../types'
-
-const props = defineProps<{
-  currentUser: User | null
-}>()
->>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 
 // Props removed (currentUser is in store)
 const emit = defineEmits<{

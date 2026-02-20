@@ -34,6 +34,11 @@ class ResearchController extends BaseController
         return $this->authService->validateUser($token);
     }
 
+    protected function validateUser()
+    {
+        return $this->getUser();
+    }
+
     private function isValidIsoDate(string $date): bool
     {
         $parsed = \DateTimeImmutable::createFromFormat('Y-m-d', $date);
@@ -430,15 +435,10 @@ class ResearchController extends BaseController
     // 14. ADD COMMENT
     public function addComment()
     {
-<<<<<<< HEAD
-        $user = $this->getUser();
-=======
         $user = $this->validateUser();
         if (!$user) {
             return $this->failUnauthorized('Access Denied');
         }
-
->>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
         $json = $this->request->getJSON();
         if (!$json || !isset($json->research_id) || !isset($json->comment)) {
             return $this->fail('research_id and comment are required', 400);
@@ -522,11 +522,7 @@ class ResearchController extends BaseController
         }
 
         try {
-<<<<<<< HEAD
-            $result = $this->researchService->importCsv($file->getTempName(), $user->id);
-=======
             $result = $this->researchService->importCsv($file->getTempName(), (int) $user->id);
->>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
             return $this->response->setJSON([
                 'status' => 'success',
                 'count' => $result['count'],
@@ -544,15 +540,11 @@ class ResearchController extends BaseController
     public function importSingle()
     {
         try {
-<<<<<<< HEAD
-            $user = $this->getUser();
-=======
             $user = $this->validateUser();
             if (!$user)
                 return $this->failUnauthorized('Access Denied');
             if ($user->role !== 'admin')
                 return $this->failForbidden('Access Denied');
->>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 
             $input = $this->request->getJSON(true);
             if (empty($input)) {
@@ -581,15 +573,11 @@ class ResearchController extends BaseController
     public function uploadBulkPdfs()
     {
         try {
-<<<<<<< HEAD
-            $user = $this->getUser();
-=======
             $user = $this->validateUser();
             if (!$user)
                 return $this->failUnauthorized('Access Denied');
             if ($user->role !== 'admin')
                 return $this->failForbidden('Access Denied');
->>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 
             $files = $this->request->getFiles();
 

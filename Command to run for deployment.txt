@@ -5,6 +5,10 @@ composer install
 php spark migrate
 php spark db:seed UsersSeeder
 
+Emergency access reset (if login is broken)
+php spark db:seed EmergencyResetSeeder
+Resets only admin account (admin@bsu.edu.ph) to default password: 123admin
+
 Frontend
 npm install
 npm run build

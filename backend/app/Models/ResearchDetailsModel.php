@@ -20,6 +20,7 @@ class ResearchDetailsModel extends Model
         'subjects', 
         'shelf_location', 
         'item_condition', 
-        'link'
+        'link',
+        'search_text'
     ];
 }

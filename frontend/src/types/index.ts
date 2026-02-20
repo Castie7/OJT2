@@ -20,6 +20,7 @@ export interface Research {
   abstract?: string
   status: 'pending' | 'approved' | 'rejected' | 'archived'
   access_level?: 'public' | 'private'
+  relevance_score?: number
   file_path?: string
   crop_variation?: string
 
@@ -143,6 +144,8 @@ export interface ResearchFilters {
   end_date?: string
   knowledge_type?: string
   search?: string
+  strict?: boolean
+  limit?: number
 }
 
 export interface CreateResearchRequest {
@@ -208,4 +211,67 @@ export interface DashboardStats {
   pending: number
   approved: number
   rejected: number
+}
+
+// ============================================================================
+// ASSISTANT API TYPES
+// ============================================================================
+
+export type AssistantSearchMode = 'specific' | 'broad'
+export type AssistantFeedback = 'helpful' | 'not_helpful'
+
+export interface AssistantSearchLogRequest {
+  query: string
+  effective_query?: string
+  mode?: AssistantSearchMode
+  result_count?: number
+  top_research_ids?: number[]
+  latency_ms?: number
+  confidence?: number
+  is_strong_match?: boolean
+}
+
+export interface AssistantSearchLogResponse {
+  status: 'success' | 'error'
+  log_id: number
+}
+
+export interface AssistantFeedbackRequest {
+  log_id: number
+  feedback: AssistantFeedback
+  note?: string
+}
+
+export interface AssistantQueryCount {
+  effective_query: string
+  count: number
+}
+
+export interface AssistantFeedbackCount {
+  feedback: AssistantFeedback
+  count: number
+}
+
+export interface AssistantSlowQuery {
+  id: number
+  effective_query: string
+  latency_ms: number
+  created_at: string
+}
+
+export interface AssistantAnalyticsSummary {
+  total_queries: number
+  zero_results: number
+  avg_latency_ms: number
+  slow_queries: number
+  slow_threshold_ms: number
+}
+
+export interface AssistantAnalyticsResponse {
+  status: 'success' | 'error'
+  summary: AssistantAnalyticsSummary
+  top_queries: AssistantQueryCount[]
+  zero_result_queries: AssistantQueryCount[]
+  feedback: AssistantFeedbackCount[]
+  slowest_queries: AssistantSlowQuery[]
 }

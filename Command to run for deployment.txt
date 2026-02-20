@@ -4,6 +4,22 @@ Backend
 composer install
 php spark migrate
 php spark db:seed UsersSeeder
+php spark db:seed ReindexResearchSearchSeeder  (optional: backfill PDF/index search for existing records)
+php spark index:research --limit 200          (optional: process pending index jobs now)
+php spark assistant:evaluate                  (optional: run assistant benchmark checks)
+
+Optional OCR support (for scanned PDFs)
+Install Poppler (pdftoppm) + Tesseract on server and make commands available in PATH.
+Then run: php spark db:seed ReindexResearchSearchSeeder
+Optional .env:
+search.ocr.maxPages = 3
+search.ocr.dpi = 180
+search.ocr.lang = eng
+search.index.maxAttempts = 3
+
+Recommended scheduler (production)
+Run every minute:
+php spark index:research --limit 50
 
 Emergency access reset (if login is broken)
 php spark db:seed EmergencyResetSeeder

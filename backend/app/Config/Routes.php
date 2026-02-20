@@ -28,6 +28,9 @@ $routes->group('api', function ($routes) {
     $routes->get('notifications', 'NotificationController::index', ['filter' => 'auth']);
     $routes->post('notifications/read', 'NotificationController::markAsRead', ['filter' => 'auth']);
     $routes->post('comments', 'ResearchController::addComment', ['filter' => 'auth']);
+    $routes->post('assistant/log', 'AssistantController::logSearch');
+    $routes->post('assistant/feedback', 'AssistantController::feedback');
+    $routes->get('assistant/analytics', 'AssistantController::analytics', ['filter' => 'auth']);
 
     // --- ADMIN LOGS ---
     $routes->group('logs', ['filter' => 'auth'], function ($routes) {

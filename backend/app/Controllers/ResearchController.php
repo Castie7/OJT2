@@ -86,6 +86,34 @@ class ResearchController extends BaseController
         return strtolower(trim((string) $accessLevel)) === 'private' ? 'private' : 'public';
     }
 
+    private function parseBooleanQueryValue(?string $value): bool
+    {
+        $normalized = strtolower(trim((string) $value));
+        return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
+    }
+
+    private function parsePositiveIntQueryValue(?string $value, int $min = 1, int $max = 50): ?int
+    {
+        $normalized = trim((string) $value);
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (!ctype_digit($normalized)) {
+            return null;
+        }
+
+        $parsed = (int) $normalized;
+        if ($parsed < $min) {
+            $parsed = $min;
+        }
+        if ($parsed > $max) {
+            $parsed = $max;
+        }
+
+        return $parsed;
+    }
+
     // 1. PUBLIC INDEX
     public function index()
     {
@@ -94,9 +122,18 @@ class ResearchController extends BaseController
 
         $startDate = trim((string) $this->request->getGet('start_date'));
         $endDate = trim((string) $this->request->getGet('end_date'));
+        $search = trim((string) $this->request->getGet('search'));
+        $strictSearch = $this->parseBooleanQueryValue($this->request->getGet('strict'));
+        $limitRaw = $this->request->getGet('limit');
+        $limit = $this->parsePositiveIntQueryValue($limitRaw);
+
+        if (trim((string) $limitRaw) !== '' && $limit === null) {
+            return $this->fail('Invalid limit. Use a numeric value between 1 and 50.', 400);
+        }
 
         $startDate = $startDate !== '' ? $startDate : null;
         $endDate = $endDate !== '' ? $endDate : null;
+        $search = $search !== '' ? $search : null;
 
         if ($startDate !== null && !$this->isValidIsoDate($startDate)) {
             return $this->fail('Invalid start_date. Use YYYY-MM-DD format.', 400);
@@ -110,7 +147,7 @@ class ResearchController extends BaseController
             return $this->fail('Invalid date range: start_date cannot be later than end_date.', 400);
         }
 
-        $data = $this->researchService->getAllApproved($startDate, $endDate, $includePrivate);
+        $data = $this->researchService->getAllApproved($startDate, $endDate, $includePrivate, $search, $strictSearch, $limit);
         return $this->respond($data);
     }
 

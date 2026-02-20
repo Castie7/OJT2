@@ -36,6 +36,15 @@ export const researchService = {
     const params = new URLSearchParams()
     if (filters?.start_date) params.append('start_date', filters.start_date)
     if (filters?.end_date) params.append('end_date', filters.end_date)
+    if (filters?.search && filters.search.trim().length > 0) {
+      params.append('search', filters.search.trim())
+    }
+    if (filters?.strict) {
+      params.append('strict', '1')
+    }
+    if (typeof filters?.limit === 'number' && filters.limit > 0) {
+      params.append('limit', String(Math.min(50, Math.floor(filters.limit))))
+    }
 
     const queryString = params.toString()
     const endpoint = queryString ? `/research?${queryString}` : '/research'

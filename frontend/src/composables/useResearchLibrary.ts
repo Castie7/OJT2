@@ -52,7 +52,8 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
     try {
       const filters = {
         start_date: startDate.value,
-        end_date: endDate.value
+        end_date: endDate.value,
+        search: searchQuery.value
       }
 
       researches.value = showArchived.value
@@ -77,13 +78,18 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
   // --- FILTERING LOGIC ---
   const filteredResearches = computed(() => {
     return researches.value.filter(item => {
-      // A. Search Query (Title, Author, ISBN, Subjects)
-      const q = searchQuery.value.toLowerCase()
-      const matchesSearch =
-        item.title.toLowerCase().includes(q) ||
-        item.author.toLowerCase().includes(q) ||
-        (item.isbn_issn && item.isbn_issn.toLowerCase().includes(q)) ||
-        (item.subjects && item.subjects.toLowerCase().includes(q))
+      // A. Search Query
+      // For approved library results, search is handled server-side (DB-ranked).
+      // For archived view, keep client-side search behavior.
+      const q = searchQuery.value.toLowerCase().trim()
+      let matchesSearch = true
+      if (showArchived.value && q !== '') {
+        matchesSearch =
+          item.title.toLowerCase().includes(q) ||
+          item.author.toLowerCase().includes(q) ||
+          (!!item.isbn_issn && item.isbn_issn.toLowerCase().includes(q)) ||
+          (!!item.subjects && item.subjects.toLowerCase().includes(q))
+      }
 
       // B. Knowledge Type Filter
       // Handle comma-separated values (e.g. "Journal, Book")
@@ -148,16 +154,18 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
     fetchResearches()
   })
 
-  // Reset pagination on client-side filter change (no API call needed)
-  watch([searchQuery, selectedType], () => {
+  // Reset pagination on local-only filter change
+  watch(selectedType, () => {
     currentPage.value = 1
   })
 
-  // Debounce date-filter changes that trigger API calls
+  // Debounce search/date-filter changes that trigger API calls
   const debouncedFetch = debounce(() => {
     currentPage.value = 1
     fetchResearches()
   }, 400)
+
+  watch(searchQuery, () => debouncedFetch())
   watch([startDate, endDate], () => debouncedFetch())
 
   // Clear all filters

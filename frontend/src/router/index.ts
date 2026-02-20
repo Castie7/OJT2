@@ -34,6 +34,15 @@ const routes: Array<RouteRecordRaw> = [
         }
       },
       {
+        path: 'assistant',
+        name: 'ResearchAssistant',
+        component: () => import('../components/features/assistant/ResearchAssistant.vue'),
+        meta: {
+          requiresAuth: false,
+          title: 'Research Assistant - BSU Research Portal'
+        }
+      },
+      {
         path: 'workspace',
         name: 'MyWorkspace',
         component: () => import('../components/features/research/MyWorkspace.vue'),

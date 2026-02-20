@@ -315,7 +315,7 @@ class ResearchService extends BaseService
 
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
-            $file->move('public/uploads', $newName);
+            $file->move(ROOTPATH . 'public/uploads', $newName);
             $mainUpdate['file_path'] = $newName;
         }
         $this->researchModel->update($id, $mainUpdate);

@@ -24,27 +24,27 @@ class AuthController extends BaseController
     {
         try {
             $ip = $this->request->getIPAddress();
-            $cache = \Config\Services::cache();
-            $lockoutKey = 'login_lockout_' . md5($ip);
-            $attemptsKey = 'login_attempts_' . md5($ip);
-
-            // ── Check if this IP is currently locked out ──
-            $lockoutUntil = $cache->get($lockoutKey);
-            if ($lockoutUntil) {
-                $remaining = (int)ceil($lockoutUntil - time());
-                if ($remaining > 0) {
-                    return $this->response
-                        ->setStatusCode(429)
-                        ->setJSON([
-                        'status' => 'error',
-                        'message' => "Too many failed attempts. Please try again in {$remaining} seconds.",
-                        'retry_after' => $remaining,
-                        'csrf_token' => csrf_hash()
-                    ]);
-                }
-                // Lockout expired – clean up
-                $cache->delete($lockoutKey);
-                $cache->delete($attemptsKey);
+            
+            // --- RATE LIMITING (THROTtLER) ---
+            $throttler = \Config\Services::throttler();
+            $maxAttempts = 5;
+            $lockoutSecs = 60; // 1 minute lockout
+            
+            // Check if this IP is currently blocked
+            if ($throttler->check('login_attempts_' . md5($ip), $maxAttempts, $lockoutSecs) === false) {
+                // Determine how many seconds remain before they can try again
+                $retryAfter = $throttler->getTokenTime(); // Usually returns time of the bucket replenish
+                // Calculate simple remaining time for error message (rough estimate based on config)
+                // For a more precise wait time, getTokenTime can be used if configured specifically, 
+                // but just responding with the configured lockout is standard practice.
+                 return $this->response
+                    ->setStatusCode(429)
+                    ->setJSON([
+                    'status' => 'error',
+                    'message' => "Too many failed attempts. Please try again later.",
+                    'retry_after' => $lockoutSecs,
+                    'csrf_token' => csrf_hash()
+                ]);
             }
 
             $json = $this->request->getJSON();
@@ -54,9 +54,9 @@ class AuthController extends BaseController
             $user = $this->authService->login($email, $password);
 
             if ($user) {
-                // ── Success: clear any stored attempts ──
-                $cache->delete($attemptsKey);
-                $cache->delete($lockoutKey);
+                // Success: reset throttler intentionally if possible, though CI4 throttler 
+                // doesn't have a direct 'clear' method. Valid logins will just pass.
+                // We could let the token bucket decay naturally.
 
                 // LOG ACTIVITY
                 log_activity($user->id, $user->name, $user->role, 'LOGIN', "User logged in via email: $email");
@@ -74,33 +74,9 @@ class AuthController extends BaseController
                 ]);
             }
             else {
-                // ── Failure: increment attempt counter ──
-                $attempts = (int)($cache->get($attemptsKey) ?? 0);
-                $attempts++;
-
-                $maxAttempts = 5;
-                $lockoutSecs = 60; // 1 minute
-
-                if ($attempts >= $maxAttempts) {
-                    // Lock this IP out
-                    $cache->save($lockoutKey, time() + $lockoutSecs, $lockoutSecs);
-                    $cache->save($attemptsKey, $attempts, $lockoutSecs);
-
-                    return $this->response
-                        ->setStatusCode(429)
-                        ->setJSON([
-                        'status' => 'error',
-                        'message' => "Too many failed attempts. Please try again in {$lockoutSecs} seconds.",
-                        'retry_after' => $lockoutSecs,
-                        'csrf_token' => csrf_hash()
-                    ]);
-                }
-
-                // Save the incremented counter (TTL = lockout window so it auto-resets)
-                $cache->save($attemptsKey, $attempts, $lockoutSecs);
-
-                $remaining = $maxAttempts - $attempts;
-                return $this->failUnauthorized("Invalid email or password. {$remaining} attempt(s) remaining.");
+                // Failure: the throttler check() above already registered a hit.
+                // We just need to notify the user.
+                return $this->failUnauthorized("Invalid email or password.");
             }
         }
         catch (\Throwable $e) {

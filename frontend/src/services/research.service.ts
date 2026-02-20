@@ -111,7 +111,7 @@ export const researchService = {
    * Create new research submission
    */
   async create(data: FormData): Promise<ApiResponse<Research>> {
-    const response = await api.post<ApiResponse<Research>>('/research/create', data)
+    const response = await api.post<ApiResponse<Research>>('/research', data)
     apiCache.invalidate('research')
     return response.data
   },
@@ -120,7 +120,9 @@ export const researchService = {
    * Update existing research submission
    */
   async update(id: number, data: FormData): Promise<ApiResponse<Research>> {
-    const response = await api.post<ApiResponse<Research>>(`/research/update/${id}`, data)
+    // For file uploads in multipart/form-data, many servers (including CI4) prefer POST with an _method mapping
+    // or just POST. We left the POST alias in routes.
+    const response = await api.post<ApiResponse<Research>>(`/research/${id}`, data)
     apiCache.invalidate('research')
     return response.data
   },
@@ -129,7 +131,7 @@ export const researchService = {
    * Approve research submission (admin only)
    */
   async approve(id: number): Promise<ApiResponse<void>> {
-    const response = await api.post<ApiResponse<void>>(`/research/approve/${id}`)
+    const response = await api.post<ApiResponse<void>>(`/research/${id}/approve`)
     apiCache.invalidate('research')
     return response.data
   },
@@ -138,7 +140,7 @@ export const researchService = {
    * Reject research submission (admin only)
    */
   async reject(id: number): Promise<ApiResponse<void>> {
-    const response = await api.post<ApiResponse<void>>(`/research/reject/${id}`)
+    const response = await api.post<ApiResponse<void>>(`/research/${id}/reject`)
     apiCache.invalidate('research')
     return response.data
   },
@@ -147,7 +149,7 @@ export const researchService = {
    * Restore rejected research to pending (admin only)
    */
   async restore(id: number): Promise<ApiResponse<void>> {
-    const response = await api.post<ApiResponse<void>>(`/research/restore/${id}`)
+    const response = await api.post<ApiResponse<void>>(`/research/${id}/restore`)
     apiCache.invalidate('research')
     return response.data
   },
@@ -156,7 +158,7 @@ export const researchService = {
    * Archive research item
    */
   async archive(id: number): Promise<ApiResponse<void>> {
-    const response = await api.post<ApiResponse<void>>(`/research/archive/${id}`)
+    const response = await api.post<ApiResponse<void>>(`/research/${id}/archive`)
     apiCache.invalidate('research')
     return response.data
   },
@@ -168,7 +170,7 @@ export const researchService = {
     const formData = new FormData()
     formData.append('new_deadline', newDeadline)
 
-    const response = await api.post<ApiResponse<void>>(`/research/extend-deadline/${id}`, formData)
+    const response = await api.post<ApiResponse<void>>(`/research/${id}/extend-deadline`, formData)
     apiCache.invalidate('research')
     return response.data
   },

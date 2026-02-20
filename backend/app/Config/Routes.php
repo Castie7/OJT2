@@ -18,7 +18,7 @@ $routes->options('(:any)', function () {
     // ✅ FIX: Allow Cookies/Credentials
     $response->setHeader('Access-Control-Allow-Credentials', 'true');
 
-    $response->setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    $response->setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE, PATCH');
     $response->setHeader('Access-Control-Allow-Headers', 'X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, Authorization, X-CSRF-TOKEN');
 
     return $response->setStatusCode(200);
@@ -80,13 +80,18 @@ $routes->group('research', function ($routes) {
     $routes->get('comments/(:num)', 'ResearchController::getComments/$1');
 
     // Actions
-    $routes->post('create', 'ResearchController::create', ['filter' => 'auth']);
-    $routes->post('update/(:num)', 'ResearchController::update/$1', ['filter' => 'auth']);
-    $routes->post('approve/(:num)', 'ResearchController::approve/$1', ['filter' => 'auth']);
-    $routes->post('reject/(:num)', 'ResearchController::reject/$1', ['filter' => 'auth']);
-    $routes->post('extend-deadline/(:num)', 'ResearchController::extendDeadline/$1', ['filter' => 'auth']);
-    $routes->post('archive/(:num)', 'ResearchController::archive/$1', ['filter' => 'auth']);
-    $routes->post('restore/(:num)', 'ResearchController::restore/$1', ['filter' => 'auth']);
+    $routes->post('/', 'ResearchController::create', ['filter' => 'auth']);
+    $routes->put('(:num)', 'ResearchController::update/$1', ['filter' => 'auth']); // Full update
+    $routes->post('(:num)', 'ResearchController::update/$1', ['filter' => 'auth']); // Because HTML forms often use POST for with files, allow POST too
+    
+    // Status/Lifecycle updates (PATCH or POST to bypass browser CORS OPTIONS caching)
+    $routes->match(['patch', 'post'], '(:num)/approve', 'ResearchController::approve/$1', ['filter' => 'auth']);
+    $routes->match(['patch', 'post'], '(:num)/reject', 'ResearchController::reject/$1', ['filter' => 'auth']);
+    $routes->match(['patch', 'post'], '(:num)/archive', 'ResearchController::archive/$1', ['filter' => 'auth']);
+    $routes->match(['patch', 'post'], '(:num)/restore', 'ResearchController::restore/$1', ['filter' => 'auth']);
+    $routes->match(['patch', 'post'], '(:num)/extend-deadline', 'ResearchController::extendDeadline/$1', ['filter' => 'auth']);
+    
+    // Bulk/Import
     $routes->post('import-csv', 'ResearchController::importCsv', ['filter' => 'auth']);
     $routes->post('import-single', 'ResearchController::importSingle', ['filter' => 'auth']);
     $routes->post('bulk-upload-pdfs', 'ResearchController::uploadBulkPdfs', ['filter' => 'auth']);

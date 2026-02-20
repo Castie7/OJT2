@@ -26,6 +26,16 @@ class App extends BaseConfig
             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
             $this->baseURL = $protocol . '://' . $_SERVER['HTTP_HOST'] . '/OJT2/backend/public/index.php/';
         }
+
+        $forceHttpsEnv = env('app.forceGlobalSecureRequests');
+        if ($forceHttpsEnv !== null) {
+            $parsed = filter_var($forceHttpsEnv, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($parsed !== null) {
+                $this->forceGlobalSecureRequests = $parsed;
+            }
+        } elseif (ENVIRONMENT === 'production') {
+            $this->forceGlobalSecureRequests = true;
+        }
     }
 
     /**

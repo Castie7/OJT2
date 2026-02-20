@@ -64,14 +64,9 @@ class AuthService extends BaseService
     
     public function validateUser($token = null)
     {
-        // 1. Check Session
+        // Session-based authentication only.
         if (session()->get('isLoggedIn')) {
             return $this->userModel->find(session()->get('id')); // Returns Entity
-        }
-
-        // 2. Fallback: Check Token
-        if ($token) {
-            return $this->userModel->where('auth_token', $token)->first();
         }
 
         return false;
@@ -145,11 +140,16 @@ class AuthService extends BaseService
              throw new \Exception('Email already in use', 409);
          }
 
+         $role = $data->role ?? 'user';
+         if (!in_array($role, ['user', 'admin'], true)) {
+             $role = 'user';
+         }
+
          $newUser = new \App\Entities\User();
          $newUser->name     = $data->name;
          $newUser->email    = $data->email;
          $newUser->password = password_hash($data->password, PASSWORD_DEFAULT);
-         $newUser->role     = $data->role ?? 'user';
+         $newUser->role     = $role;
 
          if (!$this->userModel->save($newUser)) {
              throw new \Exception('Failed to create user', 500);

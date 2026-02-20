@@ -10,6 +10,9 @@ class ResearchController extends BaseController
 {
     use ResponseTrait;
 
+    private const MAX_PDF_SIZE_BYTES = 134217728; // 128 MB
+    private const MAX_PDF_SIZE_MB = 128;
+
     protected $researchService;
     protected $authService;
 
@@ -31,11 +34,68 @@ class ResearchController extends BaseController
         return $this->authService->validateUser($token);
     }
 
+    private function isValidIsoDate(string $date): bool
+    {
+        $parsed = \DateTimeImmutable::createFromFormat('Y-m-d', $date);
+        $errors = \DateTimeImmutable::getLastErrors();
+
+        return $parsed !== false
+            && $parsed->format('Y-m-d') === $date
+            && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0));
+    }
+
+    private function validatePdfFile($file, bool $required = false): ?string
+    {
+        if ($file === null) {
+            return $required ? 'PDF file is required.' : null;
+        }
+
+        if (!$file->isValid()) {
+            if ($file->getError() === UPLOAD_ERR_NO_FILE) {
+                return $required ? 'PDF file is required.' : null;
+            }
+            return 'File upload failed: ' . $file->getErrorString();
+        }
+
+        if ((int) $file->getSize() > self::MAX_PDF_SIZE_BYTES) {
+            return 'PDF file exceeds maximum size of ' . self::MAX_PDF_SIZE_MB . ' MB.';
+        }
+
+        $clientExt = strtolower((string) $file->getClientExtension());
+        $serverExt = strtolower((string) $file->getExtension());
+        if ($clientExt !== 'pdf' && $serverExt !== 'pdf') {
+            return 'Only PDF files are allowed.';
+        }
+
+        $clientMime = strtolower((string) $file->getClientMimeType());
+        $serverMime = strtolower((string) $file->getMimeType());
+        if (!str_contains($clientMime, 'pdf') && !str_contains($serverMime, 'pdf')) {
+            return 'Invalid file type. Only PDF files are allowed.';
+        }
+
+        return null;
+    }
+
     // 1. PUBLIC INDEX
     public function index()
     {
-        $startDate = $this->request->getGet('start_date');
-        $endDate = $this->request->getGet('end_date');
+        $startDate = trim((string) $this->request->getGet('start_date'));
+        $endDate = trim((string) $this->request->getGet('end_date'));
+
+        $startDate = $startDate !== '' ? $startDate : null;
+        $endDate = $endDate !== '' ? $endDate : null;
+
+        if ($startDate !== null && !$this->isValidIsoDate($startDate)) {
+            return $this->fail('Invalid start_date. Use YYYY-MM-DD format.', 400);
+        }
+
+        if ($endDate !== null && !$this->isValidIsoDate($endDate)) {
+            return $this->fail('Invalid end_date. Use YYYY-MM-DD format.', 400);
+        }
+
+        if ($startDate !== null && $endDate !== null && $startDate > $endDate) {
+            return $this->fail('Invalid date range: start_date cannot be later than end_date.', 400);
+        }
 
         $data = $this->researchService->getAllApproved($startDate, $endDate);
         return $this->respond($data);
@@ -57,6 +117,30 @@ class ResearchController extends BaseController
 
         $data = $this->researchService->getMyArchived($user->id);
         return $this->respond($data);
+    }
+
+    // 2.1 SINGLE ITEM (Admin or Owner)
+    public function show($id = null)
+    {
+        $user = $this->validateUser();
+        if (!$user) {
+            return $this->failUnauthorized('Access Denied');
+        }
+
+        if (!$id) {
+            return $this->fail('Research ID required', 400);
+        }
+
+        $item = $this->researchService->getResearch((int) $id);
+        if (!$item) {
+            return $this->failNotFound('Research not found');
+        }
+
+        if ($user->role !== 'admin' && (int) $item->uploaded_by !== (int) $user->id) {
+            return $this->failForbidden('Access Denied');
+        }
+
+        return $this->respond($item);
     }
 
     public function archived()
@@ -150,8 +234,13 @@ class ResearchController extends BaseController
                 ])->setStatusCode(400);
             }
 
-            // File is optional/handled by service (safe to pass invalid/null)
-            $this->researchService->createResearch($user->id, $input, $this->request->getFile('pdf_file'));
+            $pdfFile = $this->request->getFile('pdf_file');
+            $pdfValidationError = $this->validatePdfFile($pdfFile);
+            if ($pdfValidationError !== null) {
+                return $this->fail($pdfValidationError, 400);
+            }
+
+            $this->researchService->createResearch($user->id, $input, $pdfFile);
 
             // LOG
             log_activity($user->id, $user->name, $user->role, 'CREATE_RESEARCH', "Created research: " . ($input['title'] ?? 'Untitled'));
@@ -202,7 +291,13 @@ class ResearchController extends BaseController
                 ])->setStatusCode(400);
             }
 
-            $this->researchService->updateResearch($id, $user->id, $user->role, $input, $this->request->getFile('pdf_file'));
+            $pdfFile = $this->request->getFile('pdf_file');
+            $pdfValidationError = $this->validatePdfFile($pdfFile);
+            if ($pdfValidationError !== null) {
+                return $this->fail($pdfValidationError, 400);
+            }
+
+            $this->researchService->updateResearch($id, $user->id, $user->role, $input, $pdfFile);
 
             // LOG
             log_activity($user->id, $user->name, $user->role, 'UPDATE_RESEARCH', "Updated research ID: $id (" . ($input['title'] ?? '') . ")");
@@ -260,6 +355,10 @@ class ResearchController extends BaseController
         if (!$item)
             return $this->failNotFound();
 
+        if ($user->role !== 'admin' && (int) $item->uploaded_by !== (int) $user->id) {
+            return $this->failForbidden('Access Denied');
+        }
+
         // Prevent repeated actions
         if ($item->status === 'archived') {
             return $this->respond(['status' => 'success', 'message' => 'Already archived']);
@@ -282,6 +381,10 @@ class ResearchController extends BaseController
         $item = $this->researchService->getResearch($id);
         if (!$item)
             return $this->failNotFound();
+
+        if ($user->role !== 'admin' && (int) $item->uploaded_by !== (int) $user->id) {
+            return $this->failForbidden('Access Denied');
+        }
 
         // Prevent repeated actions
         if ($item->status !== 'archived') {
@@ -315,6 +418,11 @@ class ResearchController extends BaseController
     // 13. COMMENTS
     public function getComments($id = null)
     {
+        $user = $this->validateUser();
+        if (!$user) {
+            return $this->failUnauthorized('Access Denied');
+        }
+
         $data = $this->researchService->getComments($id);
         return $this->respond($data);
     }
@@ -322,15 +430,36 @@ class ResearchController extends BaseController
     // 14. ADD COMMENT
     public function addComment()
     {
+<<<<<<< HEAD
         $user = $this->getUser();
+=======
+        $user = $this->validateUser();
+        if (!$user) {
+            return $this->failUnauthorized('Access Denied');
+        }
+
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
         $json = $this->request->getJSON();
+        if (!$json || !isset($json->research_id) || !isset($json->comment)) {
+            return $this->fail('research_id and comment are required', 400);
+        }
+
+        $comment = trim((string) $json->comment);
+        if ($comment === '') {
+            return $this->fail('Comment cannot be empty', 400);
+        }
+
+        $researchId = (int) $json->research_id;
+        if ($researchId <= 0) {
+            return $this->fail('Invalid research_id', 400);
+        }
 
         $data = [
-            'research_id' => $json->research_id,
-            'user_id' => $json->user_id,
-            'user_name' => $json->user_name,
-            'role' => $json->role,
-            'comment' => $json->comment
+            'research_id' => $researchId,
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'role' => $user->role,
+            'comment' => $comment
         ];
 
         if ($this->researchService->addComment($data)) {
@@ -359,8 +488,18 @@ class ResearchController extends BaseController
     // USER STATS
     public function userStats($userId = null)
     {
+        $user = $this->validateUser();
+        if (!$user) {
+            return $this->failUnauthorized('Access Denied');
+        }
+
         if (!$userId)
             return $this->fail('User ID required');
+
+        if ($user->role !== 'admin' && (int) $userId !== (int) $user->id) {
+            return $this->failForbidden('Access Denied');
+        }
+
         return $this->respond($this->researchService->getUserStats($userId));
     }
 
@@ -383,7 +522,11 @@ class ResearchController extends BaseController
         }
 
         try {
+<<<<<<< HEAD
             $result = $this->researchService->importCsv($file->getTempName(), $user->id);
+=======
+            $result = $this->researchService->importCsv($file->getTempName(), (int) $user->id);
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
             return $this->response->setJSON([
                 'status' => 'success',
                 'count' => $result['count'],
@@ -401,7 +544,15 @@ class ResearchController extends BaseController
     public function importSingle()
     {
         try {
+<<<<<<< HEAD
             $user = $this->getUser();
+=======
+            $user = $this->validateUser();
+            if (!$user)
+                return $this->failUnauthorized('Access Denied');
+            if ($user->role !== 'admin')
+                return $this->failForbidden('Access Denied');
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 
             $input = $this->request->getJSON(true);
             if (empty($input)) {
@@ -430,7 +581,15 @@ class ResearchController extends BaseController
     public function uploadBulkPdfs()
     {
         try {
+<<<<<<< HEAD
             $user = $this->getUser();
+=======
+            $user = $this->validateUser();
+            if (!$user)
+                return $this->failUnauthorized('Access Denied');
+            if ($user->role !== 'admin')
+                return $this->failForbidden('Access Denied');
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 
             $files = $this->request->getFiles();
 
@@ -455,26 +614,37 @@ class ResearchController extends BaseController
             $details = [];
 
             foreach ($pdfFiles as $file) {
-                if ($file->isValid() && !$file->hasMoved()) {
-                    // Filename without extension
-                    $originalName = $file->getClientName();
-                    $titleCandidate = pathinfo($originalName, PATHINFO_FILENAME);
+                $originalName = (string) $file->getClientName();
+                $pdfValidationError = $this->validatePdfFile($file, true);
+                if ($pdfValidationError !== null) {
+                    $skipped++;
+                    $details[] = "Skipped: $originalName ($pdfValidationError)";
+                    continue;
+                }
 
-                    // Call Service to find and attach
-                    $resultStatus = $this->researchService->matchAndAttachPdf($titleCandidate, $file);
+                if ($file->hasMoved()) {
+                    $skipped++;
+                    $details[] = "Skipped: $originalName (File already moved)";
+                    continue;
+                }
 
-                    if ($resultStatus === 'linked') {
-                        $matched++;
-                        $details[] = "Linked: $originalName";
-                    }
-                    elseif ($resultStatus === 'exists') {
-                        $skipped++;
-                        $details[] = "Skipped: $originalName (Already has file)";
-                    }
-                    else {
-                        $skipped++;
-                        $details[] = "Skipped: $originalName (No match found)";
-                    }
+                // Filename without extension
+                $titleCandidate = pathinfo($originalName, PATHINFO_FILENAME);
+
+                // Call Service to find and attach
+                $resultStatus = $this->researchService->matchAndAttachPdf($titleCandidate, $file);
+
+                if ($resultStatus === 'linked') {
+                    $matched++;
+                    $details[] = "Linked: $originalName";
+                }
+                elseif ($resultStatus === 'exists') {
+                    $skipped++;
+                    $details[] = "Skipped: $originalName (Already has file)";
+                }
+                else {
+                    $skipped++;
+                    $details[] = "Skipped: $originalName (No match found)";
                 }
             }
 

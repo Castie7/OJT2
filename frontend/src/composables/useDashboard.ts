@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+=======
+import { ref, watch, computed, onMounted, onUnmounted, type Ref } from 'vue'
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 import { useRouter } from 'vue-router'
 import { dashboardService, notificationService } from '../services'
 import api from '../services/api'
@@ -121,7 +125,7 @@ export function useDashboard() {
     const user = authStore.currentUser
     if (!user) return
     try {
-      notifications.value = await notificationService.getAll(user.id)
+      notifications.value = await notificationService.getAll()
     } catch (error) {
       console.error("Failed to fetch notifications", error)
     }
@@ -136,7 +140,7 @@ export function useDashboard() {
         // Optimistic update
         notifications.value.forEach(n => n.is_read = 1)
 
-        await notificationService.markAllAsRead(user.id)
+        await notificationService.markAllAsRead()
       } catch (e) { console.error(e) }
     }
   }

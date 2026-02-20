@@ -5,6 +5,7 @@ use CodeIgniter\Router\RouteCollection;
 /** @var RouteCollection $routes */
 
 // --------------------------------------------------------------------
+<<<<<<< HEAD
 // 1. GLOBAL OPTIONS HANDLER (CORS PREFLIGHT) - MUST BE FIRST
 // --------------------------------------------------------------------
 // This intercepts the browser's "Check" before sending data.
@@ -26,6 +27,9 @@ $routes->options('(:any)', function () {
 
 // --------------------------------------------------------------------
 // 2. APP ROUTES
+=======
+// APP ROUTES
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 // --------------------------------------------------------------------
 
 $routes->get('/', 'Home::index');
@@ -33,7 +37,6 @@ $routes->get('/', 'Home::index');
 // --- AUTH ROUTES ---
 $routes->post('auth/login', 'AuthController::login');
 $routes->get('auth/verify', 'AuthController::verify');
-
 
 $routes->post('auth/logout', 'AuthController::logout');
 $routes->post('auth/update-profile', 'AuthController::updateProfile');
@@ -52,13 +55,21 @@ $routes->group('api', function ($routes) {
     $routes->post('comments', 'ResearchController::addComment', ['filter' => 'auth']);
 
     // --- ADMIN LOGS ---
+<<<<<<< HEAD
     $routes->group('logs', ['filter' => 'auth'], function ($routes) {
             $routes->get('export', 'Admin\LogController::export'); // ✅ Export CSV
             $routes->get('/', 'Admin\LogController::index'); // List files
             $routes->get('(:segment)', 'Admin\LogController::show/$1'); // View file
         }
         );
+=======
+    $routes->group('logs', function ($routes) {
+        $routes->get('export', 'Admin\LogController::export'); // Export CSV
+        $routes->get('/', 'Admin\LogController::index'); // List files
+        $routes->get('(:segment)', 'Admin\LogController::show/$1'); // View file
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
     });
+});
 
 // --- RESEARCH ROUTES ---
 $routes->group('research', function ($routes) {
@@ -70,16 +81,26 @@ $routes->group('research', function ($routes) {
 
     // Lists
     $routes->get('/', 'ResearchController::index');
+<<<<<<< HEAD
     $routes->get('archived', 'ResearchController::archived', ['filter' => 'auth']);
     $routes->get('my-submissions', 'ResearchController::mySubmissions', ['filter' => 'auth']);
     $routes->get('my-archived', 'ResearchController::myArchived', ['filter' => 'auth']);
     $routes->get('pending', 'ResearchController::pending', ['filter' => 'auth']);
     $routes->get('rejected', 'ResearchController::rejectedList', ['filter' => 'auth']);
+=======
+    $routes->get('(:num)', 'ResearchController::show/$1');
+    $routes->get('archived', 'ResearchController::archived');
+    $routes->get('my-submissions', 'ResearchController::mySubmissions');
+    $routes->get('my-archived', 'ResearchController::myArchived');
+    $routes->get('pending', 'ResearchController::pending');
+    $routes->get('rejected', 'ResearchController::rejectedList');
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 
     // Comments List (Public/Read Only? Usually requires auth to view)
     $routes->get('comments/(:num)', 'ResearchController::getComments/$1');
 
     // Actions
+<<<<<<< HEAD
     $routes->post('/', 'ResearchController::create', ['filter' => 'auth']);
     $routes->put('(:num)', 'ResearchController::update/$1', ['filter' => 'auth']); // Full update
     $routes->post('(:num)', 'ResearchController::update/$1', ['filter' => 'auth']); // Because HTML forms often use POST for with files, allow POST too
@@ -96,3 +117,16 @@ $routes->group('research', function ($routes) {
     $routes->post('import-single', 'ResearchController::importSingle', ['filter' => 'auth']);
     $routes->post('bulk-upload-pdfs', 'ResearchController::uploadBulkPdfs', ['filter' => 'auth']);
 });
+=======
+    $routes->post('create', 'ResearchController::create');
+    $routes->post('update/(:num)', 'ResearchController::update/$1');
+    $routes->post('approve/(:num)', 'ResearchController::approve/$1');
+    $routes->post('reject/(:num)', 'ResearchController::reject/$1');
+    $routes->post('extend-deadline/(:num)', 'ResearchController::extendDeadline/$1');
+    $routes->post('archive/(:num)', 'ResearchController::archive/$1');
+    $routes->post('restore/(:num)', 'ResearchController::restore/$1');
+    $routes->post('import-csv', 'ResearchController::importCsv');
+    $routes->post('import-single', 'ResearchController::importSingle');
+    $routes->post('bulk-upload-pdfs', 'ResearchController::uploadBulkPdfs');
+});
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)

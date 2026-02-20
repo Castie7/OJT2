@@ -18,10 +18,10 @@ if (!defined('CI_DEBUG')) {
  */
 final class LoginConfigTest extends TestCase
 {
-    public function testCookieHttpOnlyIsFalse()
+    public function testCookieHttpOnlyIsTrue()
     {
         $config = new Cookie();
-        $this->assertFalse($config->httponly, 'Cookie::httponly must be false for frontend access to CSRF token.');
+        $this->assertTrue($config->httponly, 'Cookie::httponly must be true to protect session cookies from JavaScript access.');
     }
 
     public function testSecurityTokenRandomizeIsFalse()

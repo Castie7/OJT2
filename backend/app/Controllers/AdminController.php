@@ -10,6 +10,31 @@ class AdminController extends BaseController
 {
     use ResponseTrait;
 
+    private function validatePasswordStrength(string $password): ?string
+    {
+        if (strlen($password) < 10) {
+            return 'Password must be at least 10 characters long.';
+        }
+
+        if (!preg_match('/[A-Z]/', $password)) {
+            return 'Password must include at least one uppercase letter.';
+        }
+
+        if (!preg_match('/[a-z]/', $password)) {
+            return 'Password must include at least one lowercase letter.';
+        }
+
+        if (!preg_match('/\d/', $password)) {
+            return 'Password must include at least one number.';
+        }
+
+        if (!preg_match('/[^a-zA-Z0-9]/', $password)) {
+            return 'Password must include at least one special character.';
+        }
+
+        return null;
+    }
+
     // GET /admin/users
     public function index()
     {
@@ -44,9 +69,15 @@ class AdminController extends BaseController
         // ❌ REMOVED: Manual CORS headers
 
         $json = $this->request->getJSON();
-        
-        if (!isset($json->user_id) || !isset($json->new_password)) {
+
+        if (!$json || !isset($json->user_id) || !isset($json->new_password)) {
             return $this->fail('Missing required fields', 400);
+        }
+
+        $newPassword = trim((string) $json->new_password);
+        $passwordError = $this->validatePasswordStrength($newPassword);
+        if ($passwordError !== null) {
+            return $this->fail($passwordError, 422);
         }
 
         $userModel = new UserModel();
@@ -57,7 +88,7 @@ class AdminController extends BaseController
         }
 
         $userModel->update($json->user_id, [
-            'password' => password_hash($json->new_password, PASSWORD_DEFAULT)
+            'password' => password_hash($newPassword, PASSWORD_DEFAULT)
         ]);
 
         return $this->respond(['status' => 'success', 'message' => 'Password reset successful']);

@@ -200,5 +200,25 @@ class Database extends Config
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
         }
+
+        $dbDebugEnv = env('database.default.DBDebug');
+        if ($dbDebugEnv !== null) {
+            $parsedDebug = filter_var($dbDebugEnv, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($parsedDebug !== null) {
+                $this->default['DBDebug'] = $parsedDebug;
+            }
+        } elseif (ENVIRONMENT === 'production') {
+            $this->default['DBDebug'] = false;
+        }
+
+        $strictOnEnv = env('database.default.strictOn');
+        if ($strictOnEnv !== null) {
+            $parsedStrict = filter_var($strictOnEnv, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($parsedStrict !== null) {
+                $this->default['strictOn'] = $parsedStrict;
+            }
+        } elseif (ENVIRONMENT === 'production') {
+            $this->default['strictOn'] = true;
+        }
     }
 }

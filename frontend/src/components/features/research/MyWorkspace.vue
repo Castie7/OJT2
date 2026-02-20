@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue' 
+<<<<<<< HEAD
 import { useRoute } from 'vue-router'
+=======
+import { useRoute, useRouter } from 'vue-router'
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 import { researchService } from '../../../services'
 import SubmittedResearches from './SubmittedResearches.vue'
 import { useMyWorkspace } from '../../../composables/useMyWorkspace' 
@@ -14,8 +18,12 @@ import BaseSelect from '../../ui/BaseSelect.vue'
 // Props removed
 
 const route = useRoute()
+<<<<<<< HEAD
 
 const authStore = useAuthStore()
+=======
+useRouter()
+>>>>>>> 2f65e60 (Added Security Feature (see the security_test_checklist.md for more information)
 
 
 const { 

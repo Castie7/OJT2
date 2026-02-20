@@ -4,11 +4,24 @@ namespace App\Controllers\Admin;
 
 use CodeIgniter\RESTful\ResourceController;
 use App\Models\ActivityLogModel;
+use App\Services\AuthService;
 
 class LogController extends ResourceController
 {
     protected $modelName = 'App\Models\ActivityLogModel';
     protected $format    = 'json';
+    protected $authService;
+
+    public function __construct()
+    {
+        $this->authService = new AuthService();
+    }
+
+    private function validateUser()
+    {
+        $token = $this->request->getHeaderLine('Authorization');
+        return $this->authService->validateUser($token);
+    }
 
     /**
      * Internal helper to build query with filters
@@ -45,6 +58,11 @@ class LogController extends ResourceController
      */
     public function index()
     {
+        $user = $this->validateUser();
+        if (!$user || $user->role !== 'admin') {
+            return $this->failForbidden('Access Denied: Admins only.');
+        }
+
         $page = $this->request->getVar('page') ?? 1;
         $perPage = $this->request->getVar('limit') ?? 20;
         $search = $this->request->getVar('search');
@@ -69,6 +87,11 @@ class LogController extends ResourceController
      */
     public function export()
     {
+        $user = $this->validateUser();
+        if (!$user || $user->role !== 'admin') {
+            return $this->failForbidden('Access Denied: Admins only.');
+        }
+
         $search = $this->request->getVar('search');
         $action = $this->request->getVar('action');
         $startDate = $this->request->getVar('start_date');
@@ -107,6 +130,11 @@ class LogController extends ResourceController
 
     public function show($id = null)
     {
+        $user = $this->validateUser();
+        if (!$user || $user->role !== 'admin') {
+            return $this->failForbidden('Access Denied: Admins only.');
+        }
+
         $model = new ActivityLogModel();
         $data = $model->find($id);
         if (!$data) return $this->failNotFound('Log not found');

@@ -11,7 +11,7 @@ class UserModel extends Model
     
     // ✅ FIX: Added 'role' here. 
     // Without this, the role selected in Vue won't be saved!
-    protected $allowedFields = ['name', 'email', 'password', 'role', 'auth_token'];
+    protected $allowedFields = ['name', 'email', 'password', 'role'];
     protected $returnType    = \App\Entities\User::class;
 
     // Optional: Use this if your table has 'created_at' and 'updated_at' columns

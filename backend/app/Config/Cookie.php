@@ -55,7 +55,7 @@ class Cookie extends BaseConfig
      * --------------------------------------------------------------------------
      * 🔒 SECURED: Prevents JavaScript (XSS) from accessing the cookie.
      */
-    public bool $httponly = false;
+    public bool $httponly = true;
 
     /**
      * --------------------------------------------------------------------------
@@ -75,4 +75,30 @@ class Cookie extends BaseConfig
      * false = URL encoded (Standard)
      */
     public bool $raw = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        $secureEnv = env('cookie.secure');
+        if ($secureEnv !== null) {
+            $parsed = filter_var($secureEnv, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($parsed !== null) {
+                $this->secure = $parsed;
+                return;
+            }
+        }
+
+        if (ENVIRONMENT === 'production') {
+            $this->secure = true;
+            return;
+        }
+
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
+        if ($isHttps) {
+            $this->secure = true;
+        }
+    }
 }

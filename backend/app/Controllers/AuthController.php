@@ -172,6 +172,10 @@ class AuthController extends BaseController
     // ------------------------------------------------------------------
     public function register()
     {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'admin') {
+            return $this->failForbidden('Access Denied: Admins only.');
+        }
+
         $json = $this->request->getJSON();
 
         if (!$json) {
@@ -179,20 +183,17 @@ class AuthController extends BaseController
         }
 
         try {
+            if (!isset($json->role) || !in_array($json->role, ['user', 'admin'], true)) {
+                $json->role = 'user';
+            }
+
             $this->authService->register($json);
 
-            // LOG ACTIVITY (Who registered? The admin usually, or self-register via public?) 
-            // If admin endpoint:
             $adminId = session()->get('id');
             $adminName = session()->get('name');
             $adminRole = session()->get('role');
 
-            if ($adminId) {
-                log_activity($adminId, $adminName, $adminRole, 'REGISTER_USER', "Registered new user: " . ($json->email ?? 'unknown'));
-            }
-            else {
-                log_activity(null, 'Guest', 'guest', 'REGISTER_USER', "Public registration: " . ($json->email ?? 'unknown'));
-            }
+            log_activity($adminId, $adminName, $adminRole, 'REGISTER_USER', "Registered new user: " . ($json->email ?? 'unknown'));
 
             return $this->respondCreated([
                 'status' => 'success',

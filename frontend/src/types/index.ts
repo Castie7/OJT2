@@ -19,6 +19,7 @@ export interface Research {
   author: string
   abstract?: string
   status: 'pending' | 'approved' | 'rejected' | 'archived'
+  access_level?: 'public' | 'private'
   file_path?: string
   crop_variation?: string
 
@@ -160,6 +161,7 @@ export interface CreateResearchRequest {
   shelf_location?: string
   item_condition?: string
   link?: string
+  access_level?: 'public' | 'private'
   pdf_file?: File
 }
 

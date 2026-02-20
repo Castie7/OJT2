@@ -41,6 +41,9 @@ const toggleFullscreen = () => {
                     <div class="flex gap-2 mb-3">
                         <span class="bg-emerald-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">{{ research.knowledge_type }}</span>
                         <span v-if="research.crop_variation" class="bg-white/20 text-white backdrop-blur-md text-[10px] uppercase font-bold px-2 py-1 rounded border border-white/20">{{ research.crop_variation }}</span>
+                        <span class="bg-white/20 text-white backdrop-blur-md text-[10px] uppercase font-bold px-2 py-1 rounded border border-white/20">
+                          {{ research.access_level === 'private' ? 'Private' : 'Public' }}
+                        </span>
                     </div>
                     <h2 class="text-2xl md:text-4xl font-bold text-white leading-tight dropshadow-md">{{ research.title }}</h2>
                     <p class="text-emerald-200 text-sm md:text-base mt-2 font-medium">By {{ research.author }}</p>

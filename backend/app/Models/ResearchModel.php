@@ -23,6 +23,7 @@ class ResearchModel extends Model
         'file_path', 
         'uploaded_by', 
         'status',          // <--- MUST BE HERE
+        'access_level',
         'archived_at',     // <--- MUST BE HERE
         'rejected_at',     
         'approved_at',

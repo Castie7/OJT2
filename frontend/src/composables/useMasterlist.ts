@@ -13,6 +13,9 @@ export function useMasterlist() {
     const statusFilter = ref('ALL')
     const currentPage = ref(1)
     const itemsPerPage = 10
+    const selectedResearchIds = ref<number[]>([])
+    const bulkAccessLevel = ref<'public' | 'private'>('public')
+    const bulkIsProcessing = ref(false)
 
     // Edit Modal State
     const isEditModalOpen = ref(false)
@@ -24,6 +27,7 @@ export function useMasterlist() {
         title: '',
         author: '',
         crop_variation: '',
+        access_level: 'public' as 'public' | 'private',
         start_date: '',
         deadline_date: '',
         knowledge_type: [] as string[],
@@ -66,6 +70,8 @@ export function useMasterlist() {
             // The original code fetched '/research/masterlist' which implies a specific endpoint. 
             // We now have a dedicated service method for this.
             allItems.value = await researchService.getMasterlist()
+            const existingIds = new Set(allItems.value.map(item => item.id))
+            selectedResearchIds.value = selectedResearchIds.value.filter(id => existingIds.has(id))
             currentPage.value = 1
         } catch (error) {
             handleError(error, 'Failed to load masterlist')
@@ -102,9 +108,63 @@ export function useMasterlist() {
         return filteredItems.value.slice(start, start + itemsPerPage)
     })
 
+    const selectedCount = computed(() => selectedResearchIds.value.length)
+    const allOnPageSelected = computed(() =>
+        paginatedItems.value.length > 0
+        && paginatedItems.value.every(item => selectedResearchIds.value.includes(item.id))
+    )
+
     const totalPages = computed(() => Math.ceil(filteredItems.value.length / itemsPerPage))
     const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
     const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
+
+    const isSelected = (id: number) => selectedResearchIds.value.includes(id)
+
+    const toggleSelection = (id: number) => {
+        if (isSelected(id)) {
+            selectedResearchIds.value = selectedResearchIds.value.filter(selectedId => selectedId !== id)
+            return
+        }
+        selectedResearchIds.value.push(id)
+    }
+
+    const toggleSelectAllOnPage = () => {
+        const idsOnPage = paginatedItems.value.map(item => item.id)
+        if (idsOnPage.length === 0) {
+            return
+        }
+
+        if (allOnPageSelected.value) {
+            selectedResearchIds.value = selectedResearchIds.value.filter(id => !idsOnPage.includes(id))
+            return
+        }
+
+        const merged = new Set([...selectedResearchIds.value, ...idsOnPage])
+        selectedResearchIds.value = Array.from(merged)
+    }
+
+    const clearSelection = () => {
+        selectedResearchIds.value = []
+    }
+
+    const applyBulkAccessLevel = async () => {
+        if (bulkIsProcessing.value || selectedResearchIds.value.length === 0) return
+
+        bulkIsProcessing.value = true
+        try {
+            const response = await researchService.bulkUpdateAccessLevel(selectedResearchIds.value, bulkAccessLevel.value)
+            showToast(
+                `Visibility updated to "${response.access_level}" for ${response.updated}/${response.matched} item(s).`,
+                'success'
+            )
+            clearSelection()
+            await fetchData()
+        } catch (error) {
+            handleError(error, 'Failed to bulk update visibility')
+        } finally {
+            bulkIsProcessing.value = false
+        }
+    }
 
     // Reset page when filters change
     watch([searchQuery, statusFilter], () => { currentPage.value = 1 })
@@ -135,6 +195,7 @@ export function useMasterlist() {
             title: item.title,
             author: item.author,
             crop_variation: item.crop_variation || '',
+            access_level: item.access_level || 'public',
             start_date: toDateInputFormat(item.start_date),
             deadline_date: toDateInputFormat(item.deadline_date),
             knowledge_type: item.knowledge_type ? item.knowledge_type.split(',').map(s => s.trim()) : [],
@@ -182,6 +243,7 @@ export function useMasterlist() {
         formData.append('title', form.title)
         formData.append('author', form.author)
         formData.append('crop_variation', form.crop_variation)
+        formData.append('access_level', form.access_level || 'public')
         formData.append('start_date', form.start_date)
         formData.append('deadline_date', form.deadline_date)
 
@@ -311,7 +373,7 @@ export function useMasterlist() {
             id: id,
             action: 'Approve',
             title: '✅ Approve Research?',
-            subtext: 'This item will be marked as Approved and visible to the public.',
+            subtext: 'This item will be marked as Approved and shown based on its access setting.',
             isProcessing: false
         }
     }
@@ -331,6 +393,8 @@ export function useMasterlist() {
         allItems, isLoading, isRefreshing, searchQuery, statusFilter,
         currentPage, itemsPerPage, filteredItems, paginatedItems, totalPages,
         nextPage, prevPage,
+        selectedResearchIds, selectedCount, allOnPageSelected, bulkAccessLevel, bulkIsProcessing,
+        isSelected, toggleSelection, toggleSelectAllOnPage, clearSelection, applyBulkAccessLevel,
         isEditModalOpen, isSaving, editForm,
         fetchData, openEdit, handleFileChange, saveEdit,
         getStatusBadge, formatDate, resetFilters,

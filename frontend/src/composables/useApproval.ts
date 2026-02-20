@@ -102,7 +102,7 @@ export function useApproval() {
 
     if (action === 'approve') {
       title = 'Approve Research?'
-      subtext = 'This will publish the research and make it visible in the library.'
+      subtext = 'This will publish the research. Visibility follows the item access setting.'
     } else if (action === 'reject') {
       title = 'Reject Submission?'
       subtext = 'This will move the research to the Rejected Bin.'

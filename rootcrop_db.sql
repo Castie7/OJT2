@@ -186,6 +186,7 @@ CREATE TABLE `researches` (
   `is_approved` tinyint(1) DEFAULT 0,
   `updated_at` datetime DEFAULT NULL,
   `status` varchar(50) DEFAULT 'pending',
+  `access_level` varchar(20) NOT NULL DEFAULT 'public',
   `start_date` date DEFAULT NULL,
   `deadline_date` date DEFAULT NULL,
   `rejected_at` datetime DEFAULT NULL,
@@ -197,15 +198,15 @@ CREATE TABLE `researches` (
 -- Dumping data for table `researches`
 --
 
-INSERT INTO `researches` (`id`, `title`, `author`, `crop_variation`, `abstract`, `created_at`, `file_path`, `uploaded_by`, `is_archived`, `is_approved`, `updated_at`, `status`, `start_date`, `deadline_date`, `rejected_at`, `approved_at`, `archived_at`) VALUES
-(1, 'Golden Roots Issue No. 01', 'Betty T. Gayao, Jovita M. Sim, Dalen T. Meldoz', 'Sweet Potato', NULL, '2026-02-03 08:29:57', NULL, '1', 0, 0, '2026-02-03 08:29:57', 'approved', NULL, NULL, NULL, NULL, NULL),
-(2, 'Golden Roots Issue No. 04', 'D. T. Meldoz and B. T. Gayao', 'Sweet Potato', NULL, '2026-02-03 08:29:57', NULL, '1', 0, 0, '2026-02-03 08:29:57', 'approved', NULL, NULL, NULL, NULL, NULL),
-(3, 'Golden Roots Issue No. 06', 'Hilda L. Quindara and Esther T. Botangen', 'Sweet Potato', NULL, '2026-02-03 08:29:57', NULL, '1', 0, 0, '2026-02-03 08:29:57', 'approved', NULL, NULL, NULL, NULL, NULL),
-(4, 'Suppanikka', 'jdew', '', NULL, '2026-02-03 08:41:04', NULL, '3', 0, 0, '2026-02-06 03:50:39', 'rejected', NULL, NULL, '2026-02-06 03:50:39', '2026-02-03 08:41:47', NULL),
-(5, 'suppanikka', 'adsc', 'Sweet Potato', NULL, '2026-02-03 08:43:02', NULL, '4', 0, 0, '2026-02-04 02:43:39', 'rejected', NULL, NULL, '2026-02-04 02:43:39', NULL, NULL),
-(6, 'Karlo Gae von Hamo', 'Karla', 'Sweet Potato', NULL, '2026-02-05 01:56:40', NULL, '5', 0, 0, '2026-02-05 01:57:31', 'rejected', NULL, NULL, '2026-02-05 01:57:31', NULL, NULL),
-(7, 'safgds', 'DSFDSAFD', '', NULL, '2026-02-05 05:29:56', NULL, '5', 0, 0, '2026-02-05 05:29:56', 'pending', NULL, NULL, NULL, NULL, NULL),
-(8, 'Karlo Von Gae', 'Karlo ', '', NULL, '2026-02-05 05:34:33', NULL, '5', 0, 0, '2026-02-05 05:34:33', 'pending', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `researches` (`id`, `title`, `author`, `crop_variation`, `abstract`, `created_at`, `file_path`, `uploaded_by`, `is_archived`, `is_approved`, `updated_at`, `status`, `access_level`, `start_date`, `deadline_date`, `rejected_at`, `approved_at`, `archived_at`) VALUES
+(1, 'Golden Roots Issue No. 01', 'Betty T. Gayao, Jovita M. Sim, Dalen T. Meldoz', 'Sweet Potato', NULL, '2026-02-03 08:29:57', NULL, '1', 0, 0, '2026-02-03 08:29:57', 'approved', 'public', NULL, NULL, NULL, NULL, NULL),
+(2, 'Golden Roots Issue No. 04', 'D. T. Meldoz and B. T. Gayao', 'Sweet Potato', NULL, '2026-02-03 08:29:57', NULL, '1', 0, 0, '2026-02-03 08:29:57', 'approved', 'public', NULL, NULL, NULL, NULL, NULL),
+(3, 'Golden Roots Issue No. 06', 'Hilda L. Quindara and Esther T. Botangen', 'Sweet Potato', NULL, '2026-02-03 08:29:57', NULL, '1', 0, 0, '2026-02-03 08:29:57', 'approved', 'public', NULL, NULL, NULL, NULL, NULL),
+(4, 'Suppanikka', 'jdew', '', NULL, '2026-02-03 08:41:04', NULL, '3', 0, 0, '2026-02-06 03:50:39', 'rejected', 'public', NULL, NULL, '2026-02-06 03:50:39', '2026-02-03 08:41:47', NULL),
+(5, 'suppanikka', 'adsc', 'Sweet Potato', NULL, '2026-02-03 08:43:02', NULL, '4', 0, 0, '2026-02-04 02:43:39', 'rejected', 'public', NULL, NULL, '2026-02-04 02:43:39', NULL, NULL),
+(6, 'Karlo Gae von Hamo', 'Karla', 'Sweet Potato', NULL, '2026-02-05 01:56:40', NULL, '5', 0, 0, '2026-02-05 01:57:31', 'rejected', 'public', NULL, NULL, '2026-02-05 01:57:31', NULL, NULL),
+(7, 'safgds', 'DSFDSAFD', '', NULL, '2026-02-05 05:29:56', NULL, '5', 0, 0, '2026-02-05 05:29:56', 'pending', 'public', NULL, NULL, NULL, NULL, NULL),
+(8, 'Karlo Von Gae', 'Karlo ', '', NULL, '2026-02-05 05:34:33', NULL, '5', 0, 0, '2026-02-05 05:34:33', 'pending', 'public', NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 

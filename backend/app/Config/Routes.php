@@ -70,6 +70,7 @@ $routes->group('research', function ($routes) {
     $routes->match(['patch', 'post'], '(:num)/extend-deadline', 'ResearchController::extendDeadline/$1', ['filter' => 'auth']);
     
     // Bulk/Import
+    $routes->post('bulk-access-level', 'ResearchController::bulkAccessLevel', ['filter' => 'auth']);
     $routes->post('import-csv', 'ResearchController::importCsv', ['filter' => 'auth']);
     $routes->post('import-single', 'ResearchController::importSingle', ['filter' => 'auth']);
     $routes->post('bulk-upload-pdfs', 'ResearchController::uploadBulkPdfs', ['filter' => 'auth']);

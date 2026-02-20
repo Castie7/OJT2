@@ -22,6 +22,8 @@ const {
   isLoading, isRefreshing, searchQuery, statusFilter,
   currentPage, itemsPerPage, filteredItems, paginatedItems, totalPages,
   nextPage, prevPage,
+  selectedCount, allOnPageSelected, bulkAccessLevel, bulkIsProcessing,
+  isSelected, toggleSelection, toggleSelectAllOnPage, clearSelection, applyBulkAccessLevel,
   isEditModalOpen, isSaving, editForm,
   openEdit, handleFileChange, saveEdit,
   getStatusBadge, formatDate, resetFilters,
@@ -52,6 +54,10 @@ const cropOptions = [
 ].map(c => ({ value: c, label: c }))
 
 const conditionOptions = ['New', 'Good', 'Fair', 'Poor', 'Damaged'].map(c => ({ value: c, label: c }))
+const accessOptions = [
+  { value: 'public', label: 'Public' },
+  { value: 'private', label: 'Private (Login Required)' }
+]
 </script>
 
 <template>
@@ -105,23 +111,66 @@ const conditionOptions = ['New', 'Good', 'Fair', 'Poor', 'Damaged'].map(c => ({ 
       </button>
     </BaseCard>
 
+    <!-- Bulk Visibility Action -->
+    <BaseCard class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 !p-4 border border-emerald-100 bg-emerald-50/40">
+      <div class="text-sm font-medium text-gray-700">
+        Selected: <span class="font-bold text-emerald-700">{{ selectedCount }}</span>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <select
+          v-model="bulkAccessLevel"
+          class="h-10 rounded-lg border border-emerald-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+        >
+          <option value="public">Set to Public</option>
+          <option value="private">Set to Private (Login Required)</option>
+        </select>
+
+        <BaseButton
+          @click="applyBulkAccessLevel"
+          :disabled="selectedCount === 0 || bulkIsProcessing"
+          variant="primary"
+        >
+          {{ bulkIsProcessing ? 'Applying...' : 'Apply to Selected' }}
+        </BaseButton>
+
+        <BaseButton
+          @click="clearSelection"
+          :disabled="selectedCount === 0 || bulkIsProcessing"
+          variant="ghost"
+        >
+          Clear
+        </BaseButton>
+      </div>
+    </BaseCard>
+
     <!-- Table -->
     <BaseCard class="overflow-hidden !p-0 min-h-[500px] flex flex-col">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-100 table-fixed">
           <thead class="bg-gray-50">
             <tr>
+              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-12">
+                <input
+                  type="checkbox"
+                  :checked="allOnPageSelected"
+                  @change.stop="toggleSelectAllOnPage"
+                  class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  title="Select all on this page"
+                >
+              </th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/4">Title</th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/5">Author</th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/6">Status</th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/6">Type</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/6">Visibility</th>
               <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/6">Date</th>
-              <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-[10%]">Actions</th>
+              <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-[12%]">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-50">
             <tr v-if="isLoading">
-              <td colspan="6" class="px-6 py-20 text-center text-gray-400">
+              <td colspan="8" class="px-6 py-20 text-center text-gray-400">
                 <div class="flex flex-col items-center gap-2">
                   <div class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                   <span>Loading masterlist...</span>
@@ -130,7 +179,7 @@ const conditionOptions = ['New', 'Good', 'Fair', 'Poor', 'Damaged'].map(c => ({ 
             </tr>
 
             <tr v-else-if="filteredItems.length === 0">
-              <td colspan="6" class="px-6 py-20 text-center">
+              <td colspan="8" class="px-6 py-20 text-center">
                 <div class="flex flex-col items-center justify-center max-w-md mx-auto opacity-60">
                   <div class="text-5xl mb-3">🔍</div>
                   <h3 class="text-lg font-bold text-gray-800 mb-2">No Results Found</h3>
@@ -160,6 +209,15 @@ const conditionOptions = ['New', 'Good', 'Fair', 'Poor', 'Damaged'].map(c => ({ 
               }"
               @click="viewDetails(item)"
             >
+              <td class="px-4 py-4" @click.stop>
+                <input
+                  type="checkbox"
+                  :checked="isSelected(item.id)"
+                  @change.stop="toggleSelection(item.id)"
+                  class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  :title="`Select ${item.title}`"
+                >
+              </td>
               <td class="px-6 py-4">
                 <div class="font-bold text-gray-900 line-clamp-2 max-w-[280px] group-hover:text-emerald-700 transition-colors" :title="item.title">{{ item.title }}</div>
                 <div v-if="item.crop_variation" class="text-xs text-emerald-600 font-medium mt-0.5">{{ item.crop_variation }}</div>
@@ -171,6 +229,18 @@ const conditionOptions = ['New', 'Good', 'Fair', 'Poor', 'Damaged'].map(c => ({ 
                 </span>
               </td>
               <td class="px-6 py-4 text-sm text-gray-500">{{ item.knowledge_type || '—' }}</td>
+              <td class="px-6 py-4">
+                <span
+                  :class="[
+                    'px-2 py-1 text-xs font-bold rounded-full border shadow-sm',
+                    item.access_level === 'private'
+                      ? 'bg-amber-100 text-amber-800 border-amber-200'
+                      : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                  ]"
+                >
+                  {{ item.access_level === 'private' ? 'Private' : 'Public' }}
+                </span>
+              </td>
               <td class="px-6 py-4 text-sm text-gray-500">{{ formatDate(item.created_at) }}</td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-2" @click.stop>
@@ -311,9 +381,10 @@ const conditionOptions = ['New', 'Good', 'Fair', 'Poor', 'Damaged'].map(c => ({ 
               </div>
 
               <!-- Location & Condition -->
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                  <BaseInput v-model="editForm.shelf_location" label="Shelf Location" />
                  <BaseSelect v-model="editForm.item_condition" :options="conditionOptions" label="Condition" />
+                 <BaseSelect v-model="editForm.access_level" :options="accessOptions" label="Visibility" />
                  <BaseInput v-model="editForm.link" type="url" label="Link" />
               </div>
 
@@ -394,6 +465,9 @@ const conditionOptions = ['New', 'Good', 'Fair', 'Poor', 'Damaged'].map(c => ({ 
               <div class="flex gap-2 mb-2">
                  <span class="bg-emerald-800 text-emerald-100 text-[10px] uppercase font-bold px-2 py-1 rounded inline-block border border-emerald-700">{{ selectedItem.knowledge_type }}</span>
                  <span class="bg-white/20 text-white text-[10px] uppercase font-bold px-2 py-1 rounded inline-block border border-white/30">{{ selectedItem.status }}</span>
+                 <span class="bg-white/20 text-white text-[10px] uppercase font-bold px-2 py-1 rounded inline-block border border-white/30">
+                   {{ selectedItem.access_level === 'private' ? 'Private' : 'Public' }}
+                 </span>
               </div>
               <h2 class="text-2xl font-bold leading-tight line-clamp-2 max-w-2xl">{{ selectedItem.title }}</h2>
               <p class="text-emerald-200 text-sm mt-1 font-medium">Author: {{ selectedItem.author }}</p>

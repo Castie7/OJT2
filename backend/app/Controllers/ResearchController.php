@@ -81,9 +81,17 @@ class ResearchController extends BaseController
         return null;
     }
 
+    private function normalizeAccessLevel(?string $accessLevel): string
+    {
+        return strtolower(trim((string) $accessLevel)) === 'private' ? 'private' : 'public';
+    }
+
     // 1. PUBLIC INDEX
     public function index()
     {
+        $user = $this->getUser();
+        $includePrivate = (bool) $user;
+
         $startDate = trim((string) $this->request->getGet('start_date'));
         $endDate = trim((string) $this->request->getGet('end_date'));
 
@@ -102,7 +110,7 @@ class ResearchController extends BaseController
             return $this->fail('Invalid date range: start_date cannot be later than end_date.', 400);
         }
 
-        $data = $this->researchService->getAllApproved($startDate, $endDate);
+        $data = $this->researchService->getAllApproved($startDate, $endDate, $includePrivate);
         return $this->respond($data);
     }
 
@@ -199,6 +207,7 @@ class ResearchController extends BaseController
             'item_condition' => 'permit_empty|max_length[50]',
             'crop_variation' => 'permit_empty|max_length[100]',
             'link' => 'permit_empty|valid_url_strict',
+            'access_level' => 'permit_empty|in_list[public,private]',
         ];
     }
 
@@ -215,6 +224,12 @@ class ResearchController extends BaseController
                 $rawInput = $this->request->getJSON(true); // Only try JSON if POST matches nothing
                 if (!empty($rawInput))
                     $input = $rawInput;
+            }
+
+            if ($user->role === 'admin' && array_key_exists('access_level', $input)) {
+                $input['access_level'] = $this->normalizeAccessLevel((string) $input['access_level']);
+            } else {
+                unset($input['access_level']);
             }
 
             // Validate
@@ -273,6 +288,12 @@ class ResearchController extends BaseController
                 $rawInput = $this->request->getJSON(true);
                 if (!empty($rawInput))
                     $input = $rawInput;
+            }
+
+            if ($user->role === 'admin' && array_key_exists('access_level', $input)) {
+                $input['access_level'] = $this->normalizeAccessLevel((string) $input['access_level']);
+            } else {
+                unset($input['access_level']);
             }
 
             // Validate
@@ -418,6 +439,79 @@ class ResearchController extends BaseController
 
         $this->researchService->extendDeadline($id, $newDate, $user->id);
         return $this->respond(['status' => 'success']);
+    }
+
+    // 12.1 BULK ACCESS LEVEL UPDATE (Admin only)
+    public function bulkAccessLevel()
+    {
+        try {
+            $user = $this->validateUser();
+            if (!$user) {
+                return $this->failUnauthorized('Access Denied');
+            }
+            if ($user->role !== 'admin') {
+                return $this->failForbidden('Access Denied');
+            }
+
+            $input = [];
+            try {
+                $json = $this->request->getJSON(true);
+                if (is_array($json)) {
+                    $input = $json;
+                }
+            } catch (\Throwable $ignored) {
+                // Fallback to form payload below.
+            }
+
+            if (empty($input)) {
+                $input = $this->request->getPost();
+            }
+
+            $ids = $input['ids'] ?? null;
+            if (!is_array($ids) || empty($ids)) {
+                return $this->fail('ids array is required', 400);
+            }
+
+            $rawAccessLevel = strtolower(trim((string) ($input['access_level'] ?? '')));
+            if (!in_array($rawAccessLevel, ['public', 'private'], true)) {
+                return $this->fail('access_level must be either public or private', 400);
+            }
+
+            $sanitizedIds = array_values(array_unique(array_map('intval', $ids)));
+            $sanitizedIds = array_values(array_filter($sanitizedIds, static fn (int $id): bool => $id > 0));
+            if (empty($sanitizedIds)) {
+                return $this->fail('No valid research IDs provided', 400);
+            }
+
+            if (count($sanitizedIds) > 1000) {
+                return $this->fail('Maximum of 1000 IDs per request', 400);
+            }
+
+            $result = $this->researchService->bulkUpdateAccessLevel($sanitizedIds, $rawAccessLevel);
+
+            log_activity(
+                $user->id,
+                $user->name,
+                $user->role,
+                'BULK_ACCESS_LEVEL_UPDATE',
+                'Updated access_level to ' . $rawAccessLevel . ' for ' . $result['updated'] . ' research item(s).'
+            );
+
+            return $this->respond([
+                'status' => 'success',
+                'message' => 'Bulk visibility update completed.',
+                'access_level' => $rawAccessLevel,
+                'matched' => $result['matched'],
+                'updated' => $result['updated'],
+            ]);
+        }
+        catch (\RuntimeException $e) {
+            return $this->fail($e->getMessage(), 400);
+        }
+        catch (\Throwable $e) {
+            log_message('error', '[Bulk Access Level] ' . $e->getMessage());
+            return $this->failServerError('Server Error: ' . $e->getMessage());
+        }
     }
 
     // 13. COMMENTS

@@ -10,11 +10,14 @@ use App\Models\UserModel;
 
 class ResearchService extends BaseService
 {
+    private const DEFAULT_ACCESS_LEVEL = 'public';
+
     protected $researchModel;
     protected $detailsModel;
     protected $commentModel;
     protected $notifModel;
     protected $userModel;
+    private ?bool $hasAccessLevelColumn = null;
 
     // Helper select string
     private $selectString = 'researches.*, 
@@ -37,6 +40,22 @@ class ResearchService extends BaseService
         $this->commentModel = new ResearchCommentModel();
         $this->notifModel = new NotificationModel();
         $this->userModel = new UserModel();
+    }
+
+    private function hasAccessLevelColumn(): bool
+    {
+        if ($this->hasAccessLevelColumn !== null) {
+            return $this->hasAccessLevelColumn;
+        }
+
+        $this->hasAccessLevelColumn = $this->db->fieldExists('access_level', 'researches');
+
+        return $this->hasAccessLevelColumn;
+    }
+
+    private function normalizeAccessLevel(?string $accessLevel): string
+    {
+        return strtolower(trim((string) $accessLevel)) === 'private' ? 'private' : self::DEFAULT_ACCESS_LEVEL;
     }
 
     /**
@@ -81,11 +100,15 @@ class ResearchService extends BaseService
 
     // --- READ METHODS ---
 
-    public function getAllApproved($startDate = null, $endDate = null)
+    public function getAllApproved($startDate = null, $endDate = null, bool $includePrivate = false)
     {
         $builder = $this->researchModel->select($this->selectString)
             ->join('research_details', 'researches.id = research_details.research_id', 'left')
             ->where('researches.status', 'approved');
+
+        if ($this->hasAccessLevelColumn() && !$includePrivate) {
+            $builder->where('researches.access_level', 'public');
+        }
 
         if ($startDate) {
             $builder->where('research_details.publication_date >=', $startDate);
@@ -251,6 +274,10 @@ class ResearchService extends BaseService
             'created_at' => date('Y-m-d H:i:s'),
         ];
 
+        if ($this->hasAccessLevelColumn()) {
+            $mainData['access_level'] = $this->normalizeAccessLevel($data['access_level'] ?? self::DEFAULT_ACCESS_LEVEL);
+        }
+
         $newResearchId = $this->researchModel->insert($mainData);
 
         // Create Logic
@@ -313,6 +340,10 @@ class ResearchService extends BaseService
             'crop_variation' => $data['crop_variation'],
         ];
 
+        if ($this->hasAccessLevelColumn() && $userRole === 'admin' && array_key_exists('access_level', $data)) {
+            $mainUpdate['access_level'] = $this->normalizeAccessLevel((string) $data['access_level']);
+        }
+
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
             $file->move(ROOTPATH . 'public/uploads', $newName);
@@ -350,6 +381,39 @@ class ResearchService extends BaseService
 
         $this->db->transComplete();
         return true;
+    }
+
+    public function bulkUpdateAccessLevel(array $ids, string $accessLevel): array
+    {
+        if (!$this->hasAccessLevelColumn()) {
+            throw new \RuntimeException('Visibility feature is not initialized. Run "php spark migrate" in backend.');
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $ids = array_values(array_filter($ids, static fn (int $id): bool => $id > 0));
+
+        if (empty($ids)) {
+            return ['matched' => 0, 'updated' => 0];
+        }
+
+        $normalizedLevel = $this->normalizeAccessLevel($accessLevel);
+        $matched = (int) $this->db->table('researches')->whereIn('id', $ids)->countAllResults();
+
+        if ($matched === 0) {
+            return ['matched' => 0, 'updated' => 0];
+        }
+
+        $this->db->table('researches')
+            ->whereIn('id', $ids)
+            ->set([
+                'access_level' => $normalizedLevel,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ])
+            ->update();
+
+        $updated = max(0, (int) $this->db->affectedRows());
+
+        return ['matched' => $matched, 'updated' => $updated];
     }
 
     public function setStatus(int $id, string $status, int $adminId, string $messageTemplate)
@@ -509,6 +573,10 @@ class ResearchService extends BaseService
             'uploaded_by' => $userId,
             'created_at' => date('Y-m-d H:i:s')
         ];
+
+        if ($this->hasAccessLevelColumn()) {
+            $mainData['access_level'] = self::DEFAULT_ACCESS_LEVEL;
+        }
 
         $newId = $this->researchModel->insert($mainData);
 

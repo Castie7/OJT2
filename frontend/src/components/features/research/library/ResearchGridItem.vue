@@ -25,7 +25,19 @@ defineEmits<{
                     <span class="bg-white/90 backdrop-blur-sm text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
                     {{ item.knowledge_type }}
                     </span>
-                    <span v-if="item.file_path" class="text-white bg-black/30 p-1 rounded-full text-xs">📎</span>
+                    <div class="flex items-center gap-1">
+                        <span
+                          :class="[
+                            'text-[10px] font-bold px-2 py-0.5 rounded',
+                            item.access_level === 'private'
+                              ? 'bg-amber-500/90 text-white'
+                              : 'bg-emerald-500/90 text-white'
+                          ]"
+                        >
+                          {{ item.access_level === 'private' ? 'Private' : 'Public' }}
+                        </span>
+                        <span v-if="item.file_path" class="text-white bg-black/30 p-1 rounded-full text-xs">📎</span>
+                    </div>
                 </div>
         </div>
 

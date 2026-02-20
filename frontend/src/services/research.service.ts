@@ -9,6 +9,14 @@ import type {
   Comment
 } from '../types'
 
+interface BulkAccessLevelResponse {
+  status: 'success' | 'error'
+  message?: string
+  access_level: 'public' | 'private'
+  matched: number
+  updated: number
+}
+
 /**
  * Research Service
  * Handles all research-related API operations
@@ -159,6 +167,18 @@ export const researchService = {
    */
   async archive(id: number): Promise<ApiResponse<void>> {
     const response = await api.post<ApiResponse<void>>(`/research/${id}/archive`)
+    apiCache.invalidate('research')
+    return response.data
+  },
+
+  /**
+   * Bulk update visibility (admin only)
+   */
+  async bulkUpdateAccessLevel(ids: number[], accessLevel: 'public' | 'private'): Promise<BulkAccessLevelResponse> {
+    const response = await api.post<BulkAccessLevelResponse>('/research/bulk-access-level', {
+      ids,
+      access_level: accessLevel
+    })
     apiCache.invalidate('research')
     return response.data
   },

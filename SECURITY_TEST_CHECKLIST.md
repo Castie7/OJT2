@@ -87,6 +87,41 @@ await req('/research/12', 'GET', undefined, false);
    - `200` only if owner/admin.
    - Otherwise `403`.
 
+## 3.1) Visibility Tests (Public vs Private)
+### A. Guest should see only public approved research
+1. Logout (guest).
+2. Run:
+```js
+await req('/research', 'GET', undefined, false);
+```
+3. Expected: only approved items with `access_level = public`.
+
+### B. Logged-in user should see approved public + private research
+1. Login as normal user.
+2. Run:
+```js
+await req('/research', 'GET', undefined, false);
+```
+3. Expected: approved items include both `public` and `private`.
+
+### C. Admin can change visibility in Masterlist edit
+1. Login as admin.
+2. Open `Masterlist` > `Edit` an item.
+3. Set `Visibility` to `Private (Login Required)`.
+4. Save.
+5. Re-test A and B.
+6. Expected:
+   - guest no longer sees that item
+   - logged-in user still sees it
+
+### D. Admin bulk visibility update
+1. Login as admin.
+2. Open `Masterlist`.
+3. Select multiple rows using checkboxes.
+4. Choose `Set to Public` or `Set to Private (Login Required)`.
+5. Click `Apply to Selected`.
+6. Expected: success message with updated count, and selected items show the new visibility badge.
+
 ## 4) CSRF Tests
 1. Login normally.
 2. Run a state-changing request **without** CSRF token:

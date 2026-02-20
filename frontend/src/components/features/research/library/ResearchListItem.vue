@@ -25,6 +25,16 @@ const authStore = useAuthStore()
             <span class="inline-flex items-center px-2 py-0.5 rounded textxs font-medium bg-blue-50 text-blue-700 mb-1">
                 {{ item.knowledge_type }}
             </span>
+            <span
+              :class="[
+                'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ml-1',
+                item.access_level === 'private'
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-emerald-100 text-emerald-700'
+              ]"
+            >
+              {{ item.access_level === 'private' ? 'Private' : 'Public' }}
+            </span>
             <div class="text-xs text-gray-400">{{ formatDate(item.publication_date) }}</div>
         </td>
         <td class="px-6 py-4">

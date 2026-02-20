@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '../types'
 import api from '../services/api'
+import { apiCache } from '../utils/apiCache'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -16,10 +17,12 @@ export const useAuthStore = defineStore('auth', () => {
   // Actions
   const setUser = (user: User | null) => {
     currentUser.value = user
+    apiCache.invalidate('research:')
   }
 
   const clearUser = () => {
     currentUser.value = null
+    apiCache.invalidate('research:')
   }
 
   const hasRole = (role: string | string[]): boolean => {

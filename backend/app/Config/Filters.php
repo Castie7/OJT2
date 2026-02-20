@@ -32,6 +32,9 @@ class Filters extends BaseFilters
         
         // ✅ YOUR CUSTOM CORS FILTER
         'cors'          => \App\Filters\Cors::class, 
+        
+        // ✅ YOUR CUSTOM AUTH FILTER
+        'auth'          => \App\Filters\AuthFilter::class,
     ];
 
     /**

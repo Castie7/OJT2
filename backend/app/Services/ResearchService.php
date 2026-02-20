@@ -74,9 +74,9 @@ class ResearchService extends BaseService
             return date('Y-m-d', $time);
         }
 
-        // Fallback: Return original (database might reject it and store 0000-00-00, or user sees error)
-        // Or default to today? Let's default to today to avoid breaking the DB insert if strict mode is on.
-        return date('Y-m-d'); 
+        // Fallback: If unreadable, return null instead of corrupting data with today's date
+        log_message('warning', "parseFlexibleDate: Could not parse date string '{$dateStr}'. Setting to null.");
+        return null; 
     }
 
     // --- READ METHODS ---
@@ -465,6 +465,29 @@ class ResearchService extends BaseService
             'crop_variation' => $rawData['Crop'] ?? ''
         ];
 
+        // 🚨 ADDED VALIDATION: Run data against rules before inserting
+        $validation = \Config\Services::validation();
+        $validationRules = [
+            'title' => 'required|min_length[3]|max_length[255]',
+            'author' => 'required|min_length[2]|max_length[255]',
+            'knowledge_type' => 'required|max_length[100]',
+            'publication_date' => 'permit_empty|valid_date',
+            'edition' => 'permit_empty|max_length[50]',
+            'publisher' => 'permit_empty|max_length[255]',
+            'physical_description' => 'permit_empty|max_length[255]',
+            'isbn_issn' => 'permit_empty|max_length[50]|alpha_numeric_punct',
+            'subjects' => 'permit_empty|string',
+            'shelf_location' => 'permit_empty|max_length[100]',
+            'item_condition' => 'permit_empty|max_length[50]',
+            'crop_variation' => 'permit_empty|max_length[100]',
+        ];
+        
+        $validation->setRules($validationRules);
+        if (!$validation->run($data)) {
+            $errors = implode(', ', $validation->getErrors());
+            return ['status' => 'skipped', 'message' => 'Validation failed: ' . $errors];
+        }
+
         $isbn = trim($data['isbn_issn']);
         $title = trim($data['title']);
         $edition = trim($data['edition']);
@@ -515,19 +538,27 @@ class ResearchService extends BaseService
         return ['status' => 'success', 'id' => $newId];
     }
 
-    public function importCsv($fileTempName)
+    public function importCsv($fileTempName, int $userId)
     {
         ini_set('auto_detect_line_endings', TRUE);
-        $userId = 1; // Default System User?
 
-        $csvData = array_map('str_getcsv', file($fileTempName));
-        $headers = array_map('trim', $csvData[0]);
-        array_shift($csvData);
+        $handle = fopen($fileTempName, 'r');
+        if ($handle === false) {
+             throw new \Exception('Failed to open CSV file.');
+        }
+
+        $headers = fgetcsv($handle);
+        if (!$headers) {
+             fclose($handle);
+             throw new \Exception('CSV file is empty or missing headers.');
+        }
+        $headers = array_map('trim', $headers);
 
         $count = 0;
         $skipped = 0;
 
-        foreach ($csvData as $row) {
+        // Streaming rows to prevent memory exhaustion
+        while (($row = fgetcsv($handle)) !== false) {
             if (count($row) < count($headers))
                 continue;
 
@@ -539,8 +570,11 @@ class ResearchService extends BaseService
             }
             else {
                 $skipped++;
+                log_message('warning', "CSV Import Skipped Row: " . ($result['message'] ?? 'Unknown error'));
             }
         }
+
+        fclose($handle);
 
         return ['count' => $count, 'skipped' => $skipped];
     }

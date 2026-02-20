@@ -21,9 +21,12 @@ class ResearchController extends BaseController
     }
 
     // --- SECURITY HELPER ---
-    protected function validateUser()
+    protected function getUser()
     {
         $request = service('request');
+        // The user is attached to the request by the AuthFilter
+        // Or we can just get it here to be safe if the filter wasn't structured to attach it.
+        // Let's rely on the token/session directly here to get the Entity
         $token = $request->getHeaderLine('Authorization');
         return $this->authService->validateUser($token);
     }
@@ -41,9 +44,7 @@ class ResearchController extends BaseController
     // 2. MY SUBMISSIONS
     public function mySubmissions()
     {
-        $user = $this->validateUser();
-        if (!$user)
-            return $this->failUnauthorized('Access Denied');
+        $user = $this->getUser();
 
         $data = $this->researchService->getMySubmissions($user->id);
         return $this->respond($data);
@@ -52,9 +53,7 @@ class ResearchController extends BaseController
     // 3. MY ARCHIVED
     public function myArchived()
     {
-        $user = $this->validateUser();
-        if (!$user)
-            return $this->failUnauthorized();
+        $user = $this->getUser();
 
         $data = $this->researchService->getMyArchived($user->id);
         return $this->respond($data);
@@ -62,8 +61,8 @@ class ResearchController extends BaseController
 
     public function archived()
     {
-        $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin')
+        $user = $this->getUser();
+        if ($user->role !== 'admin')
             return $this->failForbidden('Access Denied');
 
         $data = $this->researchService->getAllArchived();
@@ -73,8 +72,8 @@ class ResearchController extends BaseController
     // 4. PENDING LIST
     public function pending()
     {
-        $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin')
+        $user = $this->getUser();
+        if ($user->role !== 'admin')
             return $this->failForbidden('Access Denied');
 
         $data = $this->researchService->getPending();
@@ -84,8 +83,8 @@ class ResearchController extends BaseController
     // 5. REJECTED LIST
     public function rejectedList()
     {
-        $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin')
+        $user = $this->getUser();
+        if ($user->role !== 'admin')
             return $this->failForbidden();
 
         $data = $this->researchService->getRejected();
@@ -118,9 +117,7 @@ class ResearchController extends BaseController
     public function create()
     {
         try {
-            $user = $this->validateUser();
-            if (!$user)
-                return $this->failUnauthorized('Invalid Token/Session');
+            $user = $this->getUser();
 
             // Handle JSON vs Form Data
             // Wrap getJSON to prevent FormatException on file uploads
@@ -174,9 +171,7 @@ class ResearchController extends BaseController
             // Allow POST (standard) or PUT (often JSON)
             // Check method yourself or trust CI4 routing. Route says POST.
 
-            $user = $this->validateUser();
-            if (!$user)
-                return $this->failUnauthorized();
+            $user = $this->getUser();
 
             // Handle JSON vs Form Data
             $input = $this->request->getPost();
@@ -225,8 +220,8 @@ class ResearchController extends BaseController
     // 8. APPROVE
     public function approve($id = null)
     {
-        $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin')
+        $user = $this->getUser();
+        if ($user->role !== 'admin')
             return $this->failForbidden();
 
         $item = $this->researchService->getResearch($id);
@@ -242,8 +237,8 @@ class ResearchController extends BaseController
     // 9. REJECT
     public function reject($id = null)
     {
-        $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin')
+        $user = $this->getUser();
+        if ($user->role !== 'admin')
             return $this->failForbidden();
 
         $item = $this->researchService->getResearch($id);
@@ -259,9 +254,7 @@ class ResearchController extends BaseController
     // 10. ARCHIVE
     public function archive($id = null)
     {
-        $user = $this->validateUser();
-        if (!$user)
-            return $this->failUnauthorized();
+        $user = $this->getUser();
 
         $item = $this->researchService->getResearch($id);
         if (!$item)
@@ -284,9 +277,7 @@ class ResearchController extends BaseController
     // 11. RESTORE
     public function restore($id = null)
     {
-        $user = $this->validateUser();
-        if (!$user)
-            return $this->failUnauthorized();
+        $user = $this->getUser();
 
         $item = $this->researchService->getResearch($id);
         if (!$item)
@@ -309,8 +300,8 @@ class ResearchController extends BaseController
     // 12. EXTEND DEADLINE
     public function extendDeadline($id = null)
     {
-        $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin')
+        $user = $this->getUser();
+        if ($user->role !== 'admin')
             return $this->failForbidden();
 
         $newDate = $this->request->getPost('new_deadline');
@@ -331,7 +322,7 @@ class ResearchController extends BaseController
     // 14. ADD COMMENT
     public function addComment()
     {
-        $user = $this->validateUser();
+        $user = $this->getUser();
         $json = $this->request->getJSON();
 
         $data = [
@@ -357,8 +348,8 @@ class ResearchController extends BaseController
     // MASTERLIST (Admin only - all entries)
     public function masterlist()
     {
-        $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin')
+        $user = $this->getUser();
+        if ($user->role !== 'admin')
             return $this->failForbidden('Access Denied');
 
         $data = $this->researchService->getAll();
@@ -376,8 +367,8 @@ class ResearchController extends BaseController
     // CSV IMPORT
     public function importCsv()
     {
-        $user = $this->validateUser();
-        if (!$user || $user->role !== 'admin') {
+        $user = $this->getUser();
+        if ($user->role !== 'admin') {
             return $this->failForbidden('Access Denied');
         }
 
@@ -392,7 +383,7 @@ class ResearchController extends BaseController
         }
 
         try {
-            $result = $this->researchService->importCsv($file->getTempName());
+            $result = $this->researchService->importCsv($file->getTempName(), $user->id);
             return $this->response->setJSON([
                 'status' => 'success',
                 'count' => $result['count'],
@@ -410,9 +401,7 @@ class ResearchController extends BaseController
     public function importSingle()
     {
         try {
-            $user = $this->validateUser();
-            if (!$user)
-                return $this->failUnauthorized('Access Denied');
+            $user = $this->getUser();
 
             $input = $this->request->getJSON(true);
             if (empty($input)) {
@@ -441,9 +430,7 @@ class ResearchController extends BaseController
     public function uploadBulkPdfs()
     {
         try {
-            $user = $this->validateUser();
-            if (!$user)
-                return $this->failUnauthorized('Access Denied');
+            $user = $this->getUser();
 
             $files = $this->request->getFiles();
 

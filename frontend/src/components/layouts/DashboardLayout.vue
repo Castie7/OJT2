@@ -71,7 +71,7 @@ const pageTitle = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-slate-50 font-sans text-gray-800 overflow-hidden">
+  <div class="flex h-screen bg-gray-100 font-sans text-gray-800 overflow-hidden">
     
     <!-- DESKTOP SIDEBAR -->
     <aside 
@@ -275,7 +275,7 @@ const pageTitle = computed(() => {
         </header>
 
         <!-- MAIN SCROLLABLE CONTENT -->
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 custom-scrollbar">
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6 lg:p-8 custom-scrollbar">
             <div class="max-w-7xl mx-auto w-full">
                 <RouterView 
                     :stats="stats"

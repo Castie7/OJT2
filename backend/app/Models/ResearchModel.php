@@ -24,6 +24,7 @@ class ResearchModel extends Model
         'uploaded_by', 
         'status',          // <--- MUST BE HERE
         'access_level',
+        'view_count',
         'archived_at',     // <--- MUST BE HERE
         'rejected_at',     
         'approved_at',

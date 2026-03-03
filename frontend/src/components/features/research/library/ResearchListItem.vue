@@ -22,7 +22,7 @@ const authStore = useAuthStore()
             <div class="text-xs text-gray-500">{{ item.author }}</div>
         </td>
         <td class="px-6 py-4">
-            <span class="inline-flex items-center px-2 py-0.5 rounded textxs font-medium bg-blue-50 text-blue-700 mb-1">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 mb-1">
                 {{ item.knowledge_type }}
             </span>
             <span
@@ -35,7 +35,9 @@ const authStore = useAuthStore()
             >
               {{ item.access_level === 'private' ? 'Private' : 'Public' }}
             </span>
-            <div class="text-xs text-gray-400">{{ formatDate(item.publication_date) }}</div>
+        </td>
+        <td class="px-6 py-4">
+            <span class="text-xs text-gray-500">{{ formatDate(item.publication_date) }}</span>
         </td>
         <td class="px-6 py-4">
             <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-mono font-bold">{{ item.shelf_location || 'N/A' }}</span>

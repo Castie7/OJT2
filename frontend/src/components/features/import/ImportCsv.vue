@@ -420,4 +420,3 @@ const uploadPdfs = async () => {
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 </style>
-```

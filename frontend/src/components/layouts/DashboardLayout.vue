@@ -281,6 +281,7 @@ const pageTitle = computed(() => {
                     :stats="stats"
                     ref="workspaceRef"
                     @browse-click="router.push('/library')"
+                    @view-research="(id: number) => router.push({ path: '/library', query: { open: String(id) } })"
                     @stat-click="(tab: string) => {
                       if (tab === 'home') router.push('/')
                       else if (tab === 'research') router.push('/library')

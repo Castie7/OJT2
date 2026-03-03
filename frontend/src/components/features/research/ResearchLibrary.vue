@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue' 
+import { computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useResearchLibrary } from '../../../composables/useResearchLibrary'
 import { useAuthStore } from '../../../stores/auth'
 import BaseButton from '../../ui/BaseButton.vue'
@@ -11,6 +12,8 @@ import ResearchDetailModal from './library/ResearchDetailModal.vue'
 // ✅ USE THE DYNAMIC URL
 import { getAssetUrl } from '../../../services/api'
 const ASSET_URL = getAssetUrl()
+const route = useRoute()
+const router = useRouter()
 
 const emit = defineEmits<{
   (e: 'update-stats', count: number): void
@@ -19,11 +22,43 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 
 const {
+  researches,
   searchQuery, selectedType, startDate, endDate, showArchived, viewMode, selectedResearch,
   isLoading, confirmModal, currentPage, 
+  sortField, sortDirection,
   filteredResearches, paginatedResearches, totalPages,
-  nextPage, prevPage, requestArchiveToggle, executeArchiveToggle, clearFilters
+  nextPage, prevPage, toggleSort, openResearch, requestArchiveToggle, executeArchiveToggle, clearFilters
 } = useResearchLibrary(emit)
+
+const clearOpenQueryParam = async () => {
+  if (!Object.prototype.hasOwnProperty.call(route.query, 'open')) return
+
+  const nextQuery = { ...route.query }
+  delete nextQuery.open
+  await router.replace({ path: route.path, query: nextQuery })
+}
+
+const openResearchFromQuery = async (rawId: unknown) => {
+  const openId = Number(rawId)
+  if (!Number.isInteger(openId) || openId <= 0) return
+  if (isLoading.value) return
+
+  const target = researches.value.find(item => item.id === openId)
+  if (!target) return
+
+  await openResearch(target)
+  await clearOpenQueryParam()
+}
+
+watch(
+  [() => route.query.open, () => researches.value.length, isLoading],
+  async ([openQuery, _count, loading]) => {
+    if (!openQuery || loading) return
+    const candidate = Array.isArray(openQuery) ? openQuery[0] : openQuery
+    await openResearchFromQuery(candidate)
+  },
+  { immediate: true }
+)
 
 // Check if any filters are active
 const hasActiveFilters = computed(() => {
@@ -96,7 +131,7 @@ const hasActiveFilters = computed(() => {
                         v-for="item in paginatedResearches"
                         :key="item.id"
                         :item="item"
-                        @click="selectedResearch = item"
+                        @click="openResearch(item)"
                      />
                 </div>
 
@@ -105,9 +140,30 @@ const hasActiveFilters = computed(() => {
                    <table class="min-w-full divide-y divide-gray-100">
                       <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Research</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type / Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Location</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              <button @click="toggleSort('title')" class="inline-flex items-center gap-1 hover:text-emerald-700 transition">
+                                Research
+                                <span v-if="sortField === 'title'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                              </button>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              <button @click="toggleSort('knowledge_type')" class="inline-flex items-center gap-1 hover:text-emerald-700 transition">
+                                Type
+                                <span v-if="sortField === 'knowledge_type'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                              </button>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              <button @click="toggleSort('publication_date')" class="inline-flex items-center gap-1 hover:text-emerald-700 transition">
+                                Date
+                                <span v-if="sortField === 'publication_date'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                              </button>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              <button @click="toggleSort('shelf_location')" class="inline-flex items-center gap-1 hover:text-emerald-700 transition">
+                                Location
+                                <span v-if="sortField === 'shelf_location'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                              </button>
+                            </th>
                             <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                         </tr>
                       </thead>
@@ -117,7 +173,7 @@ const hasActiveFilters = computed(() => {
                             v-for="item in paginatedResearches"
                             :key="item.id"
                             :item="item"
-                            @click="selectedResearch = item"
+                            @click="openResearch(item)"
                             @archive="requestArchiveToggle"
                         />
                       </tbody>

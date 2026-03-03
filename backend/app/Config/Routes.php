@@ -50,6 +50,7 @@ $routes->group('research', function ($routes) {
 
     // Lists
     $routes->get('/', 'ResearchController::index');
+    $routes->get('top-viewed', 'ResearchController::topViewed');
     $routes->get('(:num)', 'ResearchController::show/$1', ['filter' => 'auth']);
     $routes->get('archived', 'ResearchController::archived', ['filter' => 'auth']);
     $routes->get('my-submissions', 'ResearchController::mySubmissions', ['filter' => 'auth']);
@@ -71,6 +72,7 @@ $routes->group('research', function ($routes) {
     $routes->match(['patch', 'post'], '(:num)/archive', 'ResearchController::archive/$1', ['filter' => 'auth']);
     $routes->match(['patch', 'post'], '(:num)/restore', 'ResearchController::restore/$1', ['filter' => 'auth']);
     $routes->match(['patch', 'post'], '(:num)/extend-deadline', 'ResearchController::extendDeadline/$1', ['filter' => 'auth']);
+    $routes->post('(:num)/view', 'ResearchController::trackView/$1');
     
     // Bulk/Import
     $routes->post('bulk-access-level', 'ResearchController::bulkAccessLevel', ['filter' => 'auth']);

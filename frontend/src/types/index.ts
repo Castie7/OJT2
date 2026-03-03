@@ -23,6 +23,7 @@ export interface Research {
   relevance_score?: number
   file_path?: string
   crop_variation?: string
+  view_count?: number
 
   // Dates
   start_date?: string
@@ -143,7 +144,12 @@ export interface ResearchFilters {
   start_date?: string
   end_date?: string
   knowledge_type?: string
+  author?: string
+  crop_variation?: string
+  access_level?: 'public' | 'private'
   search?: string
+  search_mode?: 'broad' | 'specific' | 'exact'
+  search_scope?: 'all' | 'metadata'
   strict?: boolean
   limit?: number
 }

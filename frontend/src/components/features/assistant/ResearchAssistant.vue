@@ -61,6 +61,10 @@ const isLoading = ref(false)
 const isStrictMode = ref(false)
 const resultLimit = ref(8)
 const citationFormat = ref<CitationFormat>('apa')
+const authorFilter = ref('')
+const cropVariationFilter = ref('')
+const publicationStartDate = ref('')
+const publicationEndDate = ref('')
 const messageId = ref(1)
 const contextKeywords = ref<string[]>([])
 
@@ -73,7 +77,32 @@ const createWelcomeMessage = (): ChatMessage => ({
   id: messageId.value++,
   role: 'assistant',
   text:
-    'Ask a research question. I search only this system database and indexed PDF content. Broad mode is the default, and you can switch to Specific for exact matches.'
+    'Ask a research question. You can also filter by author, publication date range, and crop variation.'
+})
+
+const hasStructuredFilters = computed(
+  () =>
+    authorFilter.value.trim() !== '' ||
+    cropVariationFilter.value.trim() !== '' ||
+    publicationStartDate.value !== '' ||
+    publicationEndDate.value !== ''
+)
+
+const activeFilterSummary = computed(() => {
+  const parts: string[] = []
+  if (authorFilter.value.trim() !== '') {
+    parts.push(`author: ${authorFilter.value.trim()}`)
+  }
+  if (cropVariationFilter.value.trim() !== '') {
+    parts.push(`crop: ${cropVariationFilter.value.trim()}`)
+  }
+  if (publicationStartDate.value !== '' || publicationEndDate.value !== '') {
+    const start = publicationStartDate.value || '...'
+    const end = publicationEndDate.value || '...'
+    parts.push(`date: ${start} to ${end}`)
+  }
+
+  return parts.join('; ')
 })
 
 const messages = ref<ChatMessage[]>([createWelcomeMessage()])
@@ -284,7 +313,8 @@ const buildAssistantReply = (
   effectiveQuery: string,
   items: Research[],
   mode: AssistantSearchMode,
-  latencyMs: number
+  latencyMs: number,
+  appliedFilters: string
 ): ChatMessage => {
   const tokens = tokenize(effectiveQuery)
   const exact = items.filter(item => isExactMatch(item, tokens))
@@ -299,8 +329,14 @@ const buildAssistantReply = (
   const isStrongMatch = items.length > 0 && (confidence >= 65 || (confidence >= 55 && exact.length > 0))
   const modeLabel = mode === 'specific' ? 'Specific' : 'Broad'
 
-  let summary = `${modeLabel} search found ${items.length} result(s) for "${rawQuery}".`
-  if (effectiveQuery !== rawQuery) {
+  const hasQuery = rawQuery.trim() !== ''
+  const targetLabel = hasQuery ? `"${rawQuery}"` : 'your selected filters'
+
+  let summary = `${modeLabel} search found ${items.length} result(s) for ${targetLabel}.`
+  if (appliedFilters.trim() !== '') {
+    summary += ` Filters: ${appliedFilters}.`
+  }
+  if (hasQuery && effectiveQuery !== rawQuery) {
     summary += ` Context expanded query: "${effectiveQuery}".`
   }
   if (!authStore.isAuthenticated) {
@@ -418,15 +454,31 @@ const submitFeedback = async (message: ChatMessage, feedback: AssistantFeedback)
 
 const ask = async (): Promise<void> => {
   const rawQuery = query.value.trim()
-  if (!rawQuery || isLoading.value) return
+  if (isLoading.value) return
+  if (!rawQuery && !hasStructuredFilters.value) {
+    showToast('Enter a query or set at least one filter.', 'warning')
+    return
+  }
+  if (
+    publicationStartDate.value !== '' &&
+    publicationEndDate.value !== '' &&
+    publicationStartDate.value > publicationEndDate.value
+  ) {
+    showToast('Start date cannot be later than end date.', 'warning')
+    return
+  }
 
   const mode: AssistantSearchMode = isStrictMode.value ? 'specific' : 'broad'
   const effectiveQuery = buildEffectiveQuery(rawQuery)
+  const filterSummary = activeFilterSummary.value
+  const userMessage = rawQuery !== ''
+    ? (filterSummary ? `${rawQuery} (${filterSummary})` : rawQuery)
+    : `Filter search (${filterSummary})`
 
   messages.value.push({
     id: messageId.value++,
     role: 'user',
-    text: rawQuery,
+    text: userMessage,
     mode
   })
 
@@ -436,17 +488,25 @@ const ask = async (): Promise<void> => {
 
   try {
     const items = await researchService.getAll({
-      search: effectiveQuery,
-      strict: isStrictMode.value,
-      limit: resultLimit.value
+      search: effectiveQuery || undefined,
+      strict: rawQuery !== '' ? isStrictMode.value : false,
+      limit: resultLimit.value,
+      author: authorFilter.value.trim() || undefined,
+      crop_variation: cropVariationFilter.value.trim() || undefined,
+      start_date: publicationStartDate.value || undefined,
+      end_date: publicationEndDate.value || undefined
     })
     const latencyMs = Math.round(performance.now() - startedAt)
 
-    const reply = buildAssistantReply(rawQuery, effectiveQuery, items, mode, latencyMs)
+    const reply = buildAssistantReply(rawQuery, effectiveQuery, items, mode, latencyMs, filterSummary)
     messages.value.push(reply)
-    updateContextKeywords(rawQuery, items)
+    if (rawQuery !== '') {
+      updateContextKeywords(rawQuery, items)
+    }
 
-    void logSearchForMessage(reply, rawQuery, effectiveQuery, mode, items)
+    const queryForLog = rawQuery !== '' ? rawQuery : `[filters] ${filterSummary}`
+    const effectiveForLog = effectiveQuery !== '' ? effectiveQuery : queryForLog
+    void logSearchForMessage(reply, queryForLog, effectiveForLog, mode, items)
     if (isAdmin.value && showAnalytics.value) {
       void fetchAnalytics(true)
     }
@@ -470,10 +530,18 @@ const resetMemory = (): void => {
   contextKeywords.value = []
 }
 
+const clearStructuredFilters = (): void => {
+  authorFilter.value = ''
+  cropVariationFilter.value = ''
+  publicationStartDate.value = ''
+  publicationEndDate.value = ''
+}
+
 const resetChat = (): void => {
   messages.value = [createWelcomeMessage()]
   query.value = ''
   resetMemory()
+  clearStructuredFilters()
 }
 
 const openPdf = (item: Research): void => {
@@ -487,8 +555,9 @@ const openResult = (item: AssistantResult): void => {
     return
   }
 
-  query.value = item.title
-  void ask()
+  if (item.link) {
+    window.open(item.link, '_blank', 'noopener')
+  }
 }
 
 const feedbackCount = (type: AssistantFeedback): number => {
@@ -662,8 +731,14 @@ const copyCitation = async (item: AssistantResult): Promise<void> => {
           <p class="text-xs text-gray-500 mt-1">
             Tip: use quotes for exact phrase match. Example: "sweet potato blight".
           </p>
+          <p class="text-xs text-gray-500 mt-1">
+            You can also run filter-only searches using author, crop variation, and publication date range.
+          </p>
           <p v-if="contextKeywords.length" class="text-xs text-gray-500 mt-1">
             Memory context: {{ contextKeywords.join(', ') }}
+          </p>
+          <p v-if="hasStructuredFilters" class="text-xs text-emerald-700 mt-1">
+            Active filters: {{ activeFilterSummary }}
           </p>
         </div>
 
@@ -687,6 +762,13 @@ const copyCitation = async (item: AssistantResult): Promise<void> => {
             class="text-xs px-3 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
           >
             Clear Chat
+          </button>
+          <button
+            v-if="hasStructuredFilters"
+            @click="clearStructuredFilters"
+            class="text-xs px-3 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+          >
+            Clear Filters
           </button>
         </div>
       </div>
@@ -745,6 +827,31 @@ const copyCitation = async (item: AssistantResult): Promise<void> => {
             </option>
           </select>
         </label>
+      </div>
+
+      <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+        <input
+          v-model="authorFilter"
+          type="text"
+          placeholder="Author"
+          class="rounded border border-gray-300 px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+        <input
+          v-model="cropVariationFilter"
+          type="text"
+          placeholder="Crop variation"
+          class="rounded border border-gray-300 px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+        <input
+          v-model="publicationStartDate"
+          type="date"
+          class="rounded border border-gray-300 px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+        <input
+          v-model="publicationEndDate"
+          type="date"
+          class="rounded border border-gray-300 px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
       </div>
     </section>
 
@@ -858,7 +965,12 @@ const copyCitation = async (item: AssistantResult): Promise<void> => {
             <div
               v-for="item in message.results"
               :key="item.id"
-              class="bg-white border border-gray-200 rounded-lg p-3 text-gray-800 cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/30 transition"
+              :class="[
+                'bg-white border border-gray-200 rounded-lg p-3 text-gray-800 transition',
+                item.file_path || item.link
+                  ? 'cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/30'
+                  : ''
+              ]"
               @click="openResult(item)"
             >
               <div class="flex items-start justify-between gap-3">
@@ -907,7 +1019,6 @@ const copyCitation = async (item: AssistantResult): Promise<void> => {
                   >
                     Open PDF
                   </button>
-                  <span v-else class="text-xs font-medium text-emerald-700">Click to refine</span>
                 </div>
               </div>
             </div>
@@ -993,12 +1104,12 @@ const copyCitation = async (item: AssistantResult): Promise<void> => {
           <input
             v-model="query"
             type="text"
-            placeholder="Ask about a topic, title, author, ISBN, or keyword..."
+            placeholder="Ask about a topic, title, author, ISBN, or keyword (optional when filters are set)..."
             class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <button
             type="submit"
-            :disabled="isLoading || !query.trim()"
+            :disabled="isLoading || (!query.trim() && !hasStructuredFilters)"
             class="rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white px-4 py-2 text-sm font-medium"
           >
             Send

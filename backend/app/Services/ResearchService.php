@@ -24,6 +24,7 @@ class ResearchService extends BaseService
     protected $userModel;
     private ?bool $hasAccessLevelColumn = null;
     private ?bool $hasSearchTextColumn = null;
+    private ?bool $hasViewCountColumn = null;
     private ?bool $hasPdftoppmBinary = null;
     private ?bool $hasTesseractBinary = null;
     private ?bool $hasResearchesFullTextIndex = null;
@@ -73,6 +74,17 @@ class ResearchService extends BaseService
         $this->hasSearchTextColumn = $this->db->fieldExists('search_text', 'research_details');
 
         return $this->hasSearchTextColumn;
+    }
+
+    private function hasViewCountColumn(): bool
+    {
+        if ($this->hasViewCountColumn !== null) {
+            return $this->hasViewCountColumn;
+        }
+
+        $this->hasViewCountColumn = $this->db->fieldExists('view_count', 'researches');
+
+        return $this->hasViewCountColumn;
     }
 
     private function hasIndex(string $table, string $indexName): bool
@@ -304,7 +316,7 @@ class ResearchService extends BaseService
         return implode(', ', $columns);
     }
 
-    private function buildSmartSearchScore(string $query): string
+    private function buildSmartSearchScore(string $query, bool $includeIndexedText = true): string
     {
         $normalized = mb_strtolower(trim($query));
         $escapedExact = $this->db->escape($normalized);
@@ -324,10 +336,12 @@ class ResearchService extends BaseService
         if ($this->hasFullTextSupport()) {
             $detailsColumns = $this->getDetailsFullTextColumns();
             $parts[] = "COALESCE(MATCH(researches.title, researches.author) AGAINST ({$escapedExact} IN NATURAL LANGUAGE MODE), 0) * 45";
-            $parts[] = "COALESCE(MATCH({$detailsColumns}) AGAINST ({$escapedExact} IN NATURAL LANGUAGE MODE), 0) * 30";
+            if ($includeIndexedText) {
+                $parts[] = "COALESCE(MATCH({$detailsColumns}) AGAINST ({$escapedExact} IN NATURAL LANGUAGE MODE), 0) * 30";
+            }
         }
 
-        if ($this->hasSearchTextColumn()) {
+        if ($includeIndexedText && $this->hasSearchTextColumn()) {
             $parts[] = "CASE WHEN LOWER(research_details.search_text) LIKE {$escapedLike} THEN 22 ELSE 0 END";
         }
 
@@ -337,7 +351,7 @@ class ResearchService extends BaseService
             $parts[] = "CASE WHEN LOWER(researches.author) LIKE {$tokenLike} THEN 12 ELSE 0 END";
             $parts[] = "CASE WHEN LOWER(research_details.subjects) LIKE {$tokenLike} THEN 9 ELSE 0 END";
             $parts[] = "CASE WHEN LOWER(research_details.physical_description) LIKE {$tokenLike} THEN 7 ELSE 0 END";
-            if ($this->hasSearchTextColumn()) {
+            if ($includeIndexedText && $this->hasSearchTextColumn()) {
                 $parts[] = "CASE WHEN LOWER(research_details.search_text) LIKE {$tokenLike} THEN 6 ELSE 0 END";
             }
         }
@@ -345,7 +359,7 @@ class ResearchService extends BaseService
         return '(' . implode(' + ', $parts) . ')';
     }
 
-    private function applySmartSearchFilter($builder, string $query): void
+    private function applySmartSearchFilter($builder, string $query, bool $includeIndexedText = true): void
     {
         $normalized = trim($query);
         $tokens = $this->tokenizeSearchQuery($query);
@@ -363,10 +377,12 @@ class ResearchService extends BaseService
             $detailsColumns = $this->getDetailsFullTextColumns();
             $escaped = $this->db->escape($normalized);
             $builder->orWhere("MATCH(researches.title, researches.author) AGAINST ({$escaped} IN NATURAL LANGUAGE MODE) > 0", null, false);
-            $builder->orWhere("MATCH({$detailsColumns}) AGAINST ({$escaped} IN NATURAL LANGUAGE MODE) > 0", null, false);
+            if ($includeIndexedText) {
+                $builder->orWhere("MATCH({$detailsColumns}) AGAINST ({$escaped} IN NATURAL LANGUAGE MODE) > 0", null, false);
+            }
         }
 
-        if ($this->hasSearchTextColumn()) {
+        if ($includeIndexedText && $this->hasSearchTextColumn()) {
             $builder->orLike('research_details.search_text', $normalized);
         }
 
@@ -376,7 +392,7 @@ class ResearchService extends BaseService
                 ->orLike('research_details.subjects', $token)
                 ->orLike('research_details.physical_description', $token);
 
-            if ($this->hasSearchTextColumn()) {
+            if ($includeIndexedText && $this->hasSearchTextColumn()) {
                 $builder->orLike('research_details.search_text', $token);
             }
         }
@@ -396,18 +412,18 @@ class ResearchService extends BaseService
         return array_slice($phrases, 0, 4);
     }
 
-    private function applySpecificSearchFilter($builder, string $query): void
+    private function applySpecificSearchFilter($builder, string $query, bool $includeIndexedText = true): void
     {
         $normalized = trim($query);
         $tokens = $this->tokenizeSearchQuery($normalized);
         $phrases = $this->extractQuotedPhrases($normalized);
 
         if (empty($tokens) && empty($phrases)) {
-            $this->applySmartSearchFilter($builder, $normalized);
+            $this->applySmartSearchFilter($builder, $normalized, $includeIndexedText);
             return;
         }
 
-        if ($this->hasFullTextSupport()) {
+        if ($includeIndexedText && $this->hasFullTextSupport()) {
             $terms = [];
             foreach ($phrases as $phrase) {
                 $cleanPhrase = trim($phrase);
@@ -444,7 +460,7 @@ class ResearchService extends BaseService
                 ->orLike('research_details.physical_description', $phrase)
                 ->orLike('research_details.isbn_issn', $phrase);
 
-            if ($this->hasSearchTextColumn()) {
+            if ($includeIndexedText && $this->hasSearchTextColumn()) {
                 $builder->orLike('research_details.search_text', $phrase);
             }
 
@@ -461,8 +477,51 @@ class ResearchService extends BaseService
                 ->orLike('research_details.physical_description', $token)
                 ->orLike('research_details.isbn_issn', $token);
 
-            if ($this->hasSearchTextColumn()) {
+            if ($includeIndexedText && $this->hasSearchTextColumn()) {
                 $builder->orLike('research_details.search_text', $token);
+            }
+
+            $builder->groupEnd();
+        }
+    }
+
+    private function applyExactPhraseSearchFilter($builder, string $query, bool $includeIndexedText = true): void
+    {
+        $normalized = trim($query);
+        if ($normalized === '') {
+            return;
+        }
+
+        $phrases = $this->extractQuotedPhrases($normalized);
+        if (empty($phrases)) {
+            $phrases = [trim($normalized, " \t\n\r\0\x0B\"'")];
+        }
+
+        $phrases = array_values(array_unique(array_filter($phrases, static fn ($value) => mb_strlen((string) $value) >= 2)));
+        if (empty($phrases)) {
+            $this->applySpecificSearchFilter($builder, $normalized, $includeIndexedText);
+            return;
+        }
+
+        foreach ($phrases as $phrase) {
+            $builder->groupStart()
+                ->like('researches.title', $phrase)
+                ->orLike('researches.author', $phrase)
+                ->orLike('research_details.subjects', $phrase)
+                ->orLike('research_details.knowledge_type', $phrase)
+                ->orLike('research_details.publisher', $phrase)
+                ->orLike('research_details.physical_description', $phrase)
+                ->orLike('research_details.isbn_issn', $phrase);
+
+            if ($includeIndexedText && $this->hasSearchTextColumn()) {
+                $builder->orLike('research_details.search_text', $phrase);
+            }
+
+            if ($includeIndexedText && $this->hasFullTextSupport()) {
+                $escapedPhrase = $this->db->escape('"' . str_replace('"', '', $phrase) . '"');
+                $detailsColumns = $this->getDetailsFullTextColumns();
+                $builder->orWhere("MATCH(researches.title, researches.author) AGAINST ({$escapedPhrase} IN BOOLEAN MODE) > 0", null, false);
+                $builder->orWhere("MATCH({$detailsColumns}) AGAINST ({$escapedPhrase} IN BOOLEAN MODE) > 0", null, false);
             }
 
             $builder->groupEnd();
@@ -991,9 +1050,81 @@ class ResearchService extends BaseService
         return null; 
     }
 
+    private function normalizeSearchMode(?string $searchMode, bool $strictSearchFallback = false): string
+    {
+        $normalized = strtolower(trim((string) $searchMode));
+        if ($normalized === '') {
+            return $strictSearchFallback ? 'specific' : 'broad';
+        }
+
+        if (!in_array($normalized, ['broad', 'specific', 'exact'], true)) {
+            return $strictSearchFallback ? 'specific' : 'broad';
+        }
+
+        return $normalized;
+    }
+
+    private function shouldIncludeIndexedText(?string $searchScope): bool
+    {
+        $normalized = strtolower(trim((string) $searchScope));
+        if ($normalized === '') {
+            return true;
+        }
+
+        return $normalized !== 'metadata';
+    }
+
+    private function sanitizeFilterValue($value, int $maxLength = 120): ?string
+    {
+        $normalized = trim((string) $value);
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (mb_strlen($normalized) > $maxLength) {
+            $normalized = mb_substr($normalized, 0, $maxLength);
+        }
+
+        return $normalized;
+    }
+
+    private function applyAdvancedFilters($builder, array $filters, bool $includePrivate): void
+    {
+        $knowledgeType = $this->sanitizeFilterValue($filters['knowledge_type'] ?? null, 100);
+        $author = $this->sanitizeFilterValue($filters['author'] ?? null, 120);
+        $cropVariation = $this->sanitizeFilterValue($filters['crop_variation'] ?? null, 120);
+        $accessLevel = strtolower(trim((string) ($filters['access_level'] ?? '')));
+
+        if ($knowledgeType !== null) {
+            $builder->like('research_details.knowledge_type', $knowledgeType);
+        }
+
+        if ($author !== null) {
+            $builder->like('researches.author', $author);
+        }
+
+        if ($cropVariation !== null) {
+            $builder->like('researches.crop_variation', $cropVariation);
+        }
+
+        if ($this->hasAccessLevelColumn() && $includePrivate && in_array($accessLevel, ['public', 'private'], true)) {
+            $builder->where('researches.access_level', $accessLevel);
+        }
+    }
+
     // --- READ METHODS ---
 
-    public function getAllApproved($startDate = null, $endDate = null, bool $includePrivate = false, ?string $searchQuery = null, bool $strictSearch = false, ?int $limit = null)
+    public function getAllApproved(
+        $startDate = null,
+        $endDate = null,
+        bool $includePrivate = false,
+        ?string $searchQuery = null,
+        bool $strictSearch = false,
+        ?int $limit = null,
+        ?array $filters = null,
+        ?string $searchMode = null,
+        ?string $searchScope = null
+    )
     {
         $builder = $this->researchModel->select($this->selectString)
             ->join('research_details', 'researches.id = research_details.research_id', 'left')
@@ -1011,17 +1142,25 @@ class ResearchService extends BaseService
             $builder->where('research_details.publication_date <=', $endDate);
         }
 
+        $this->applyAdvancedFilters($builder, $filters ?? [], $includePrivate);
+
+        $effectiveMode = $this->normalizeSearchMode($searchMode, $strictSearch);
+        $includeIndexedText = $this->shouldIncludeIndexedText($searchScope);
         $searchQuery = trim((string) $searchQuery);
         if ($searchQuery !== '') {
             $correctedQuery = $this->applySpellingCorrections($searchQuery);
-            $effectiveQuery = $strictSearch ? $correctedQuery : $this->expandSearchQuery($correctedQuery);
+            $effectiveQuery = $effectiveMode === 'broad'
+                ? $this->expandSearchQuery($correctedQuery)
+                : $correctedQuery;
 
-            $scoreExpression = $this->buildSmartSearchScore($effectiveQuery);
+            $scoreExpression = $this->buildSmartSearchScore($effectiveQuery, $includeIndexedText);
             $builder->select($scoreExpression . ' AS relevance_score', false);
-            if ($strictSearch) {
-                $this->applySpecificSearchFilter($builder, $effectiveQuery);
+            if ($effectiveMode === 'exact') {
+                $this->applyExactPhraseSearchFilter($builder, $effectiveQuery, $includeIndexedText);
+            } elseif ($effectiveMode === 'specific') {
+                $this->applySpecificSearchFilter($builder, $effectiveQuery, $includeIndexedText);
             } else {
-                $this->applySmartSearchFilter($builder, $effectiveQuery);
+                $this->applySmartSearchFilter($builder, $effectiveQuery, $includeIndexedText);
             }
             $builder->orderBy('relevance_score', 'DESC');
         }
@@ -1033,6 +1172,50 @@ class ResearchService extends BaseService
         $results = $builder->orderBy('researches.created_at', 'DESC')->findAll();
 
         return $results;
+    }
+
+    public function getTopViewedApproved(int $limit = 5, bool $includePrivate = false)
+    {
+        $safeLimit = max(1, min(50, $limit));
+
+        $builder = $this->researchModel->select($this->selectString)
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->where('researches.status', 'approved');
+
+        if ($this->hasAccessLevelColumn() && !$includePrivate) {
+            $builder->where('researches.access_level', 'public');
+        }
+
+        if ($this->hasViewCountColumn()) {
+            $builder->orderBy('COALESCE(researches.view_count, 0)', 'DESC', false);
+        }
+
+        return $builder
+            ->orderBy('researches.created_at', 'DESC')
+            ->limit($safeLimit)
+            ->findAll();
+    }
+
+    public function incrementViewCount(int $researchId, bool $includePrivate = false): bool
+    {
+        if (!$this->hasViewCountColumn()) {
+            return false;
+        }
+
+        $builder = $this->db->table('researches')
+            ->where('id', $researchId)
+            ->where('status', 'approved');
+
+        if ($this->hasAccessLevelColumn() && !$includePrivate) {
+            $builder->where('access_level', 'public');
+        }
+
+        $builder
+            ->set('view_count', 'COALESCE(view_count, 0) + 1', false)
+            ->set('updated_at', date('Y-m-d H:i:s'))
+            ->update();
+
+        return (int) $this->db->affectedRows() > 0;
     }
 
     public function getAll()

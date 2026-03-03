@@ -12,7 +12,7 @@ defineProps<{
       <slot name="header"></slot>
     </div>
 
-    <div class="p-6">
+    <div :class="noPadding ? '' : 'p-6'">
       <slot></slot>
     </div>
 

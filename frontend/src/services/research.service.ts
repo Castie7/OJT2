@@ -36,8 +36,26 @@ export const researchService = {
     const params = new URLSearchParams()
     if (filters?.start_date) params.append('start_date', filters.start_date)
     if (filters?.end_date) params.append('end_date', filters.end_date)
+    if (filters?.knowledge_type && filters.knowledge_type.trim().length > 0) {
+      params.append('knowledge_type', filters.knowledge_type.trim())
+    }
+    if (filters?.author && filters.author.trim().length > 0) {
+      params.append('author', filters.author.trim())
+    }
+    if (filters?.crop_variation && filters.crop_variation.trim().length > 0) {
+      params.append('crop_variation', filters.crop_variation.trim())
+    }
+    if (filters?.access_level) {
+      params.append('access_level', filters.access_level)
+    }
     if (filters?.search && filters.search.trim().length > 0) {
       params.append('search', filters.search.trim())
+    }
+    if (filters?.search_mode) {
+      params.append('search_mode', filters.search_mode)
+    }
+    if (filters?.search_scope) {
+      params.append('search_scope', filters.search_scope)
     }
     if (filters?.strict) {
       params.append('strict', '1')
@@ -52,6 +70,16 @@ export const researchService = {
 
     return apiCache.get(cacheKey, async () => {
       const response = await api.get<Research[]>(endpoint)
+      return response.data
+    })
+  },
+
+  async getTopViewed(limit = 5): Promise<Research[]> {
+    const safeLimit = Math.min(50, Math.max(1, Math.floor(limit)))
+    const cacheKey = `research:top-viewed:${safeLimit}`
+
+    return apiCache.get(cacheKey, async () => {
+      const response = await api.get<Research[]>(`/research/top-viewed?limit=${safeLimit}`)
       return response.data
     })
   },
@@ -178,6 +206,11 @@ export const researchService = {
     const response = await api.post<ApiResponse<void>>(`/research/${id}/archive`)
     apiCache.invalidate('research')
     return response.data
+  },
+
+  async trackView(id: number): Promise<void> {
+    await api.post(`/research/${id}/view`)
+    apiCache.invalidate('research:top-viewed')
   },
 
   /**

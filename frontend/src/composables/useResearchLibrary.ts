@@ -37,6 +37,8 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
   // Pagination State
   const currentPage = ref(1)
   const itemsPerPage = 10
+  const sortField = ref<'' | 'title' | 'knowledge_type' | 'publication_date' | 'shelf_location'>('')
+  const sortDirection = ref<'asc' | 'desc'>('desc')
 
   // --- HELPERS ---
 
@@ -44,6 +46,28 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
   const formatSimpleDate = (dateStr?: string) => {
     if (!dateStr) return 'N/A'
     return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  }
+
+  const toDateTimestamp = (value: unknown): number | null => {
+    if (!value) return null
+
+    let raw: unknown = value
+    if (typeof value === 'object' && value !== null && 'date' in (value as Record<string, unknown>)) {
+      raw = (value as { date?: unknown }).date
+    }
+
+    if (raw instanceof Date) {
+      const time = raw.getTime()
+      return Number.isFinite(time) ? time : null
+    }
+
+    if (typeof raw !== 'string' && typeof raw !== 'number') {
+      return null
+    }
+
+    const parsed = new Date(raw)
+    const time = parsed.getTime()
+    return Number.isFinite(time) ? time : null
   }
 
   // --- API FETCH ---
@@ -57,7 +81,10 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
       }
 
       researches.value = showArchived.value
-        ? await researchService.getArchived(filters)
+        ? await researchService.getArchived({
+          start_date: startDate.value,
+          end_date: endDate.value
+        })
         : await researchService.getAll(filters)
 
       if (!showArchived.value) {
@@ -92,7 +119,6 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
       }
 
       // B. Knowledge Type Filter
-      // Handle comma-separated values (e.g. "Journal, Book")
       const matchesType = selectedType.value === '' ||
         (item.knowledge_type && item.knowledge_type.includes(selectedType.value))
 
@@ -100,17 +126,103 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
     })
   })
 
+  const sortedResearches = computed(() => {
+    const list = [...filteredResearches.value]
+    if (!sortField.value) return list
+
+    if (sortField.value === 'title') {
+      return list.sort((a, b) => {
+        const aTitle = (a.title || '').trim().toLowerCase()
+        const bTitle = (b.title || '').trim().toLowerCase()
+
+        if (aTitle === '' && bTitle === '') return 0
+        if (aTitle === '') return 1
+        if (bTitle === '') return -1
+
+        return sortDirection.value === 'asc'
+          ? aTitle.localeCompare(bTitle)
+          : bTitle.localeCompare(aTitle)
+      })
+    }
+
+    if (sortField.value === 'knowledge_type') {
+      return list.sort((a, b) => {
+        const aType = (a.knowledge_type || '').trim().toLowerCase()
+        const bType = (b.knowledge_type || '').trim().toLowerCase()
+
+        if (aType === '' && bType === '') return 0
+        if (aType === '') return 1
+        if (bType === '') return -1
+
+        return sortDirection.value === 'asc'
+          ? aType.localeCompare(bType)
+          : bType.localeCompare(aType)
+      })
+    }
+
+    if (sortField.value === 'publication_date') {
+      return list.sort((a, b) => {
+        const aTime = toDateTimestamp(a.publication_date)
+        const bTime = toDateTimestamp(b.publication_date)
+
+        if (aTime === null && bTime === null) return 0
+        if (aTime === null) return 1
+        if (bTime === null) return -1
+
+        return sortDirection.value === 'asc' ? aTime - bTime : bTime - aTime
+      })
+    }
+
+    return list.sort((a, b) => {
+      const aLocation = (a.shelf_location || '').trim().toLowerCase()
+      const bLocation = (b.shelf_location || '').trim().toLowerCase()
+
+      if (aLocation === '' && bLocation === '') return 0
+      if (aLocation === '') return 1
+      if (bLocation === '') return -1
+
+      return sortDirection.value === 'asc'
+        ? aLocation.localeCompare(bLocation)
+        : bLocation.localeCompare(aLocation)
+    })
+  })
+
   const paginatedResearches = computed(() => {
     const start = (currentPage.value - 1) * itemsPerPage
     const end = start + itemsPerPage
-    return filteredResearches.value.slice(start, end)
+    return sortedResearches.value.slice(start, end)
   })
 
-  const totalPages = computed(() => Math.ceil(filteredResearches.value.length / itemsPerPage))
+  const totalPages = computed(() => Math.ceil(sortedResearches.value.length / itemsPerPage))
 
   // --- ACTIONS ---
   const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
   const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
+
+  const toggleSort = (field: 'title' | 'knowledge_type' | 'publication_date' | 'shelf_location') => {
+    if (sortField.value === field) {
+      sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+    } else {
+      sortField.value = field
+      sortDirection.value = field === 'publication_date' ? 'desc' : 'asc'
+    }
+    currentPage.value = 1
+  }
+
+  const openResearch = async (item: Research) => {
+    selectedResearch.value = item
+
+    if (showArchived.value) {
+      return
+    }
+
+    try {
+      await researchService.trackView(item.id)
+      item.view_count = (item.view_count ?? 0) + 1
+    } catch (error) {
+      console.error('Failed to track view count', error)
+    }
+  }
 
   const requestArchiveToggle = (item: Research) => {
     const action = showArchived.value ? 'Restore' : 'Archive'
@@ -154,18 +266,22 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
     fetchResearches()
   })
 
-  // Reset pagination on local-only filter change
-  watch(selectedType, () => {
-    currentPage.value = 1
-  })
-
   // Debounce search/date-filter changes that trigger API calls
   const debouncedFetch = debounce(() => {
     currentPage.value = 1
     fetchResearches()
   }, 400)
 
-  watch(searchQuery, () => debouncedFetch())
+  watch(searchQuery, () => {
+    if (showArchived.value) {
+      currentPage.value = 1
+      return
+    }
+    debouncedFetch()
+  })
+  watch(selectedType, () => {
+    currentPage.value = 1
+  })
   watch([startDate, endDate], () => debouncedFetch())
 
   // Clear all filters
@@ -195,9 +311,12 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
     confirmModal,
     currentPage,
     itemsPerPage,
+    sortField,
+    sortDirection,
 
     // Computed
     filteredResearches,
+    sortedResearches,
     paginatedResearches,
     totalPages,
 
@@ -205,6 +324,8 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
     fetchResearches,
     nextPage,
     prevPage,
+    toggleSort,
+    openResearch,
     requestArchiveToggle,
     executeArchiveToggle,
     formatSimpleDate,

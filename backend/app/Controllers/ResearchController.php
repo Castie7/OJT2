@@ -114,16 +114,49 @@ class ResearchController extends BaseController
         return $parsed;
     }
 
+    private function parseEnumQueryValue(?string $value, array $allowedValues): ?string
+    {
+        $normalized = strtolower(trim((string) $value));
+        if ($normalized === '') {
+            return null;
+        }
+
+        return in_array($normalized, $allowedValues, true) ? $normalized : null;
+    }
+
+    private function parseTextQueryValue(?string $value, int $maxLength = 255): ?string
+    {
+        $normalized = trim((string) $value);
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (mb_strlen($normalized) > $maxLength) {
+            $normalized = mb_substr($normalized, 0, $maxLength);
+        }
+
+        return $normalized;
+    }
+
     // 1. PUBLIC INDEX
     public function index()
     {
         $user = $this->getUser();
         $includePrivate = (bool) $user;
 
-        $startDate = trim((string) $this->request->getGet('start_date'));
-        $endDate = trim((string) $this->request->getGet('end_date'));
-        $search = trim((string) $this->request->getGet('search'));
+        $startDate = $this->parseTextQueryValue($this->request->getGet('start_date'), 10);
+        $endDate = $this->parseTextQueryValue($this->request->getGet('end_date'), 10);
+        $search = $this->parseTextQueryValue($this->request->getGet('search'), 200);
         $strictSearch = $this->parseBooleanQueryValue($this->request->getGet('strict'));
+        $knowledgeType = $this->parseTextQueryValue($this->request->getGet('knowledge_type'), 100);
+        $authorFilter = $this->parseTextQueryValue($this->request->getGet('author'), 120);
+        $cropVariation = $this->parseTextQueryValue($this->request->getGet('crop_variation'), 120);
+        $accessLevelRaw = $this->request->getGet('access_level');
+        $accessLevel = $this->parseEnumQueryValue($accessLevelRaw, ['public', 'private']);
+        $searchModeRaw = $this->request->getGet('search_mode');
+        $searchMode = $this->parseEnumQueryValue($searchModeRaw, ['broad', 'specific', 'exact']);
+        $searchScopeRaw = $this->request->getGet('search_scope');
+        $searchScope = $this->parseEnumQueryValue($searchScopeRaw, ['all', 'metadata']);
         $limitRaw = $this->request->getGet('limit');
         $limit = $this->parsePositiveIntQueryValue($limitRaw);
 
@@ -131,9 +164,36 @@ class ResearchController extends BaseController
             return $this->fail('Invalid limit. Use a numeric value between 1 and 50.', 400);
         }
 
-        $startDate = $startDate !== '' ? $startDate : null;
-        $endDate = $endDate !== '' ? $endDate : null;
-        $search = $search !== '' ? $search : null;
+        if (trim((string) $accessLevelRaw) !== '' && $accessLevel === null) {
+            return $this->fail('Invalid access_level. Use public or private.', 400);
+        }
+
+        if (trim((string) $searchModeRaw) !== '' && $searchMode === null) {
+            return $this->fail('Invalid search_mode. Use broad, specific, or exact.', 400);
+        }
+
+        if (trim((string) $searchScopeRaw) !== '' && $searchScope === null) {
+            return $this->fail('Invalid search_scope. Use all or metadata.', 400);
+        }
+
+        if ($searchMode === null) {
+            $searchMode = $strictSearch ? 'specific' : 'broad';
+        }
+        if ($searchScope === null) {
+            $includePdfRaw = $this->request->getGet('include_pdf');
+            if (trim((string) $includePdfRaw) !== '') {
+                $searchScope = $this->parseBooleanQueryValue($includePdfRaw) ? 'all' : 'metadata';
+            } else {
+                $searchScope = 'all';
+            }
+        }
+
+        $filters = array_filter([
+            'knowledge_type' => $knowledgeType,
+            'author' => $authorFilter,
+            'crop_variation' => $cropVariation,
+            'access_level' => $accessLevel,
+        ], static fn ($value) => $value !== null && $value !== '');
 
         if ($startDate !== null && !$this->isValidIsoDate($startDate)) {
             return $this->fail('Invalid start_date. Use YYYY-MM-DD format.', 400);
@@ -147,8 +207,46 @@ class ResearchController extends BaseController
             return $this->fail('Invalid date range: start_date cannot be later than end_date.', 400);
         }
 
-        $data = $this->researchService->getAllApproved($startDate, $endDate, $includePrivate, $search, $strictSearch, $limit);
+        $data = $this->researchService->getAllApproved(
+            $startDate,
+            $endDate,
+            $includePrivate,
+            $search,
+            $strictSearch,
+            $limit,
+            $filters,
+            $searchMode,
+            $searchScope
+        );
         return $this->respond($data);
+    }
+
+    public function topViewed()
+    {
+        $user = $this->getUser();
+        $includePrivate = (bool) $user;
+
+        $limitRaw = $this->request->getGet('limit');
+        $limit = $this->parsePositiveIntQueryValue($limitRaw);
+        if (trim((string) $limitRaw) !== '' && $limit === null) {
+            return $this->fail('Invalid limit. Use a numeric value between 1 and 50.', 400);
+        }
+
+        $data = $this->researchService->getTopViewedApproved($limit ?? 5, $includePrivate);
+        return $this->respond($data);
+    }
+
+    public function trackView($id = null)
+    {
+        if (!$id) {
+            return $this->fail('Research ID required', 400);
+        }
+
+        $user = $this->getUser();
+        $includePrivate = (bool) $user;
+        $this->researchService->incrementViewCount((int) $id, $includePrivate);
+
+        return $this->respond(['status' => 'success']);
     }
 
     // 2. MY SUBMISSIONS

@@ -82,6 +82,27 @@ export interface Notification {
   is_read: boolean
 }
 
+export interface DirectMessage {
+  id: number
+  sender_id: number
+  recipient_id: number
+  message: string
+  is_read: boolean | number
+  created_at: string
+  sender_name?: string
+  recipient_name?: string
+}
+
+export interface MessageConversation {
+  user_id: number
+  name: string
+  email?: string
+  role: string
+  last_message: string
+  last_message_at: string
+  unread_count: number
+}
+
 // ============================================================================
 // API RESPONSE TYPES
 // ============================================================================
@@ -206,6 +227,15 @@ export interface CreateCommentRequest {
   user_name: string
   role: string
   comment: string
+}
+
+export interface SendMessageRequest {
+  recipient_id: number
+  message: string
+}
+
+export interface MarkMessagesReadRequest {
+  partner_id: number
 }
 
 // ============================================================================

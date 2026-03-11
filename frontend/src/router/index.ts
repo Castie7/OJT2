@@ -52,6 +52,15 @@ const routes: Array<RouteRecordRaw> = [
         }
       },
       {
+        path: 'messages',
+        name: 'DirectMessages',
+        component: () => import('../components/features/messages/DirectMessages.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'Messages - BSU Research Portal'
+        }
+      },
+      {
         path: 'approval',
         name: 'Approval',
         component: () => import('../components/features/research/Approval.vue'),

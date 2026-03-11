@@ -27,6 +27,14 @@ $routes->group('admin', ['filter' => 'auth'], function ($routes) {
 $routes->group('api', function ($routes) {
     $routes->get('notifications', 'NotificationController::index', ['filter' => 'auth']);
     $routes->post('notifications/read', 'NotificationController::markAsRead', ['filter' => 'auth']);
+    $routes->group('messages', ['filter' => 'auth'], function ($routes) {
+        $routes->get('users', 'MessageController::users');
+        $routes->get('conversations', 'MessageController::conversations');
+        $routes->get('thread/(:num)', 'MessageController::thread/$1');
+        $routes->post('send', 'MessageController::send');
+        $routes->post('read', 'MessageController::markAsRead');
+        $routes->post('read-all', 'MessageController::markAllAsRead');
+    });
     $routes->post('comments', 'ResearchController::addComment', ['filter' => 'auth']);
     $routes->post('assistant/log', 'AssistantController::logSearch');
     $routes->post('assistant/feedback', 'AssistantController::feedback');

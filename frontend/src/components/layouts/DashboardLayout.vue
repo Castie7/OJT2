@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter, useRoute, RouterView } from 'vue-router'
 import { useDashboard } from '../../composables/useDashboard'
@@ -32,10 +32,12 @@ const {
   showNotifications,
   notifications,
   unreadCount,
+  hasUnreadMessages,
   updateStats,
   toggleNotifications,
   handleNotificationClick,
-  formatTimeAgo
+  formatTimeAgo,
+  markAllDirectMessagesAsRead
 } = useDashboard() // No arguments
 
 // Actions
@@ -46,6 +48,10 @@ const handleUserUpdate = (updatedUser: User) => {
 const isActive = (path: string) => route.path === path
 
 const navigateTo = (path: string) => {
+  if (path === '/messages') {
+    void markAllDirectMessagesAsRead()
+  }
+
   router.push(path)
   isMobileSidebarOpen.value = false
 }
@@ -60,6 +66,7 @@ const pageTitle = computed(() => {
     if (route.path === '/library') return 'Research Library'
     if (route.path === '/assistant') return 'Research Assistant'
     if (route.path === '/workspace') return 'My Workspace'
+    if (route.path === '/messages') return 'Messages'
     if (route.path === '/approval') return 'Approvals'
     if (route.path === '/settings') return 'Settings'
     if (route.path === '/users') return 'User Management'
@@ -103,12 +110,12 @@ const pageTitle = computed(() => {
         <div class="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar">
             <div v-if="!authStore.currentUser && !isSidebarCollapsed" class="mb-6 px-3">
                  <button @click="$emit('login-click')" class="w-full bg-yellow-400 hover:bg-yellow-500 text-emerald-900 font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 shadow-md transition-all hover:scale-[1.02]">
-                    <span>🔐</span> Login Area
+                    <span>&#x1F512;</span> Login Area
                 </button>
             </div>
             <div v-if="!authStore.currentUser && isSidebarCollapsed" class="mb-6 flex justify-center">
                  <button @click="$emit('login-click')" class="size-10 bg-yellow-400 hover:bg-yellow-500 text-emerald-900 font-bold rounded-lg flex items-center justify-center shadow-md transition-all" title="Login">
-                    <span>🔐</span>
+                    <span>&#x1F512;</span>
                 </button>
             </div>
 
@@ -117,13 +124,13 @@ const pageTitle = computed(() => {
             <div v-else class="h-4"></div>
             
             <button @click="navigateTo('/')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="Home">
-                <span class="text-xl">🏠</span> <span v-if="!isSidebarCollapsed">Home</span>
+                <span class="text-xl">&#x1F3E0;</span> <span v-if="!isSidebarCollapsed">Home</span>
             </button>
             <button @click="navigateTo('/library')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/library') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="Research Library">
-                <span class="text-xl">📚</span> <span v-if="!isSidebarCollapsed">Research Library</span>
+                <span class="text-xl">&#x1F4DA;</span> <span v-if="!isSidebarCollapsed">Research Library</span>
             </button>
             <button @click="navigateTo('/assistant')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/assistant') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="Research Assistant">
-                <span class="text-xl">🤖</span> <span v-if="!isSidebarCollapsed">Research Assistant</span>
+                <span class="text-xl">&#x1F916;</span> <span v-if="!isSidebarCollapsed">Research Assistant</span>
             </button>
 
             <template v-if="authStore.currentUser">
@@ -131,7 +138,11 @@ const pageTitle = computed(() => {
                  <div v-else class="my-2 border-t border-emerald-800/30"></div>
                  
                  <button @click="navigateTo('/workspace')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/workspace') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="My Workspace">
-                    <span class="text-xl">💼</span> <span v-if="!isSidebarCollapsed">My Workspace</span>
+                    <span class="text-xl">&#x1F4BC;</span> <span v-if="!isSidebarCollapsed">My Workspace</span>
+                 </button>
+                 <button @click="navigateTo('/messages')" :class="['relative w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/messages') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="Messages">
+                    <span class="text-xl">&#x1F4AC;</span> <span v-if="!isSidebarCollapsed">Messages</span>
+                    <span v-if="hasUnreadMessages" class="absolute right-2 top-2 inline-flex h-2.5 w-2.5 rounded-full bg-red-500 border border-white"></span>
                  </button>
 
                  <!-- Admin Section -->
@@ -140,19 +151,19 @@ const pageTitle = computed(() => {
                     <div v-else class="my-2 border-t border-emerald-800/30"></div>
                     
                     <button @click="navigateTo('/approval')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/approval') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="Approvals">
-                        <span class="text-xl">✅</span> <span v-if="!isSidebarCollapsed">Approvals</span>
+                        <span class="text-xl">&#x2705;</span> <span v-if="!isSidebarCollapsed">Approvals</span>
                     </button>
                     <button @click="navigateTo('/import')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/import') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="Upload Data">
-                        <span class="text-xl">📂</span> <span v-if="!isSidebarCollapsed">Upload Data</span>
+                        <span class="text-xl">&#x1F4C2;</span> <span v-if="!isSidebarCollapsed">Upload Data</span>
                     </button>
                     <button @click="navigateTo('/users')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/users') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="User Management">
-                        <span class="text-xl">👥</span> <span v-if="!isSidebarCollapsed">User Management</span>
+                        <span class="text-xl">&#x1F465;</span> <span v-if="!isSidebarCollapsed">User Management</span>
                     </button>
                     <button @click="navigateTo('/masterlist')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/masterlist') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="Masterlist">
-                        <span class="text-xl">📋</span> <span v-if="!isSidebarCollapsed">Masterlist</span>
+                        <span class="text-xl">&#x1F4CB;</span> <span v-if="!isSidebarCollapsed">Masterlist</span>
                     </button>
                     <button @click="navigateTo('/logs')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/logs') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="System Logs">
-                        <span class="text-xl">📜</span> <span v-if="!isSidebarCollapsed">System Logs</span>
+                        <span class="text-xl">&#x1F4DC;</span> <span v-if="!isSidebarCollapsed">System Logs</span>
                     </button>
                  </template>
             </template>
@@ -175,8 +186,8 @@ const pageTitle = computed(() => {
                  <button @click="$emit('logout-click')" class="flex-1 bg-red-900/50 hover:bg-red-700 text-xs py-1.5 rounded text-red-200 transition">Logout</button>
             </div>
             <div v-else class="flex flex-col gap-2 items-center">
-                 <button @click="navigateTo('/settings')" class="text-emerald-400 hover:text-white" title="Settings">⚙️</button>
-                 <button @click="$emit('logout-click')" class="text-red-400 hover:text-red-200" title="Logout">🚪</button>
+                 <button @click="navigateTo('/settings')" class="text-emerald-400 hover:text-white" title="Settings">&#x2699;</button>
+                 <button @click="$emit('logout-click')" class="text-red-400 hover:text-red-200" title="Logout">&#x1F6AA;</button>
             </div>
         </div>
     </aside>
@@ -207,6 +218,10 @@ const pageTitle = computed(() => {
                  <template v-if="authStore.currentUser">
                      <div class="my-4 border-t border-emerald-800/50"></div>
                      <button @click="navigateTo('/workspace')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/workspace') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">My Workspace</button>
+                     <button @click="navigateTo('/messages')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/messages') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">
+                        <span>Messages</span>
+                        <span v-if="hasUnreadMessages" class="ml-auto inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
+                     </button>
                      
                      <template v-if="authStore.currentUser.role === 'admin'">
                         <div class="my-4 border-t border-emerald-800/50"></div>
@@ -249,7 +264,7 @@ const pageTitle = computed(() => {
                      <!-- Notifications -->
                      <div class="relative">
                         <button @click="toggleNotifications" class="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-emerald-600 transition relative">
-                            <span class="text-xl">🔔</span>
+                            <span class="text-xl">&#x1F514;</span>
                             <span v-if="unreadCount > 0" class="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse border border-white"></span>
                         </button>
                          <!-- Notification Dropdown -->
@@ -261,7 +276,7 @@ const pageTitle = computed(() => {
                              <div class="max-h-64 overflow-y-auto">
                                 <div v-if="notifications.length === 0" class="p-4 text-center text-gray-400 text-sm">No new notifications.</div>
                                 <div v-for="notif in notifications" :key="notif.id" @click="handleNotificationClick(notif)" class="px-4 py-3 border-b border-gray-50 hover:bg-emerald-50 cursor-pointer flex gap-3" :class="{'bg-blue-50/30': notif.is_read == 0}">
-                                    <div class="text-lg">💬</div>
+                                    <div class="text-lg">&#x1F4AC;</div>
                                     <div>
                                         <p class="text-sm text-gray-700">{{ notif.message }}</p>
                                         <p class="text-[10px] text-gray-400">{{ formatTimeAgo(notif.created_at) }}</p>
@@ -331,3 +346,4 @@ const pageTitle = computed(() => {
   background: transparent; 
 }
 </style>
+

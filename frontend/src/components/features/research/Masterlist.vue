@@ -198,9 +198,10 @@ const accessOptions = [
 
             <tr 
               v-else
-              v-for="item in paginatedItems" :key="item.id" v-memo="[item.id, item.status, item.title, item.updated_at]"
+              v-for="item in paginatedItems" :key="item.id" v-memo="[item.id, item.status, item.title, item.updated_at, isSelected(item.id)]"
               class="hover:bg-gray-50/80 transition cursor-pointer border-l-4 group"
               :class="{
+                'bg-emerald-100': isSelected(item.id),
                 'border-l-emerald-500': item.status === 'approved',
                 'border-l-yellow-400': item.status === 'pending',
                 'border-l-red-500': item.status === 'rejected',

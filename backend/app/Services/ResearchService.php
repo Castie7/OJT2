@@ -29,6 +29,8 @@ class ResearchService extends BaseService
     private ?bool $hasTesseractBinary = null;
     private ?bool $hasResearchesFullTextIndex = null;
     private ?bool $hasDetailsFullTextIndex = null;
+    private ?array $researchesFullTextIndexColumns = null;
+    private ?array $detailsFullTextIndexColumns = null;
 
     // Helper select string
     private $selectString = 'researches.*, 
@@ -87,17 +89,52 @@ class ResearchService extends BaseService
         return $this->hasViewCountColumn;
     }
 
-    private function hasIndex(string $table, string $indexName): bool
+    private function getIndexColumns(string $table, string $indexName): array
     {
-        $row = $this->db->table('INFORMATION_SCHEMA.STATISTICS')
-            ->select('INDEX_NAME')
+        $rows = $this->db->table('INFORMATION_SCHEMA.STATISTICS')
+            ->select('COLUMN_NAME, SEQ_IN_INDEX')
             ->where('TABLE_SCHEMA', $this->db->getDatabase())
             ->where('TABLE_NAME', $table)
             ->where('INDEX_NAME', $indexName)
+            ->orderBy('SEQ_IN_INDEX', 'ASC')
             ->get()
-            ->getRowArray();
+            ->getResultArray();
 
-        return !empty($row);
+        if (empty($rows)) {
+            return [];
+        }
+
+        $columns = [];
+        foreach ($rows as $row) {
+            $column = strtolower(trim((string) ($row['COLUMN_NAME'] ?? '')));
+            if ($column !== '' && preg_match('/^[a-z0-9_]+$/', $column)) {
+                $columns[] = $column;
+            }
+        }
+
+        return array_values(array_unique($columns));
+    }
+
+    private function getResearchesFullTextIndexColumns(): array
+    {
+        if ($this->researchesFullTextIndexColumns !== null) {
+            return $this->researchesFullTextIndexColumns;
+        }
+
+        $this->researchesFullTextIndexColumns = $this->getIndexColumns('researches', 'ft_researches_title_author');
+
+        return $this->researchesFullTextIndexColumns;
+    }
+
+    private function getDetailsFullTextIndexColumns(): array
+    {
+        if ($this->detailsFullTextIndexColumns !== null) {
+            return $this->detailsFullTextIndexColumns;
+        }
+
+        $this->detailsFullTextIndexColumns = $this->getIndexColumns('research_details', 'ft_research_details_search');
+
+        return $this->detailsFullTextIndexColumns;
     }
 
     private function hasResearchesFullTextIndex(): bool
@@ -106,7 +143,7 @@ class ResearchService extends BaseService
             return $this->hasResearchesFullTextIndex;
         }
 
-        $this->hasResearchesFullTextIndex = $this->hasIndex('researches', 'ft_researches_title_author');
+        $this->hasResearchesFullTextIndex = !empty($this->getResearchesFullTextIndexColumns());
 
         return $this->hasResearchesFullTextIndex;
     }
@@ -117,14 +154,9 @@ class ResearchService extends BaseService
             return $this->hasDetailsFullTextIndex;
         }
 
-        $this->hasDetailsFullTextIndex = $this->hasIndex('research_details', 'ft_research_details_search');
+        $this->hasDetailsFullTextIndex = !empty($this->getDetailsFullTextIndexColumns());
 
         return $this->hasDetailsFullTextIndex;
-    }
-
-    private function hasFullTextSupport(): bool
-    {
-        return $this->hasResearchesFullTextIndex() && $this->hasDetailsFullTextIndex();
     }
 
     private function normalizeAccessLevel(?string $accessLevel): string
@@ -216,9 +248,30 @@ class ResearchService extends BaseService
         }
 
         $tokens = preg_split('/\s+/', $normalized) ?: [];
-        $tokens = array_values(array_unique(array_filter($tokens, static fn ($token) => mb_strlen((string) $token) >= 3)));
+        $tokens = array_map(static function ($token): string {
+            $clean = preg_replace('/[^\p{L}\p{N}_-]+/u', '', (string) $token);
+            return mb_strtolower(trim((string) $clean));
+        }, $tokens);
+        $tokens = array_values(array_unique(array_filter(
+            $tokens,
+            static fn ($token) => $token !== '' && mb_strlen((string) $token) >= 3
+        )));
 
         return array_slice($tokens, 0, 8);
+    }
+
+    private function sanitizeBooleanToken(string $token): string
+    {
+        $clean = preg_replace('/[^\p{L}\p{N}_-]+/u', '', $token) ?? $token;
+        return mb_strtolower(trim($clean));
+    }
+
+    private function sanitizeBooleanPhrase(string $phrase): string
+    {
+        $clean = trim($phrase);
+        $clean = str_replace(['"', "'", '+', '-', '<', '>', '(', ')', '~', '*', '@'], ' ', $clean);
+        $clean = preg_replace('/\s+/u', ' ', $clean) ?? $clean;
+        return trim($clean);
     }
 
     private function applySpellingCorrections(string $query): string
@@ -299,21 +352,17 @@ class ResearchService extends BaseService
         return false;
     }
 
+    private function getResearchesFullTextColumns(): string
+    {
+        $columns = $this->getResearchesFullTextIndexColumns();
+        return implode(', ', array_map(static fn ($column) => 'researches.' . $column, $columns));
+    }
+
     private function getDetailsFullTextColumns(): string
     {
-        $columns = [
-            'research_details.subjects',
-            'research_details.physical_description',
-            'research_details.publisher',
-            'research_details.knowledge_type',
-            'research_details.isbn_issn',
-        ];
+        $columns = $this->getDetailsFullTextIndexColumns();
 
-        if ($this->hasSearchTextColumn()) {
-            $columns[] = 'research_details.search_text';
-        }
-
-        return implode(', ', $columns);
+        return implode(', ', array_map(static fn ($column) => 'research_details.' . $column, $columns));
     }
 
     private function buildSmartSearchScore(string $query, bool $includeIndexedText = true): string
@@ -333,12 +382,13 @@ class ResearchService extends BaseService
             "CASE WHEN LOWER(research_details.isbn_issn) LIKE {$escapedLike} THEN 15 ELSE 0 END",
         ];
 
-        if ($this->hasFullTextSupport()) {
+        if ($this->hasResearchesFullTextIndex()) {
+            $researchesColumns = $this->getResearchesFullTextColumns();
+            $parts[] = "COALESCE(MATCH({$researchesColumns}) AGAINST ({$escapedExact} IN NATURAL LANGUAGE MODE), 0) * 45";
+        }
+        if ($includeIndexedText && $this->hasDetailsFullTextIndex()) {
             $detailsColumns = $this->getDetailsFullTextColumns();
-            $parts[] = "COALESCE(MATCH(researches.title, researches.author) AGAINST ({$escapedExact} IN NATURAL LANGUAGE MODE), 0) * 45";
-            if ($includeIndexedText) {
-                $parts[] = "COALESCE(MATCH({$detailsColumns}) AGAINST ({$escapedExact} IN NATURAL LANGUAGE MODE), 0) * 30";
-            }
+            $parts[] = "COALESCE(MATCH({$detailsColumns}) AGAINST ({$escapedExact} IN NATURAL LANGUAGE MODE), 0) * 30";
         }
 
         if ($includeIndexedText && $this->hasSearchTextColumn()) {
@@ -373,13 +423,15 @@ class ResearchService extends BaseService
             ->orLike('research_details.physical_description', $normalized)
             ->orLike('research_details.isbn_issn', $normalized);
 
-        if ($this->hasFullTextSupport()) {
+        if ($this->hasResearchesFullTextIndex()) {
+            $researchesColumns = $this->getResearchesFullTextColumns();
+            $escaped = $this->db->escape($normalized);
+            $builder->orWhere("MATCH({$researchesColumns}) AGAINST ({$escaped} IN NATURAL LANGUAGE MODE) > 0", null, false);
+        }
+        if ($includeIndexedText && $this->hasDetailsFullTextIndex()) {
             $detailsColumns = $this->getDetailsFullTextColumns();
             $escaped = $this->db->escape($normalized);
-            $builder->orWhere("MATCH(researches.title, researches.author) AGAINST ({$escaped} IN NATURAL LANGUAGE MODE) > 0", null, false);
-            if ($includeIndexedText) {
-                $builder->orWhere("MATCH({$detailsColumns}) AGAINST ({$escaped} IN NATURAL LANGUAGE MODE) > 0", null, false);
-            }
+            $builder->orWhere("MATCH({$detailsColumns}) AGAINST ({$escaped} IN NATURAL LANGUAGE MODE) > 0", null, false);
         }
 
         if ($includeIndexedText && $this->hasSearchTextColumn()) {
@@ -423,16 +475,16 @@ class ResearchService extends BaseService
             return;
         }
 
-        if ($includeIndexedText && $this->hasFullTextSupport()) {
+        if ($includeIndexedText) {
             $terms = [];
             foreach ($phrases as $phrase) {
-                $cleanPhrase = trim($phrase);
+                $cleanPhrase = $this->sanitizeBooleanPhrase((string) $phrase);
                 if ($cleanPhrase !== '') {
                     $terms[] = '+"' . str_replace('"', '', $cleanPhrase) . '"';
                 }
             }
             foreach ($tokens as $token) {
-                $cleanToken = trim($token);
+                $cleanToken = $this->sanitizeBooleanToken((string) $token);
                 if ($cleanToken !== '') {
                     $terms[] = '+' . $cleanToken . '*';
                 }
@@ -441,13 +493,26 @@ class ResearchService extends BaseService
             if (!empty($terms)) {
                 $booleanQuery = implode(' ', $terms);
                 $escapedBoolean = $this->db->escape($booleanQuery);
-                $detailsColumns = $this->getDetailsFullTextColumns();
-                $builder->where(
-                    "(MATCH(researches.title, researches.author) AGAINST ({$escapedBoolean} IN BOOLEAN MODE) > 0 OR MATCH({$detailsColumns}) AGAINST ({$escapedBoolean} IN BOOLEAN MODE) > 0)",
-                    null,
-                    false
-                );
-                return;
+                $matchClauses = [];
+
+                if ($this->hasResearchesFullTextIndex()) {
+                    $researchesColumns = $this->getResearchesFullTextColumns();
+                    $matchClauses[] = "MATCH({$researchesColumns}) AGAINST ({$escapedBoolean} IN BOOLEAN MODE) > 0";
+                }
+
+                if ($this->hasDetailsFullTextIndex()) {
+                    $detailsColumns = $this->getDetailsFullTextColumns();
+                    $matchClauses[] = "MATCH({$detailsColumns}) AGAINST ({$escapedBoolean} IN BOOLEAN MODE) > 0";
+                }
+
+                if (!empty($matchClauses)) {
+                    $builder->where(
+                        '(' . implode(' OR ', $matchClauses) . ')',
+                        null,
+                        false
+                    );
+                    return;
+                }
             }
         }
 
@@ -517,10 +582,23 @@ class ResearchService extends BaseService
                 $builder->orLike('research_details.search_text', $phrase);
             }
 
-            if ($includeIndexedText && $this->hasFullTextSupport()) {
-                $escapedPhrase = $this->db->escape('"' . str_replace('"', '', $phrase) . '"');
+            if ($includeIndexedText && $this->hasResearchesFullTextIndex()) {
+                $cleanPhrase = $this->sanitizeBooleanPhrase((string) $phrase);
+                if ($cleanPhrase === '') {
+                    $cleanPhrase = trim((string) $phrase);
+                }
+                $escapedPhrase = $this->db->escape('"' . str_replace('"', '', $cleanPhrase) . '"');
+                $researchesColumns = $this->getResearchesFullTextColumns();
+                $builder->orWhere("MATCH({$researchesColumns}) AGAINST ({$escapedPhrase} IN BOOLEAN MODE) > 0", null, false);
+            }
+
+            if ($includeIndexedText && $this->hasDetailsFullTextIndex()) {
+                $cleanPhrase = $this->sanitizeBooleanPhrase((string) $phrase);
+                if ($cleanPhrase === '') {
+                    $cleanPhrase = trim((string) $phrase);
+                }
+                $escapedPhrase = $this->db->escape('"' . str_replace('"', '', $cleanPhrase) . '"');
                 $detailsColumns = $this->getDetailsFullTextColumns();
-                $builder->orWhere("MATCH(researches.title, researches.author) AGAINST ({$escapedPhrase} IN BOOLEAN MODE) > 0", null, false);
                 $builder->orWhere("MATCH({$detailsColumns}) AGAINST ({$escapedPhrase} IN BOOLEAN MODE) > 0", null, false);
             }
 

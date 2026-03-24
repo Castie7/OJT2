@@ -67,14 +67,17 @@ class ResearchController extends BaseController
         }
 
         $clientExt = strtolower((string) $file->getClientExtension());
-        $serverExt = strtolower((string) $file->getExtension());
-        if ($clientExt !== 'pdf' && $serverExt !== 'pdf') {
+        if ($clientExt !== '' && $clientExt !== 'pdf') {
             return 'Only PDF files are allowed.';
         }
 
-        $clientMime = strtolower((string) $file->getClientMimeType());
+        $serverExt = strtolower((string) $file->guessExtension());
+        if ($serverExt !== 'pdf') {
+            return 'Only PDF files are allowed.';
+        }
+
         $serverMime = strtolower((string) $file->getMimeType());
-        if (!str_contains($clientMime, 'pdf') && !str_contains($serverMime, 'pdf')) {
+        if (!str_contains($serverMime, 'pdf')) {
             return 'Invalid file type. Only PDF files are allowed.';
         }
 

@@ -79,6 +79,8 @@ class Filters extends BaseFilters
             'invalidchars', 
         ],
         'after' => [
+            // Add CORS headers to normal responses (GET/POST/etc).
+            'cors',
             // 4. Inject Security Headers (XSS, HSTS, etc.)
             'secureheaders',
         ],

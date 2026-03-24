@@ -13,20 +13,23 @@ class Cors implements FilterInterface
         $origin = $request->getHeaderLine('Origin');
         $corsConfig = config('Cors');
         $settings = $corsConfig->default ?? [];
-
-        if ($request->getMethod(true) !== 'OPTIONS') {
-            return null;
-        }
-
         $response = service('response');
 
         if (!$this->isOriginAllowed($origin, $settings)) {
-            return $response->setStatusCode(403);
+            if ($request->getMethod(true) === 'OPTIONS') {
+                return $response->setStatusCode(403);
+            }
+
+            return null;
         }
 
         $this->applyCorsHeaders($response, $origin, $settings);
 
-        return $response->setStatusCode(204);
+        if ($request->getMethod(true) === 'OPTIONS') {
+            return $response->setStatusCode(204);
+        }
+
+        return null;
     }
 
     public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)

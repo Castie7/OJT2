@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Research } from '../../../../types'
 import { formatDate } from '../../../../utils/formatters'
 import { useAuthStore } from '../../../../stores/auth'
 
-defineProps<{
-    item: Research
+const props = defineProps<{
+  item: Research
 }>()
 
 const emit = defineEmits<{
@@ -13,6 +14,7 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
+const isArchived = computed(() => props.item.status === 'archived')
 </script>
 
 <template>
@@ -46,9 +48,13 @@ const authStore = useAuthStore()
             <button 
                 v-if="authStore.currentUser && authStore.currentUser.role === 'admin'" 
                 @click.stop="$emit('archive', item)" 
-                class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 hover:bg-red-50 rounded"
+                :class="[
+                  'text-xs font-medium px-2 py-1 rounded transition-colors',
+                  isArchived ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50' : 'text-red-500 hover:text-red-700 hover:bg-red-50'
+                ]"
+                :title="isArchived ? 'Restore' : 'Archive'"
             >
-                Archive
+                {{ isArchived ? 'Restore' : 'Archive' }}
             </button>
         </td>
     </tr>

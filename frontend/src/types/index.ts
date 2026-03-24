@@ -47,6 +47,61 @@ export interface Research {
   link?: string
 }
 
+export interface WorkspaceStorageFile {
+  id: number
+  item_type: 'file'
+  folder_path: string
+  original_name: string
+  mime_type: string
+  size_bytes: number
+  created_at: string
+  updated_at?: string
+}
+
+export interface WorkspaceStorageFolder {
+  id: number
+  item_type: 'folder'
+  folder_path: string
+  full_path: string
+  original_name: string
+  mime_type: string
+  size_bytes: number
+  created_at: string
+  updated_at?: string
+}
+
+export interface WorkspaceStorageSummary {
+  quota_bytes: number
+  used_bytes: number
+  remaining_bytes: number
+  usage_percent: number
+  current_path: string
+  parent_path: string | null
+  folders: WorkspaceStorageFolder[]
+  files: WorkspaceStorageFile[]
+}
+
+export interface WorkspaceStorageRecycleItem {
+  id: number
+  item_type: 'file' | 'folder'
+  folder_path: string
+  full_path: string | null
+  original_name: string
+  mime_type: string
+  size_bytes: number
+  created_at: string
+  updated_at?: string
+  deleted_at: string
+  expires_at: string
+  days_remaining: number
+}
+
+export interface WorkspaceStorageRecycleSummary {
+  retention_days: number
+  item_count: number
+  items: WorkspaceStorageRecycleItem[]
+}
+
 export interface Comment {
   id: number
   user_name: string

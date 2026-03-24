@@ -225,7 +225,7 @@ export function useResearchLibrary(emit: (event: 'update-stats', count: number) 
   }
 
   const requestArchiveToggle = (item: Research) => {
-    const action = showArchived.value ? 'Restore' : 'Archive'
+    const action = item.status === 'archived' ? 'Restore' : 'Archive'
     confirmModal.value = {
       show: true,
       id: item.id,

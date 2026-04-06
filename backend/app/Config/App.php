@@ -16,7 +16,7 @@ class App extends BaseConfig
      *
      * E.g., http://example.com/
      */
-    public $baseURL = 'http://localhost/OJT2/backend/public/index.php/';
+    public $baseURL = 'http://localhost/backend/public/index.php/';
 
     public function __construct() {
         parent::__construct();
@@ -24,7 +24,7 @@ class App extends BaseConfig
         // Check if running via command line (CLI) or Web Server
         if (isset($_SERVER['HTTP_HOST'])) {
             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-            $this->baseURL = $protocol . '://' . $_SERVER['HTTP_HOST'] . '/OJT2/backend/public/index.php/';
+            $this->baseURL = $protocol . '://' . $_SERVER['HTTP_HOST'] . '/backend/public/index.php/';
         }
 
         $forceHttpsEnv = env('app.forceGlobalSecureRequests');

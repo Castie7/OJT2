@@ -348,11 +348,22 @@ class StorageController extends BaseController
 
         try {
             $payload = $this->storageService->getDownloadPayload((int) $user->id, $fileId);
+            $filePath = (string) $payload['path'];
+            $originalName = (string) $payload['original_name'];
+
+            if (!is_file($filePath)) {
+                return $this->failNotFound('File not found on disk.');
+            }
+
+            $mime = mime_content_type($filePath) ?: 'application/octet-stream';
+            $size = filesize($filePath);
 
             return $this->response
-                ->download($payload['path'], null, true)
-                ->setFileName((string) $payload['original_name'])
-                ->inline();
+                ->setHeader('Content-Type', $mime)
+                ->setHeader('Content-Disposition', 'inline; filename="' . addcslashes($originalName, '"\\') . '"')
+                ->setHeader('Content-Length', (string) $size)
+                ->setHeader('Cache-Control', 'private, max-age=3600')
+                ->setBody(file_get_contents($filePath));
         } catch (\RuntimeException $e) {
             return $this->fail($e->getMessage(), $this->resolveHttpCode($e));
         } catch (\Throwable $e) {

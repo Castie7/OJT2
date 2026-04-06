@@ -14,7 +14,7 @@ export default defineConfig({
     // Optional: Proxy API requests to backend to avoid CORS issues locally
     proxy: {
       '/api': {
-        target: 'http://localhost',
+        target: 'http://192.168.60.199',
         secure: false,
         changeOrigin: true
       }

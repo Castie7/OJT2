@@ -51,15 +51,7 @@ const routes: Array<RouteRecordRaw> = [
           title: 'My Workspace - BSU Research Portal'
         }
       },
-      {
-        path: 'drive',
-        name: 'MyDrive',
-        component: () => import('../components/features/storage/MyDrive.vue'),
-        meta: {
-          requiresAuth: true,
-          title: 'My Drive - BSU Research Portal'
-        }
-      },
+
 
       {
         path: 'approval',

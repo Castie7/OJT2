@@ -60,7 +60,7 @@ const pageTitle = computed(() => {
     if (route.path === '/library') return 'Research Library'
     if (route.path === '/assistant') return 'Research Assistant'
     if (route.path === '/workspace') return 'My Workspace'
-    if (route.path === '/drive') return 'My Drive'
+
     if (route.path === '/approval') return 'Approvals'
     if (route.path === '/settings') return 'Settings'
     if (route.path === '/users') return 'User Management'
@@ -134,9 +134,7 @@ const pageTitle = computed(() => {
                  <button @click="navigateTo('/workspace')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/workspace') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="My Workspace">
                     <span class="text-xl">&#x1F4BC;</span> <span v-if="!isSidebarCollapsed">My Workspace</span>
                  </button>
-                 <button @click="navigateTo('/drive')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/drive') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="My Drive">
-                    <span class="text-xl">&#x1F5C2;</span> <span v-if="!isSidebarCollapsed">My Drive</span>
-                 </button>
+
 
                  <!-- Admin Section -->
                  <template v-if="authStore.currentUser.role === 'admin'">
@@ -211,7 +209,7 @@ const pageTitle = computed(() => {
                  <template v-if="authStore.currentUser">
                      <div class="my-4 border-t border-emerald-800/50"></div>
                      <button @click="navigateTo('/workspace')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/workspace') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">My Workspace</button>
-                     <button @click="navigateTo('/drive')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/drive') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">My Drive</button>
+
                      
                      <template v-if="authStore.currentUser.role === 'admin'">
                         <div class="my-4 border-t border-emerald-800/50"></div>

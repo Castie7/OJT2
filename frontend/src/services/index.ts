@@ -12,7 +12,7 @@ export * from './notification.service'
 export * from './comment.service'
 export * from './dashboard.service'
 export * from './assistant.service'
-export * from './storage.service'
+
 
 // Re-export common utilities
 export { getAssetUrl } from './api'

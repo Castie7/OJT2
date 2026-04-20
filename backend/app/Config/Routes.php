@@ -39,20 +39,6 @@ $routes->group('api', function ($routes) {
     $routes->post('assistant/feedback', 'AssistantController::feedback', ['filter' => 'auth']);
     $routes->get('assistant/analytics', 'AssistantController::analytics', ['filter' => 'auth']);
 
-    // --- USER STORAGE (My Workspace Drive) ---
-    $routes->group('storage', ['filter' => 'auth'], function ($routes) {
-        $routes->get('/', 'StorageController::index');
-        $routes->get('recycle-bin', 'StorageController::recycleBin');
-        $routes->post('upload', 'StorageController::upload');
-        $routes->post('folders', 'StorageController::createFolder');
-        $routes->get('open/(:num)', 'StorageController::open/$1');
-        $routes->get('download/(:num)', 'StorageController::download/$1');
-        $routes->post('delete/(:num)', 'StorageController::deleteFile/$1');
-        $routes->post('move/(:num)', 'StorageController::moveItem/$1');
-        $routes->post('copy/(:num)', 'StorageController::copyItem/$1');
-        $routes->post('restore/(:num)', 'StorageController::restoreItem/$1');
-        $routes->post('permanent-delete/(:num)', 'StorageController::deletePermanently/$1');
-    });
 
     // --- ADMIN LOGS ---
     $routes->group('logs', ['filter' => 'auth'], function ($routes) {

@@ -24,6 +24,44 @@ class ResearchController extends BaseController
     }
 
     // --- SECURITY HELPER ---
+    public function viewPdf($id = null)
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->failUnauthorized('Unauthorized Access. Please login.');
+        }
+
+        $researchId = (int) $id;
+        try {
+            $research = $this->researchService->getResearch($researchId);
+            if (!$research || empty($research->file_path)) {
+                return $this->failNotFound('File not found.');
+            }
+
+            // Determine safe file path in the shielded directory
+            $fileName = $research->file_path;
+            $filePath = WRITEPATH . 'uploads/research/' . basename($fileName);
+            
+            if (!is_file($filePath)) {
+                return $this->failNotFound('Encrypted file not found on disk.');
+            }
+
+            $this->response
+                ->setHeader('Content-Type', 'application/pdf')
+                ->setHeader('Content-Disposition', 'inline; filename="' . addcslashes($research->title . '.pdf', '"\\') . '"')
+                ->setHeader('Cache-Control', 'private, max-age=3600')
+                ->sendHeaders();
+
+            $encryptionService = new \App\Services\EncryptionService();
+            $encryptionService->streamDecryptToOutput($filePath);
+            exit;
+        } catch (\RuntimeException $e) {
+            return $this->fail($e->getMessage(), 400);
+        } catch (\Throwable $e) {
+            log_message('error', '[Research View PDF] ' . $e->getMessage());
+            return $this->failServerError('Failed to open file.');
+        }
+    }
     protected function getUser()
     {
         $request = service('request');

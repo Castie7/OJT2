@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useMasterlist } from '../../../composables/useMasterlist'
-import { getAssetUrl } from '../../../services/api'
+import { getAssetUrl, getBaseUrl } from '../../../services/api'
+import { sanitizeUrl } from '../../../utils/formatters'
 const ASSET_URL = getAssetUrl()
 import { ref, computed } from 'vue'
 import BaseButton from '../../ui/BaseButton.vue'
@@ -519,15 +520,15 @@ const accessOptions = [
                       
                       <div ref="pdfContainer" class="w-full bg-gray-900 rounded-xl overflow-hidden shadow-lg h-[600px] border border-gray-200">
                           <iframe 
-                             :src="`${ASSET_URL}/uploads/${selectedItem.file_path}`" 
+                             :src="`${getBaseUrl()}/research/view-pdf/${selectedItem.id}`" 
                              class="w-full h-full border-none bg-white" 
                              title="PDF Preview">
                           </iframe>
                       </div>
                    </div>
 
-                   <div v-if="selectedItem.link" class="w-full mt-2">
-                      <a :href="selectedItem.link" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-700 hover:scale-[1.01] transition-all">
+                   <div v-if="sanitizeUrl(selectedItem.link)" class="w-full mt-2">
+                      <a :href="sanitizeUrl(selectedItem.link)" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-700 hover:scale-[1.01] transition-all">
                          <span>🔗 Open External Link / Website</span>
                       </a>
                    </div>

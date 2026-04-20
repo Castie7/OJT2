@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { Research } from '../../../../types'
-import { formatDate, getCropImage } from '../../../../utils/formatters'
+import { formatDate, getCropImage, sanitizeUrl } from '../../../../utils/formatters'
+import { getBaseUrl } from '../../../../services/api'
 import { useToast } from '../../../../composables/useToast'
 
 const props = defineProps<{
@@ -103,14 +104,14 @@ const toggleFullscreen = () => {
                             
                             <div v-if="research.file_path" ref="pdfContainer" class="w-full bg-gray-800 rounded-lg overflow-hidden shadow-lg h-[500px] border border-gray-200">
                                 <iframe 
-                                    :src="`${assetUrl}/uploads/${research.file_path}`" 
+                                    :src="`${getBaseUrl()}/research/view-pdf/${research.id}`" 
                                     class="w-full h-full border-none bg-white" 
                                     title="PDF Preview">
                                 </iframe>
                             </div>
 
-                            <div v-if="research.link" class="mt-4">
-                                <a :href="research.link" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition">
+                            <div v-if="sanitizeUrl(research.link)" class="mt-4">
+                                <a :href="sanitizeUrl(research.link)" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg transition">
                                     <span>🔗 Open External Link</span>
                                 </a>
                             </div>

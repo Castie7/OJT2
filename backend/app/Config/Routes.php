@@ -19,9 +19,9 @@ $routes->options('(:any)', static function () {
 $routes->post('auth/login', 'AuthController::login');
 $routes->get('auth/verify', 'AuthController::verify');
 
-$routes->post('auth/logout', 'AuthController::logout');
-$routes->post('auth/update-profile', 'AuthController::updateProfile');
-$routes->post('auth/register', 'AuthController::register');
+$routes->post('auth/logout', 'AuthController::logout', ['filter' => 'auth']);
+$routes->post('auth/update-profile', 'AuthController::updateProfile', ['filter' => 'auth']);
+$routes->post('auth/register', 'AuthController::register', ['filter' => 'auth']);
 
 // --- ADMIN ROUTES ---
 $routes->group('admin', ['filter' => 'auth'], function ($routes) {
@@ -42,8 +42,8 @@ $routes->group('api', function ($routes) {
         $routes->post('read-all', 'MessageController::markAllAsRead');
     });
     $routes->post('comments', 'ResearchController::addComment', ['filter' => 'auth']);
-    $routes->post('assistant/log', 'AssistantController::logSearch');
-    $routes->post('assistant/feedback', 'AssistantController::feedback');
+    $routes->post('assistant/log', 'AssistantController::logSearch', ['filter' => 'auth']);
+    $routes->post('assistant/feedback', 'AssistantController::feedback', ['filter' => 'auth']);
     $routes->get('assistant/analytics', 'AssistantController::analytics', ['filter' => 'auth']);
 
     // --- USER STORAGE (My Workspace Drive) ---
@@ -73,9 +73,10 @@ $routes->group('api', function ($routes) {
 $routes->group('research', function ($routes) {
 
     // Stats
-    $routes->get('user-stats/(:num)', 'ResearchController::userStats/$1');
+    $routes->get('user-stats/(:num)', 'ResearchController::userStats/$1', ['filter' => 'auth']);
     $routes->get('stats', 'ResearchController::stats');
     $routes->get('masterlist', 'ResearchController::masterlist', ['filter' => 'auth']);
+    $routes->get('view-pdf/(:num)', 'ResearchController::viewPdf/$1', ['filter' => 'auth']);
 
     // Lists
     $routes->get('/', 'ResearchController::index');

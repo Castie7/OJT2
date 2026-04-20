@@ -326,9 +326,15 @@ class StorageController extends BaseController
         try {
             $payload = $this->storageService->getDownloadPayload((int) $user->id, $fileId);
 
-            return $this->response
-                ->download($payload['path'], null)
-                ->setFileName((string) $payload['original_name']);
+            $this->response
+                ->setHeader('Content-Type', 'application/octet-stream')
+                ->setHeader('Content-Disposition', 'attachment; filename="' . addcslashes((string)$payload['original_name'], '"\\') . '"')
+                ->setHeader('Content-Length', (string)$payload['size_bytes'])
+                ->sendHeaders();
+
+            $encryptionService = new \App\Services\EncryptionService();
+            $encryptionService->streamDecryptToOutput($payload['path']);
+            exit;
         } catch (\RuntimeException $e) {
             return $this->fail($e->getMessage(), $this->resolveHttpCode($e));
         } catch (\Throwable $e) {
@@ -356,14 +362,19 @@ class StorageController extends BaseController
             }
 
             $mime = mime_content_type($filePath) ?: 'application/octet-stream';
-            $size = filesize($filePath);
+            // True size is in the database payload, the disk file is slightly larger due to AES tags/header
+            $size = (string) $payload['size_bytes'];
 
-            return $this->response
+            $this->response
                 ->setHeader('Content-Type', $mime)
                 ->setHeader('Content-Disposition', 'inline; filename="' . addcslashes($originalName, '"\\') . '"')
                 ->setHeader('Content-Length', (string) $size)
                 ->setHeader('Cache-Control', 'private, max-age=3600')
-                ->setBody(file_get_contents($filePath));
+                ->sendHeaders();
+
+            $encryptionService = new \App\Services\EncryptionService();
+            $encryptionService->streamDecryptToOutput($filePath);
+            exit;
         } catch (\RuntimeException $e) {
             return $this->fail($e->getMessage(), $this->resolveHttpCode($e));
         } catch (\Throwable $e) {

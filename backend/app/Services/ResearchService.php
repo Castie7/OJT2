@@ -1434,7 +1434,16 @@ class ResearchService extends BaseService
         $fileName = null;
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $fileName = $file->getRandomName();
-            $file->move(ROOTPATH . 'public/uploads', $fileName);
+            $targetDir = WRITEPATH . 'uploads/research';
+            if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+            $finalPath = $targetDir . DIRECTORY_SEPARATOR . $fileName;
+
+            try {
+                $encryptionService = new \App\Services\EncryptionService();
+                $encryptionService->encryptFile($file->getTempName(), $finalPath);
+            } catch (\Throwable $e) {
+                throw new \Exception('Encryption failed: ' . $e->getMessage(), 500);
+            }
         }
 
         $mainData = [
@@ -1521,7 +1530,16 @@ class ResearchService extends BaseService
 
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
-            $file->move(ROOTPATH . 'public/uploads', $newName);
+            $targetDir = WRITEPATH . 'uploads/research';
+            if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+            $finalPath = $targetDir . DIRECTORY_SEPARATOR . $newName;
+
+            try {
+                $encryptionService = new \App\Services\EncryptionService();
+                $encryptionService->encryptFile($file->getTempName(), $finalPath);
+            } catch (\Throwable $e) {
+                throw new \Exception('Encryption failed: ' . $e->getMessage(), 500);
+            }
             $mainUpdate['file_path'] = $newName;
         }
         $this->researchModel->update($id, $mainUpdate);
@@ -1843,11 +1861,16 @@ class ResearchService extends BaseService
             }
 
             $newName = $file->getRandomName();
-            $targetPath = ROOTPATH . 'public/uploads';
+            $targetPath = WRITEPATH . 'uploads/research';
+            if (!is_dir($targetPath)) mkdir($targetPath, 0777, true);
 
             log_message('error', "Attempting to move file to: $targetPath with name: $newName");
 
-            if ($file->move($targetPath, $newName)) {
+            $finalPath = $targetPath . DIRECTORY_SEPARATOR . $newName;
+            $enc = new \App\Services\EncryptionService();
+            $encrypted = false;
+            try { $enc->encryptFile($file->getTempName(), $finalPath); $encrypted = true; } catch (\Throwable $e) { log_message('error', $e->getMessage()); }
+            if ($encrypted) {
                 $this->researchModel->update($item->id, ['file_path' => $newName]);
                 $this->queueAndRefreshSearchIndex((int) $item->id, 'pdf_attach', 60);
                 log_message('error', "File moved successfully.");

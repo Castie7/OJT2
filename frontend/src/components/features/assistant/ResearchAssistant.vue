@@ -7,8 +7,8 @@ import type {
   Research
 } from '../../../types'
 import { assistantService, researchService } from '../../../services'
-import { getAssetUrl } from '../../../services/api'
-import { formatDate } from '../../../utils/formatters'
+import { getAssetUrl, getBaseUrl } from '../../../services/api'
+import { formatDate, sanitizeUrl } from '../../../utils/formatters'
 import { useAuthStore } from '../../../stores/auth'
 import { useToast } from '../../../composables/useToast'
 
@@ -546,7 +546,7 @@ const resetChat = (): void => {
 
 const openPdf = (item: Research): void => {
   if (!item.file_path) return
-  window.open(`${assetUrl}/uploads/${item.file_path}`, '_blank', 'noopener')
+  window.open(`${getBaseUrl()}/research/view-pdf/${item.id}`, '_blank', 'noopener')
 }
 
 const openResult = (item: AssistantResult): void => {
@@ -555,8 +555,9 @@ const openResult = (item: AssistantResult): void => {
     return
   }
 
-  if (item.link) {
-    window.open(item.link, '_blank', 'noopener')
+  const safeLink = sanitizeUrl(item.link)
+  if (safeLink) {
+    window.open(safeLink, '_blank', 'noopener')
   }
 }
 
@@ -648,7 +649,7 @@ const buildCitation = (item: Research, format: CitationFormat): string => {
   const year = getCitationYear(item.publication_date)
   const title = (item.title || 'Untitled research').trim()
   const publisher = (item.publisher || '').trim()
-  const sourceLink = (item.link || '').trim() || (item.file_path ? `${assetUrl}/uploads/${item.file_path}` : '')
+  const sourceLink = (item.link || '').trim() || (item.file_path ? `${getBaseUrl()}/research/view-pdf/${item.id}` : '')
 
   if (format === 'apa') {
     let text = `${author} (${year}). ${title}.`

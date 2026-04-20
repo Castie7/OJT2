@@ -58,3 +58,26 @@ export const getCropImage = (crop?: string): string => {
   }
   return '/images/crops/default.jpg'
 }
+
+/**
+ * Sanitizes a URL to prevent XSS via dangerous protocols.
+ * Only allows http: and https: URLs. Returns empty string for anything else
+ * (e.g. javascript:, data:, vbscript:, or malformed input).
+ */
+export function sanitizeUrl(url?: string | null): string {
+  if (!url) return ''
+
+  const trimmed = url.trim()
+  if (trimmed === '') return ''
+
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return trimmed
+    }
+    return ''
+  } catch {
+    // Relative URLs or malformed — block them in link contexts
+    return ''
+  }
+}

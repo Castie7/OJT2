@@ -106,8 +106,13 @@ class StorageService extends BaseService
         $absoluteUserDir = $this->getUserDirectoryPath($userId);
         $this->ensureDirectoryExists($absoluteUserDir);
 
-        if (!$file->move($absoluteUserDir, $storedName)) {
-            throw new \RuntimeException('Failed to store uploaded file.', 500);
+        $finalPath = $absoluteUserDir . DIRECTORY_SEPARATOR . $storedName;
+
+        try {
+            $encryptionService = new \App\Services\EncryptionService();
+            $encryptionService->encryptFile($file->getTempName(), $finalPath);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('Encryption failed: ' . $e->getMessage(), 500);
         }
 
         $this->storageModel->insert([

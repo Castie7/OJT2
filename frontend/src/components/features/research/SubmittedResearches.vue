@@ -5,7 +5,7 @@ import { useSubmittedResearches } from '../../../composables/useSubmittedResearc
 import { useAuthStore } from '../../../stores/auth'
 
 // ✅ USE THE DYNAMIC URL
-import { getAssetUrl } from '../../../services/api'
+import { getAssetUrl, getBaseUrl } from '../../../services/api'
 const ASSET_URL = getAssetUrl()
 
 const props = defineProps<{
@@ -318,7 +318,7 @@ void isSendingComment
             </div>
             <div class="flex-1 bg-gray-100 p-4 relative">
                 <iframe 
-                  :src="`${ASSET_URL}/uploads/${selectedResearch.file_path}`" 
+                  :src="`${getBaseUrl()}/research/view-pdf/${selectedResearch.id}`" 
                   class="w-full h-full border-none bg-white rounded-lg shadow-sm"
                   title="PDF Viewer"
                 ></iframe>

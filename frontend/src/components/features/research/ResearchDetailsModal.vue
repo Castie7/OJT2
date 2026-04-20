@@ -3,7 +3,8 @@ import { ref } from 'vue'
 import { useToast } from '../../../composables/useToast'
 
 // ✅ USE THE DYNAMIC URL
-import { getAssetUrl } from '../../../services/api'
+import { getAssetUrl, getBaseUrl } from '../../../services/api'
+import { sanitizeUrl } from '../../../utils/formatters'
 const ASSET_URL = getAssetUrl()
 
 // Ideally, import your shared 'Research' interface here. 
@@ -114,15 +115,15 @@ const toggleFullscreen = () => {
                    
                    <div ref="pdfContainer" class="w-full bg-black rounded overflow-hidden shadow-lg h-[500px]">
                       <iframe 
-                        :src="`${ASSET_URL}/uploads/${research.file_path}`" 
+                        :src="`${getBaseUrl()}/research/view-pdf/${research.id}`" 
                         class="w-full h-full border-none bg-white" 
                         title="PDF Preview">
                       </iframe>
                    </div>
                 </div>
 
-                <div v-if="research.link" class="w-full mt-2">
-                   <a :href="research.link" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow hover:bg-blue-700 transition">
+                <div v-if="sanitizeUrl(research.link)" class="w-full mt-2">
+                   <a :href="sanitizeUrl(research.link)" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow hover:bg-blue-700 transition">
                       <span>🔗 Open External Link / Website</span>
                    </a>
                 </div>

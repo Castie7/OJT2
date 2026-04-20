@@ -60,15 +60,7 @@ const routes: Array<RouteRecordRaw> = [
           title: 'My Drive - BSU Research Portal'
         }
       },
-      {
-        path: 'messages',
-        name: 'DirectMessages',
-        component: () => import('../components/features/messages/DirectMessages.vue'),
-        meta: {
-          requiresAuth: true,
-          title: 'Messages - BSU Research Portal'
-        }
-      },
+
       {
         path: 'approval',
         name: 'Approval',

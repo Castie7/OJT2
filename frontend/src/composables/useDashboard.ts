@@ -1,6 +1,6 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { dashboardService, notificationService, messageService } from '../services'
+import { dashboardService, notificationService } from '../services'
 import api from '../services/api'
 import type { Stat } from '../types'
 import { useAuthStore } from '../stores/auth'
@@ -31,8 +31,6 @@ export function useDashboard() {
   // --- 3. NOTIFICATION STATE ---
   const showNotifications = ref(false)
   const notifications = ref<any[]>([])
-  const hasUnreadMessages = ref(false)
-  const messagingAvailable = ref(true)
   const pollingInterval = ref<any>(null)
   const prevUnread = ref<number>(0)
   const initialized = ref(false)
@@ -129,53 +127,6 @@ export function useDashboard() {
     }
   }
 
-  const fetchUnreadMessages = async () => {
-    const user = authStore.currentUser
-    if (!user || !messagingAvailable.value) {
-      hasUnreadMessages.value = false
-      return
-    }
-
-    try {
-      const conversations = await messageService.getConversations()
-      hasUnreadMessages.value = conversations.some(conversation => Number(conversation.unread_count) > 0)
-    } catch (error: any) {
-      if (error?.response?.status === 503 || error?.response?.status === 404) {
-        messagingAvailable.value = false
-        hasUnreadMessages.value = false
-        return
-      }
-
-      console.error("Failed to fetch unread direct messages", error)
-      hasUnreadMessages.value = false
-    }
-  }
-
-  const markAllDirectMessagesAsRead = async () => {
-    if (!authStore.currentUser || !messagingAvailable.value) return
-
-    // Make the dot disappear instantly when user opens Messages.
-    hasUnreadMessages.value = false
-
-    try {
-      await messageService.markAllAsRead()
-      void fetchUnreadMessages()
-    } catch (error: any) {
-      if (error?.response?.status === 503 || error?.response?.status === 404) {
-        messagingAvailable.value = false
-        hasUnreadMessages.value = false
-        return
-      }
-
-      console.error("Failed to mark all direct messages as read", error)
-      void fetchUnreadMessages()
-    }
-  }
-
-  const handleDirectMessagesUpdated = () => {
-    void fetchUnreadMessages()
-  }
-
   const toggleNotifications = async () => {
     showNotifications.value = !showNotifications.value
     const user = authStore.currentUser
@@ -251,15 +202,13 @@ export function useDashboard() {
 
   watch(() => authStore.currentUser, (newUser) => {
     if (newUser) {
-      messagingAvailable.value = true
       fetchDashboardStats()
-      Promise.all([fetchNotifications(), fetchUnreadMessages()]).then(() => {
+      fetchNotifications().then(() => {
         prevUnread.value = unreadCount.value
         initialized.value = true
       })
     } else {
       notifications.value = []
-      hasUnreadMessages.value = false
     }
   }, { immediate: true })
 
@@ -277,19 +226,15 @@ export function useDashboard() {
     // Poll every 10 seconds
     pollingInterval.value = setInterval(() => {
       void fetchNotifications()
-      void fetchUnreadMessages()
-    }, 10000)
-
-    window.addEventListener('direct-messages-updated', handleDirectMessagesUpdated)
+    }, 60000)
   })
 
   onUnmounted(() => {
     if (pollingInterval.value) clearInterval(pollingInterval.value)
-    window.removeEventListener('direct-messages-updated', handleDirectMessagesUpdated)
   })
 
   return {
-    currentTab, stats, workspaceRef, approvalRef, showAdminMenu, showNotifications, notifications, unreadCount, hasUnreadMessages,
-    setTab, updateStats, fetchDashboardStats, closeAdminMenu, toggleNotifications, handleNotificationClick, formatTimeAgo, markAllDirectMessagesAsRead
+    currentTab, stats, workspaceRef, approvalRef, showAdminMenu, showNotifications, notifications, unreadCount,
+    setTab, updateStats, fetchDashboardStats, closeAdminMenu, toggleNotifications, handleNotificationClick, formatTimeAgo
   }
 }

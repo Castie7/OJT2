@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter, useRoute, RouterView } from 'vue-router'
 import { useDashboard } from '../../composables/useDashboard'
@@ -32,12 +32,10 @@ const {
   showNotifications,
   notifications,
   unreadCount,
-  hasUnreadMessages,
   updateStats,
   toggleNotifications,
   handleNotificationClick,
-  formatTimeAgo,
-  markAllDirectMessagesAsRead
+  formatTimeAgo
 } = useDashboard() // No arguments
 
 // Actions
@@ -48,10 +46,6 @@ const handleUserUpdate = (updatedUser: User) => {
 const isActive = (path: string) => route.path === path
 
 const navigateTo = (path: string) => {
-  if (path === '/messages') {
-    void markAllDirectMessagesAsRead()
-  }
-
   router.push(path)
   isMobileSidebarOpen.value = false
 }
@@ -67,7 +61,6 @@ const pageTitle = computed(() => {
     if (route.path === '/assistant') return 'Research Assistant'
     if (route.path === '/workspace') return 'My Workspace'
     if (route.path === '/drive') return 'My Drive'
-    if (route.path === '/messages') return 'Messages'
     if (route.path === '/approval') return 'Approvals'
     if (route.path === '/settings') return 'Settings'
     if (route.path === '/users') return 'User Management'
@@ -144,10 +137,6 @@ const pageTitle = computed(() => {
                  <button @click="navigateTo('/drive')" :class="['w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/drive') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="My Drive">
                     <span class="text-xl">&#x1F5C2;</span> <span v-if="!isSidebarCollapsed">My Drive</span>
                  </button>
-                 <button @click="navigateTo('/messages')" :class="['relative w-full rounded-lg mb-1 flex items-center transition-all duration-200', isSidebarCollapsed ? 'justify-center p-2' : 'px-3 py-2.5 gap-3 text-left', isActive('/messages') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']" title="Messages">
-                    <span class="text-xl">&#x1F4AC;</span> <span v-if="!isSidebarCollapsed">Messages</span>
-                    <span v-if="hasUnreadMessages" class="absolute right-2 top-2 inline-flex h-2.5 w-2.5 rounded-full bg-red-500 border border-white"></span>
-                 </button>
 
                  <!-- Admin Section -->
                  <template v-if="authStore.currentUser.role === 'admin'">
@@ -223,10 +212,6 @@ const pageTitle = computed(() => {
                      <div class="my-4 border-t border-emerald-800/50"></div>
                      <button @click="navigateTo('/workspace')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/workspace') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">My Workspace</button>
                      <button @click="navigateTo('/drive')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/drive') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">My Drive</button>
-                     <button @click="navigateTo('/messages')" :class="['w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 text-sm font-medium transition-all duration-200', isActive('/messages') ? 'bg-emerald-800 text-white font-bold shadow-inner' : 'text-emerald-100 hover:bg-emerald-800 hover:text-white hover:pl-4']">
-                        <span>Messages</span>
-                        <span v-if="hasUnreadMessages" class="ml-auto inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
-                     </button>
                      
                      <template v-if="authStore.currentUser.role === 'admin'">
                         <div class="my-4 border-t border-emerald-800/50"></div>

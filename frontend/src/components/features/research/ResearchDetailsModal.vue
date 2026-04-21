@@ -3,9 +3,8 @@ import { ref } from 'vue'
 import { useToast } from '../../../composables/useToast'
 
 // ✅ USE THE DYNAMIC URL
-import { getAssetUrl, getBaseUrl } from '../../../services/api'
+import { getBaseUrl } from '../../../services/api'
 import { sanitizeUrl } from '../../../utils/formatters'
-const ASSET_URL = getAssetUrl()
 
 // Ideally, import your shared 'Research' interface here. 
 // For now, I'm using 'any', but you should replace it with your actual type.

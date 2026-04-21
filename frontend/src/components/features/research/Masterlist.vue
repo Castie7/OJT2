@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useMasterlist } from '../../../composables/useMasterlist'
-import { getAssetUrl, getBaseUrl } from '../../../services/api'
+import { getBaseUrl } from '../../../services/api'
 import { sanitizeUrl } from '../../../utils/formatters'
-const ASSET_URL = getAssetUrl()
 import { ref, computed } from 'vue'
 import BaseButton from '../../ui/BaseButton.vue'
 import BaseCard from '../../ui/BaseCard.vue'

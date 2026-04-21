@@ -327,8 +327,8 @@ const pdfFileInfo = computed(() => {
         // Parse bracket hints
         const m = basename.match(/^(.+?)\s*\[([^\]]+)\]\s*$/)
         if (m) {
-            title = m[1].trim()
-            hint = m[2].trim()
+            title = m[1]?.trim() ?? ''
+            hint = m[2]?.trim() ?? ''
         }
         return { name: file.name, size: (file.size / 1024).toFixed(1) + ' KB', title, hint }
     })
@@ -684,7 +684,7 @@ const confirmPdfUpload = async () => {
                     <!-- Editing state -->
                     <input
                       v-if="editingCell?.row === paginatedStartIndex + i && editingCell?.col === col"
-                      v-model="previewRows[paginatedStartIndex + i][col]"
+                      v-model="previewRows[paginatedStartIndex + i]![col]"
                       class="w-full px-2 py-1 text-xs border border-blue-400 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 bg-blue-50"
                       @blur="finishEdit"
                       @keydown.enter="finishEdit"

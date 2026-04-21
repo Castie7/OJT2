@@ -5,8 +5,7 @@ import { useSubmittedResearches } from '../../../composables/useSubmittedResearc
 import { useAuthStore } from '../../../stores/auth'
 
 // ✅ USE THE DYNAMIC URL
-import { getAssetUrl, getBaseUrl } from '../../../services/api'
-const ASSET_URL = getAssetUrl()
+import { getBaseUrl } from '../../../services/api'
 
 const props = defineProps<{
   statusFilter: string

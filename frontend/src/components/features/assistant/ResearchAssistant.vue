@@ -7,7 +7,7 @@ import type {
   Research
 } from '../../../types'
 import { assistantService, researchService } from '../../../services'
-import { getAssetUrl, getBaseUrl } from '../../../services/api'
+import { getBaseUrl } from '../../../services/api'
 import { formatDate, sanitizeUrl } from '../../../utils/formatters'
 import { useAuthStore } from '../../../stores/auth'
 import { useToast } from '../../../composables/useToast'
@@ -53,7 +53,6 @@ const STOP_WORDS = new Set([
 
 const authStore = useAuthStore()
 const { showToast } = useToast()
-const assetUrl = getAssetUrl()
 const isAdmin = computed(() => authStore.currentUser?.role === 'admin')
 
 const query = ref('')

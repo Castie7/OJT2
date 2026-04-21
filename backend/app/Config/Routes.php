@@ -88,4 +88,6 @@ $routes->group('research', function ($routes) {
     $routes->post('import-csv', 'ResearchController::importCsv', ['filter' => 'auth']);
     $routes->post('import-single', 'ResearchController::importSingle', ['filter' => 'auth']);
     $routes->post('bulk-upload-pdfs', 'ResearchController::uploadBulkPdfs', ['filter' => 'auth']);
+    $routes->post('preview-bulk-pdfs', 'ResearchController::previewBulkPdfs', ['filter' => 'auth']);
+    $routes->post('preview-csv', 'ResearchController::previewCsv', ['filter' => 'auth']);
 });

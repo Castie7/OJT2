@@ -928,11 +928,18 @@ class ResearchController extends BaseController
                 return $this->fail('Maximum of 10 files allowed per upload', 400);
             }
 
+            // Optional per-file ISBN/edition hints: pdf_isbn[] and pdf_edition[]
+            // Index corresponds to the order of pdf_files[].
+            $isbnHints    = $this->request->getPost('pdf_isbn')    ?? [];
+            $editionHints = $this->request->getPost('pdf_edition') ?? [];
+            if (!is_array($isbnHints))    $isbnHints    = [];
+            if (!is_array($editionHints)) $editionHints = [];
+
             $matched = 0;
             $skipped = 0;
             $details = [];
 
-            foreach ($pdfFiles as $file) {
+            foreach ($pdfFiles as $idx => $file) {
                 $originalName = (string) $file->getClientName();
                 $pdfValidationError = $this->validatePdfFile($file, true);
                 if ($pdfValidationError !== null) {
@@ -947,23 +954,33 @@ class ResearchController extends BaseController
                     continue;
                 }
 
-                // Filename without extension
+                // Filename without extension is the primary title candidate
                 $titleCandidate = pathinfo($originalName, PATHINFO_FILENAME);
 
-                // Call Service to find and attach
-                $resultStatus = $this->researchService->matchAndAttachPdf($titleCandidate, $file);
+                // Per-file hints (optional, sent alongside files from frontend)
+                $isbnHint    = trim((string) ($isbnHints[$idx]    ?? ''));
+                $editionHint = trim((string) ($editionHints[$idx] ?? ''));
+
+                // Call Service to find and attach (service also auto-parses bracket hints)
+                $resultStatus = $this->researchService->matchAndAttachPdf(
+                    $titleCandidate, $file, $isbnHint, $editionHint
+                );
 
                 if ($resultStatus === 'linked') {
                     $matched++;
-                    $details[] = "Linked: $originalName";
+                    $details[] = "✅ Linked: $originalName";
                 }
                 elseif ($resultStatus === 'exists') {
                     $skipped++;
-                    $details[] = "Skipped: $originalName (Already has file)";
+                    $details[] = "⏭️ Skipped: $originalName (Record already has a file)";
+                }
+                elseif ($resultStatus === 'no_match') {
+                    $skipped++;
+                    $details[] = "❌ Skipped: $originalName (No matching record found — check title, ISBN, or edition)";
                 }
                 else {
                     $skipped++;
-                    $details[] = "Skipped: $originalName (No match found)";
+                    $details[] = "⚠️ Skipped: $originalName (Encryption/storage error)";
                 }
             }
 
@@ -981,6 +998,61 @@ class ResearchController extends BaseController
         }
         catch (\Throwable $e) {
             log_message('error', '[Bulk Upload] ' . $e->getMessage());
+            return $this->failServerError('Server Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Preview matched records for bulk PDF upload before actual file upload.
+     * Expects JSON containing an array of 'files' with { filename, isbnHint, editionHint }.
+     */
+    public function previewBulkPdfs()
+    {
+        $user = $this->request->user;
+        if (!$user) return $this->failUnauthorized('Not logged in.');
+
+        $reqData = $this->request->getJSON(true);
+        $files = $reqData['files'] ?? [];
+
+        if (!is_array($files)) {
+            return $this->failValidationErrors('Invalid input format. Expected an array of files.');
+        }
+
+        try {
+            $results = $this->researchService->previewPdfMatches($files);
+            return $this->response->setJSON([
+                'status' => 'success',
+                'preview' => $results
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[Preview Bulk PDF] ' . $e->getMessage());
+            return $this->failServerError('Server Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Previews CSV rows to detect duplicates before uploading
+     */
+    public function previewCsv()
+    {
+        $user = $this->request->user;
+        if (!$user) return $this->failUnauthorized('Not logged in.');
+
+        $reqData = $this->request->getJSON(true);
+        $rows = $reqData['rows'] ?? [];
+
+        if (!is_array($rows)) {
+            return $this->failValidationErrors('Invalid input format.');
+        }
+
+        try {
+            $results = $this->researchService->previewCsvDuplicates($rows);
+            return $this->response->setJSON([
+                'status' => 'success',
+                'preview' => $results
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[Preview CSV] ' . $e->getMessage());
             return $this->failServerError('Server Error: ' . $e->getMessage());
         }
     }

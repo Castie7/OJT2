@@ -1807,6 +1807,54 @@ class ResearchService extends BaseService
         return ['status' => 'success', 'id' => $newId];
     }
 
+    /**
+     * Checks multiple CSV rows for duplicates and returns their real-time statuses.
+     * This is an optimization for the frontend CSV Preview Table.
+     */
+    public function previewCsvDuplicates(array $rows)
+    {
+        $results = [];
+        foreach ($rows as $idx => $rawData) {
+            $title = trim($rawData['Title'] ?? '');
+            $author = trim($rawData['Author'] ?? $rawData['Authors'] ?? '');
+            $isbn = trim($rawData['ISBN/ISSN'] ?? $rawData['ISSN'] ?? $rawData['ISBN'] ?? '');
+            $edition = trim($rawData['Edition'] ?? $rawData['Publication'] ?? '');
+
+            if (empty($title)) {
+                $results[$idx] = ['status' => 'new'];
+                continue;
+            }
+
+            $builder = $this->db->table('researches');
+            $builder->join('research_details', 'researches.id = research_details.research_id', 'left');
+            $builder->where('researches.title', $title);
+            if (!empty($author)) {
+                $builder->where('researches.author', $author);
+            }
+            if (!empty($edition)) {
+                $builder->where('research_details.edition', $edition);
+            } else {
+                $builder->groupStart()
+                    ->where('research_details.edition', '')
+                    ->orWhere('research_details.edition', null)
+                    ->groupEnd();
+            }
+
+            $existing = $builder->select('researches.*')->get()->getRow();
+
+            if ($existing) {
+                if (!empty($existing->file_path)) {
+                    $results[$idx] = ['status' => 'duplicate_with_pdf', 'title' => $existing->title];
+                } else {
+                    $results[$idx] = ['status' => 'duplicate_no_pdf', 'title' => $existing->title];
+                }
+            } else {
+                $results[$idx] = ['status' => 'new'];
+            }
+        }
+        return $results;
+    }
+
     public function importCsv($fileTempName, int $userId)
     {
         ini_set('auto_detect_line_endings', TRUE);
@@ -1822,6 +1870,51 @@ class ResearchService extends BaseService
              throw new \Exception('CSV file is empty or missing headers.');
         }
         $headers = array_map('trim', $headers);
+
+        // --- GUARD 1: UTF-8 / binary garbage (e.g. Excel .xlsx uploaded as CSV) ---
+        foreach ($headers as $h) {
+            if (!mb_check_encoding((string) $h, 'UTF-8')) {
+                fclose($handle);
+                throw new \Exception(
+                    'Invalid file encoding. The file does not appear to be a valid UTF-8 CSV. ' .
+                    'Please open it in a spreadsheet app, save as "CSV UTF-8", then upload again.'
+                );
+            }
+        }
+
+        // --- GUARD 2: Duplicate header names ---
+        $headerCounts = array_count_values($headers);
+        $duplicates   = array_keys(array_filter($headerCounts, static fn($c) => $c > 1));
+        if (!empty($duplicates)) {
+            fclose($handle);
+            throw new \Exception(
+                'Invalid CSV format. Duplicate column header(s) detected: ' .
+                implode(', ', $duplicates) .
+                '. Each column name must be unique. Please use the official template.'
+            );
+        }
+
+        // --- GUARD 3: Strict column allowlist (must match template exactly) ---
+        // Lists all names + accepted aliases understood by importSingleRow().
+        $knownColumns = [
+            'Title', 'Author', 'Authors', 'Type', 'Date',
+            'Edition', 'Publication', 'Publisher', 'Pages',
+            'ISBN/ISSN', 'ISSN', 'ISBN',
+            'Subjects', 'Description',
+            'Location', 'Condition', 'Crop',
+        ];
+        $unknownColumns = array_values(array_diff($headers, $knownColumns));
+        if (!empty($unknownColumns)) {
+            fclose($handle);
+            throw new \Exception(
+                'Invalid CSV format. Unrecognized column(s): ' . implode(', ', $unknownColumns) .
+                '. Please download and use the official template. ' .
+                'Accepted columns: ' . implode(', ', $knownColumns) . '.'
+            );
+        }
+
+        // --- GUARD 4: Required columns logic has been shifted to the frontend and per-row validation ---
+        // (If required fields are missing, the row will just fail CodeIgniter validation and be gracefully skipped).
 
         $count = 0;
         $skipped = 0;
@@ -1847,43 +1940,182 @@ class ResearchService extends BaseService
 
         return ['count' => $count, 'skipped' => $skipped];
     }
-    public function matchAndAttachPdf($titleCandidate, $file)
+    /**
+     * Match a PDF file to an existing research record and attach it.
+     *
+     * Matching priority:
+     *   1. If $isbnHint or $editionHint are provided, use them to disambiguate among
+     *      title matches to find the most specific record.
+     *   2. Filename bracket notation is also parsed automatically:
+     *        "Golden Roots [ISSN 1656-5444].pdf"  → isbn hint
+     *        "Golden Roots [Vol. 1].pdf"           → edition hint
+     *   3. Falls back to the first title-matched record that has no file yet.
+     *   4. Returns 'exists' if all matching records already have files.
+     *
+     * @param string $titleCandidate  Filename (without extension) used as title search term.
+     * @param mixed  $file            CI4 uploaded file object.
+     * @param string $isbnHint        Optional explicit ISBN/ISSN to narrow the match.
+     * @param string $editionHint     Optional explicit edition to narrow the match.
+     * @return string 'linked' | 'exists' | 'no_match' | 'error_move'
+     */
+    /**
+     * Finds the best matching record for a PDF based on title, ISBN, and Edition hints.
+     */
+    private function findPdfMatch(string $titleCandidate, string $isbnHint = '', string $editionHint = '')
     {
-        // Case-insensitive match.
-        // Option 1: Exact match with varying case
-        $item = $this->researchModel->like('title', $titleCandidate, 'none')->first();
+        // --- Step 1: Parse bracket hints from filename if not explicitly supplied ---
+        $parsedTitle   = $titleCandidate;
+        $parsedIsbn    = $isbnHint;
+        $parsedEdition = $editionHint;
 
-        if ($item) {
-            // CHECK IF EXISTS
-            if (!empty($item->file_path)) {
-                log_message('error', "Skipped: File already exists for {$item->title}");
-                return 'exists';
-            }
+        if ($parsedIsbn === '' && $parsedEdition === '') {
+            if (preg_match('/^(.+?)\s*\[([^\]]+)\]\s*$/', $titleCandidate, $m)) {
+                $parsedTitle  = trim($m[1]);
+                $bracketPart  = trim($m[2]);
 
-            $newName = $file->getRandomName();
-            $targetPath = WRITEPATH . 'uploads/research';
-            if (!is_dir($targetPath)) mkdir($targetPath, 0777, true);
-
-            log_message('error', "Attempting to move file to: $targetPath with name: $newName");
-
-            $finalPath = $targetPath . DIRECTORY_SEPARATOR . $newName;
-            $enc = new \App\Services\EncryptionService();
-            $encrypted = false;
-            try { $enc->encryptFile($file->getTempName(), $finalPath); $encrypted = true; } catch (\Throwable $e) { log_message('error', $e->getMessage()); }
-            if ($encrypted) {
-                $this->researchModel->update($item->id, ['file_path' => $newName]);
-                $this->queueAndRefreshSearchIndex((int) $item->id, 'pdf_attach', 60);
-                log_message('error', "File moved successfully.");
-                return 'linked';
-            }
-            else {
-                log_message('error', "File move failed: " . $file->getErrorString());
-                return 'error_move';
+                if (preg_match('/^(isbn|issn)\s*[:\-]?\s*(.+)$/i', $bracketPart, $idm)) {
+                    $parsedIsbn = trim($idm[2]);
+                } else {
+                    $parsedEdition = $bracketPart;
+                }
             }
         }
-        else {
-            log_message('error', "No match found for title: $titleCandidate");
+
+        // --- Step 2: Find ALL records whose title matches (case-insensitive) ---
+        $matches = $this->researchModel
+            ->select($this->selectString)
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->like('researches.title', $parsedTitle, 'none')
+            ->findAll();
+
+        if (empty($matches)) {
+            return ['status' => 'no_match', 'record' => null];
+        }
+
+        // --- Step 3: Disambiguate using ISBN/ISSN hint ---
+        $best = null;
+
+        if ($parsedIsbn !== '') {
+            foreach ($matches as $candidate) {
+                $dbIsbn = trim((string) ($candidate->isbn_issn ?? ''));
+                if ($dbIsbn !== '' && stripos($dbIsbn, $parsedIsbn) !== false) {
+                    if (empty($candidate->file_path)) {
+                        $best = $candidate;
+                        break;
+                    }
+                    if ($best === null) {
+                        $best = $candidate;
+                    }
+                }
+            }
+        }
+
+        // --- Step 4: Disambiguate using edition hint ---
+        if ($best === null && $parsedEdition !== '') {
+            foreach ($matches as $candidate) {
+                $dbEdition = trim((string) ($candidate->edition ?? ''));
+                if ($dbEdition !== '' && stripos($dbEdition, $parsedEdition) !== false) {
+                    if (empty($candidate->file_path)) {
+                        $best = $candidate;
+                        break;
+                    }
+                    if ($best === null) {
+                        $best = $candidate;
+                    }
+                }
+            }
+        }
+
+        // --- Step 5: Fall back to first record without a file ---
+        if ($best === null) {
+            foreach ($matches as $candidate) {
+                if (empty($candidate->file_path)) {
+                    $best = $candidate;
+                    break;
+                }
+            }
+        }
+
+        // --- Step 6: All matched records already have files ---
+        if ($best === null || !empty($best->file_path)) {
+            return ['status' => 'exists', 'record' => $best];
+        }
+
+        return ['status' => 'linked', 'record' => $best];
+    }
+
+    /**
+     * Preview matches for an array of PDF filenames/hints without uploading anything
+     */
+    public function previewPdfMatches(array $files)
+    {
+        $results = [];
+        foreach ($files as $fileReq) {
+            $filename = trim((string) ($fileReq['filename'] ?? ''));
+            if ($filename === '') continue;
+
+            $titleCandidate = pathinfo($filename, PATHINFO_FILENAME);
+            $isbnHint = trim((string) ($fileReq['isbnHint'] ?? ''));
+            $editionHint = trim((string) ($fileReq['editionHint'] ?? ''));
+
+            $matchResult = $this->findPdfMatch($titleCandidate, $isbnHint, $editionHint);
+            
+            $recordInfo = null;
+            if ($matchResult['record']) {
+                $r = $matchResult['record'];
+                $recordInfo = [
+                    'id' => $r->id,
+                    'title' => $r->title,
+                    'author' => $r->author ?? 'Unknown'
+                ];
+            }
+
+            $results[] = [
+                'filename' => $filename,
+                'status' => $matchResult['status'],
+                'record' => $recordInfo
+            ];
+        }
+        return $results;
+    }
+
+    public function matchAndAttachPdf($titleCandidate, $file, string $isbnHint = '', string $editionHint = '')
+    {
+        $matchResult = $this->findPdfMatch($titleCandidate, $isbnHint, $editionHint);
+        
+        if ($matchResult['status'] === 'no_match') {
+            log_message('info', "[Bulk PDF] No match found for title: {$titleCandidate}");
             return 'no_match';
         }
+        if ($matchResult['status'] === 'exists') {
+            log_message('info', "[Bulk PDF] All {$titleCandidate} record(s) already have files.");
+            return 'exists';
+        }
+
+        $best = $matchResult['record'];
+
+        // --- Step 7: Encrypt and attach ---
+        $newName    = $file->getRandomName();
+        $targetPath = WRITEPATH . 'uploads/research';
+        if (!is_dir($targetPath)) mkdir($targetPath, 0777, true);
+        $finalPath  = $targetPath . DIRECTORY_SEPARATOR . $newName;
+
+        $enc       = new \App\Services\EncryptionService();
+        $encrypted = false;
+        try {
+            $enc->encryptFile($file->getTempName(), $finalPath);
+            $encrypted = true;
+        } catch (\Throwable $e) {
+            log_message('error', "[Bulk PDF] Encryption failed for '{$file->getClientName()}': " . $e->getMessage());
+        }
+
+        if ($encrypted) {
+            $this->researchModel->update($best->id, ['file_path' => $newName]);
+            $this->queueAndRefreshSearchIndex((int) $best->id, 'pdf_attach', 60);
+            log_message('info', "[Bulk PDF] Linked: {$file->getClientName()} → '{$best->title}' (ID: {$best->id})");
+            return 'linked';
+        }
+
+        return 'error_move';
     }
 }

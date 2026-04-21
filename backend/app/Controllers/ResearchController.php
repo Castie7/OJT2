@@ -23,7 +23,7 @@ class ResearchController extends BaseController
         helper('activity'); // Load Helper
     }
 
-    // --- SECURITY HELPER ---
+    // --- PDF STREAMING ---
     public function viewPdf($id = null)
     {
         $user = $this->getUser();
@@ -34,14 +34,22 @@ class ResearchController extends BaseController
         $researchId = (int) $id;
         try {
             $research = $this->researchService->getResearch($researchId);
-            if (!$research || empty($research->file_path)) {
+
+            // SECURITY FIX: Enforce ownership/admin check for non-approved items.
+            // A logged-in user must not be able to stream another user's pending/rejected PDF.
+            $accessError = $this->requireResearchAccess($research, $user);
+            if ($accessError !== null) {
+                return $accessError;
+            }
+
+            if (empty($research->file_path)) {
                 return $this->failNotFound('File not found.');
             }
 
             // Determine safe file path in the shielded directory
             $fileName = $research->file_path;
             $filePath = WRITEPATH . 'uploads/research/' . basename($fileName);
-            
+
             if (!is_file($filePath)) {
                 return $this->failNotFound('Encrypted file not found on disk.');
             }
@@ -75,6 +83,34 @@ class ResearchController extends BaseController
     protected function validateUser()
     {
         return $this->getUser();
+    }
+
+    /*
+     * Enforces the rule: non-approved research items (pending, rejected, archived)
+     * may only be accessed by the item's owner or an admin.
+     * @param mixed $research  The research entity/object returned by getResearch().
+     */
+    private function requireResearchAccess($research, $user)
+    {
+        if (!$research) {
+            return $this->failNotFound('Research not found.');
+        }
+
+        // Approved research is publicly accessible (subject to caller's auth check).
+        if ($research->status === 'approved') {
+            return null;
+        }
+
+        // Non-approved: only admins and the original uploader may proceed.
+        if (!$user) {
+            return $this->failUnauthorized('Unauthorized Access. Please login.');
+        }
+
+        if ($user->role === 'admin' || (int) $research->uploaded_by === (int) $user->id) {
+            return null;
+        }
+
+        return $this->failForbidden('Access Denied: You do not have permission to access this resource.');
     }
 
     private function isValidIsoDate(string $date): bool
@@ -284,6 +320,16 @@ class ResearchController extends BaseController
         }
 
         $user = $this->getUser();
+
+        // SECURITY FIX: Prevent view count inflation on non-approved items by
+        // unauthorized users. Guests and non-owners cannot increment views for
+        // pending, rejected, or archived research.
+        $research = $this->researchService->getResearch((int) $id);
+        $accessError = $this->requireResearchAccess($research, $user);
+        if ($accessError !== null) {
+            return $accessError;
+        }
+
         $includePrivate = (bool) $user;
         $this->researchService->incrementViewCount((int) $id, $includePrivate);
 
@@ -445,7 +491,7 @@ class ResearchController extends BaseController
         }
         catch (\Throwable $e) {
             log_message('error', '[Research Create] ' . $e->getMessage());
-            return $this->failServerError('Server Error: ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred while encrypting the document.');
         }
     }
 
@@ -698,6 +744,14 @@ class ResearchController extends BaseController
             return $this->failUnauthorized('Access Denied');
         }
 
+        // SECURITY FIX: Prevent reading internal comments on another user's
+        // non-approved research by brute-forcing research IDs.
+        $research = $this->researchService->getResearch((int) $id);
+        $accessError = $this->requireResearchAccess($research, $user);
+        if ($accessError !== null) {
+            return $accessError;
+        }
+
         $data = $this->researchService->getComments($id);
         return $this->respond($data);
     }
@@ -722,6 +776,13 @@ class ResearchController extends BaseController
         $researchId = (int) $json->research_id;
         if ($researchId <= 0) {
             return $this->fail('Invalid research_id', 400);
+        }
+
+        // SECURITY FIX: Prevent posting comments on another user's non-approved research.
+        $research = $this->researchService->getResearch($researchId);
+        $accessError = $this->requireResearchAccess($research, $user);
+        if ($accessError !== null) {
+            return $accessError;
         }
 
         $data = [

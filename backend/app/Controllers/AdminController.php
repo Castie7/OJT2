@@ -88,9 +88,32 @@ class AdminController extends BaseController
         }
 
         $userModel->update($json->user_id, [
-            'password' => password_hash($newPassword, PASSWORD_DEFAULT)
+            'password' => password_hash($newPassword, PASSWORD_DEFAULT),
+            'must_change_password' => 1, // Force user to set their own password on next login
         ]);
 
-        return $this->respond(['status' => 'success', 'message' => 'Password reset successful']);
+        // 🔒 FORCE IMMEDIATE LOGOUT: Destroy all active sessions for the target user.
+        // The ci_sessions table stores serialized PHP data. We search for 'id|'
+        // followed by the user ID pattern in the session data blob.
+        $db = \Config\Database::connect();
+        $targetUserId = (int) $json->user_id;
+        $currentSessionId = session_id();
+
+        // Find and delete all sessions belonging to this user (but not the admin's own session)
+        $sessions = $db->table('ci_sessions')->get()->getResultArray();
+        foreach ($sessions as $sess) {
+            // Skip the admin's own session
+            if ($sess['id'] === $currentSessionId) {
+                continue;
+            }
+            // Check if this session belongs to the target user
+            $data = $sess['data'] ?? '';
+            if (str_contains($data, "id|i:{$targetUserId};") || 
+                str_contains($data, "\"id\";i:{$targetUserId};")) {
+                $db->table('ci_sessions')->where('id', $sess['id'])->delete();
+            }
+        }
+
+        return $this->respond(['status' => 'success', 'message' => 'Password reset successful. User has been logged out.']);
     }
 }

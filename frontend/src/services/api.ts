@@ -21,6 +21,8 @@ export const getAssetUrl = () => {
 const api = axios.create({
   baseURL: getBaseUrl(),
   withCredentials: true,
+  xsrfCookieName: 'csrf_cookie_name',
+  xsrfHeaderName: 'X-CSRF-TOKEN',
   headers: {
     'Accept': 'application/json',
   },
@@ -37,15 +39,12 @@ const { startLoading, stopLoading } = useGlobalLoading();
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   startLoading();
 
-  const match = document.cookie.match(new RegExp('(^| )csrf_cookie_name=([^;]+)'));
-  let token = match ? match[2] : null;
-
-  if (!token) {
-    token = sessionStorage.getItem('csrf_token_backup');
-  }
-
-  if (token && config.headers) {
-    config.headers['X-CSRF-TOKEN'] = token;
+  // Axios natively drops xsrfCookieName on Cross-Origin (Port 5173 -> 80).
+  // We explicitly extract the newly injected insecure cookie provided
+  // by our CodeIgniter Cors.php filter.
+  const match = document.cookie.match(new RegExp('(^| )XSRF-TOKEN=([^;]+)'));
+  if (match?.[2] && config.headers) {
+    config.headers['X-CSRF-TOKEN'] = decodeURIComponent(match[2]);
   }
 
   return config;

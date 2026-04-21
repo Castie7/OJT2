@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
   // State
   const currentUser = ref<User | null>(null)
   const isInitialized = ref(false)
+  const mustChangePassword = ref(false)
 
   // Getters (Computed)
   const isAuthenticated = computed(() => currentUser.value !== null)
@@ -35,12 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
     return currentUser.value.role === role
   }
 
-  // Token Management (Moved from App.vue)
-  const saveToken = (token: string) => {
-    if (!token) return
-    document.cookie = `csrf_cookie_name=${token}; path=/; domain=${window.location.hostname}; secure; samesite=Lax`
-    sessionStorage.setItem('csrf_token_backup', token)
-  }
+
 
   // Initialization Action (Replaces App.vue onMounted logic)
   const init = async (force: boolean = false) => {
@@ -51,14 +47,12 @@ export const useAuthStore = defineStore('auth', () => {
       // we just try to hit the verify endpoint.
       const response = await api.get('/auth/verify')
 
-      if (response.data.csrf_token) {
-        saveToken(response.data.csrf_token)
-      }
-
       if (response.data.status === 'success') {
         setUser(response.data.user)
+        mustChangePassword.value = response.data.must_change_password === true
       } else {
         clearUser()
+        mustChangePassword.value = false
       }
     } catch (error) {
       console.error("Session verification failed:", error)
@@ -71,7 +65,6 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async () => {
     try {
       await api.post('/auth/logout')
-      sessionStorage.removeItem('csrf_token_backup')
       delete api.defaults.headers.common['X-CSRF-TOKEN']
     } catch (e) {
       console.warn("Logout request failed, cleaning local state anyway.")
@@ -87,11 +80,11 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     userRole,
     userName,
+    mustChangePassword,
     setUser,
     clearUser,
     hasRole,
     init,
-    logout,
-    saveToken
+    logout
   }
 })

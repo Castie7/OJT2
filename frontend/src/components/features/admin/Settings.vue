@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useSettings } from '../../../composables/useSettings'
 import { useAuthStore } from '../../../stores/auth'
+import { useRoute } from 'vue-router'
+import { computed } from 'vue'
 import type { User } from '../../../types'
 import BaseButton from '../../ui/BaseButton.vue'
 import BaseCard from '../../ui/BaseCard.vue'
@@ -8,6 +10,8 @@ import BaseInput from '../../ui/BaseInput.vue'
 
 // 1. Get Global Auth State directly
 const authStore = useAuthStore()
+const route = useRoute()
+const forcePasswordChange = computed(() => route.query.force_password_change === '1')
 
 // 2. Define Emits
 const emit = defineEmits<{ 
@@ -30,6 +34,15 @@ const {
 
 <template>
   <div class="p-6 max-w-5xl mx-auto space-y-8 animate-fade-in">
+    <!-- ⚠️ Forced Password Change Banner -->
+    <div v-if="forcePasswordChange" class="bg-red-50 border-2 border-red-300 rounded-xl p-5 flex items-start gap-4 shadow-md">
+      <span class="text-3xl">🚨</span>
+      <div>
+        <h3 class="font-bold text-red-800 text-lg">Password Change Required</h3>
+        <p class="text-red-700 text-sm mt-1">Your password was recently reset by an administrator. You <b>must</b> set a new personal password below before you can continue using the portal.</p>
+      </div>
+    </div>
+
     <div class="flex items-center gap-4 mb-2">
       <h2 class="text-3xl font-bold text-gray-800 flex items-center gap-3">
         <span>⚙️</span> Settings

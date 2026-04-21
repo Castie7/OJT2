@@ -13,20 +13,16 @@ class Cors implements FilterInterface
         $origin = $request->getHeaderLine('Origin');
         $corsConfig = config('Cors');
         $settings = $corsConfig->default ?? [];
-        $response = service('response');
-
-        if (!$this->isOriginAllowed($origin, $settings)) {
-            if ($request->getMethod(true) === 'OPTIONS') {
-                return $response->setStatusCode(403);
-            }
-
-            return null;
-        }
-
-        $this->applyCorsHeaders($response, $origin, $settings);
 
         if ($request->getMethod(true) === 'OPTIONS') {
-            return $response->setStatusCode(204);
+            $response = service('response');
+            
+            if ($this->isOriginAllowed($origin, $settings)) {
+                $this->applyCorsHeaders($response, $origin, $settings);
+            }
+            
+            $response->setStatusCode(204);
+            return $response;
         }
 
         return null;
@@ -41,23 +37,47 @@ class Cors implements FilterInterface
         if ($this->isOriginAllowed($origin, $settings)) {
             $this->applyCorsHeaders($response, $origin, $settings);
         }
+        
+        // --- NATIVE AXIOS XSRF INJECTION ---
+        // Expose a non-HttpOnly cookie for Axios to read (mirrors Laravel Sanctum pattern).
+        // Wrapped in try-catch: csrf_hash() can fail on routes where CSRF isn't initialized.
+        try {
+            $tokenName = config('Security')->cookieName;
+            $cookieValue = $_COOKIE[$tokenName] ?? csrf_hash();
+            
+            // CI4 setCookie signature: name, value, expire, domain, path, prefix, secure, httponly
+            $response->setCookie(
+                'XSRF-TOKEN',   // name
+                $cookieValue,    // value
+                7200,           // expire (seconds)
+                '',              // domain (empty = current host)
+                '/',             // path
+                '',              // prefix
+                false,           // secure (false for localhost)
+                false            // httponly (FALSE — Axios MUST read this)
+            );
+        } catch (\Throwable $e) {
+            // Silently skip on routes where CSRF isn't active
+            log_message('debug', 'XSRF-TOKEN cookie skipped: ' . $e->getMessage());
+        }
     }
 
     private function isOriginAllowed(string $origin, array $settings): bool
     {
-        if ($origin === '') {
+        if (empty($origin)) {
             return false;
         }
 
-        $allowedOrigins = $settings['allowedOrigins'] ?? [];
-        if (in_array($origin, $allowedOrigins, true)) {
+        if (in_array('*', $settings['allowedOrigins'] ?? [], true)) {
             return true;
         }
 
-        $allowedPatterns = $settings['allowedOriginsPatterns'] ?? [];
-        foreach ($allowedPatterns as $pattern) {
-            $regex = '#^' . $pattern . '$#i';
-            if (@preg_match($regex, $origin) === 1) {
+        if (in_array($origin, $settings['allowedOrigins'] ?? [], true)) {
+            return true;
+        }
+
+        foreach ($settings['allowedOriginsPatterns'] ?? [] as $pattern) {
+            if (preg_match('#' . $pattern . '#', $origin)) {
                 return true;
             }
         }
@@ -65,29 +85,29 @@ class Cors implements FilterInterface
         return false;
     }
 
-    private function applyCorsHeaders(ResponseInterface $response, string $origin, array $settings): void
+    private function applyCorsHeaders(ResponseInterface &$response, string $origin, array $settings): void
     {
-        $allowedMethods = $settings['allowedMethods'] ?? ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
-        $allowedHeaders = $settings['allowedHeaders'] ?? ['Content-Type', 'Authorization', 'X-CSRF-TOKEN'];
-        $exposedHeaders = $settings['exposedHeaders'] ?? [];
-        $supportsCredentials = (bool) ($settings['supportsCredentials'] ?? false);
-        $maxAge = (int) ($settings['maxAge'] ?? 0);
-
-        $response->setHeader('Vary', 'Origin');
-        $response->setHeader('Access-Control-Allow-Origin', $origin);
-        $response->setHeader('Access-Control-Allow-Methods', implode(', ', $allowedMethods));
-        $response->setHeader('Access-Control-Allow-Headers', implode(', ', $allowedHeaders));
-
-        if (!empty($exposedHeaders)) {
-            $response->setHeader('Access-Control-Expose-Headers', implode(', ', $exposedHeaders));
+        if (in_array('*', $settings['allowedOrigins'] ?? [], true)) {
+            $response->setHeader('Access-Control-Allow-Origin', '*');
+        } else {
+            $response->setHeader('Access-Control-Allow-Origin', $origin);
         }
 
+        if (isset($settings['allowedMethods'])) {
+            $response->setHeader('Access-Control-Allow-Methods', implode(', ', $settings['allowedMethods']));
+        }
+
+        if (isset($settings['allowedHeaders'])) {
+            $response->setHeader('Access-Control-Allow-Headers', implode(', ', $settings['allowedHeaders']));
+        }
+
+        $supportsCredentials = (bool) ($settings['supportsCredentials'] ?? false);
         if ($supportsCredentials) {
             $response->setHeader('Access-Control-Allow-Credentials', 'true');
         }
 
-        if ($maxAge > 0) {
-            $response->setHeader('Access-Control-Max-Age', (string) $maxAge);
+        if (isset($settings['maxAge'])) {
+            $response->setHeader('Access-Control-Max-Age', (string) $settings['maxAge']);
         }
     }
 }

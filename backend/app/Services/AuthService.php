@@ -106,6 +106,7 @@ class AuthService extends BaseService
                  throw new \Exception('Incorrect Current Password.');
             }
             $dataToUpdate['password'] = password_hash($data->new_password, PASSWORD_DEFAULT);
+            $dataToUpdate['must_change_password'] = 0; // Clear the forced reset flag
         }
 
         if (empty($dataToUpdate)) {

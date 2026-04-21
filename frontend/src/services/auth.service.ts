@@ -20,12 +20,6 @@ export const authService = {
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await api.post<LoginResponse>('/auth/login', credentials)
-
-    // Store CSRF token if provided
-    if (response.data.csrf_token) {
-      sessionStorage.setItem('csrf_token_backup', response.data.csrf_token)
-    }
-
     return response.data
   },
 
@@ -34,7 +28,6 @@ export const authService = {
    */
   async logout(): Promise<void> {
     await api.post('/auth/logout')
-    sessionStorage.removeItem('csrf_token_backup')
   },
 
   /**
@@ -42,12 +35,6 @@ export const authService = {
    */
   async verify(): Promise<VerifyResponse> {
     const response = await api.get<VerifyResponse>('/auth/verify')
-
-    // Store CSRF token if provided
-    if (response.data.csrf_token) {
-      sessionStorage.setItem('csrf_token_backup', response.data.csrf_token)
-    }
-
     return response.data
   },
 

@@ -5,10 +5,12 @@ import BaseCard from '../../ui/BaseCard.vue'
 import BaseInput from '../../ui/BaseInput.vue'
 import BaseSelect from '../../ui/BaseSelect.vue'
 
-// Initialize Logic
 const { 
   users, isLoading, isSubmitting, showAddForm, form, 
-  addUser, resetPassword 
+  addUser,
+  showResetModal, resetTarget, resetForm, isResetting, resetError,
+  showResetPass, resetPassRules, allResetRulesPassed,
+  openResetModal, closeResetModal, submitResetPassword
 } = useUserManagement()
 
 const roleOptions = [
@@ -120,7 +122,7 @@ const roleOptions = [
               </td>
               <td class="px-6 py-4 text-right">
                 <BaseButton 
-                  @click="resetPassword(user.id, user.name)" 
+                  @click="openResetModal(user.id, user.name)" 
                   variant="outline" 
                   size="sm"
                 >
@@ -133,5 +135,106 @@ const roleOptions = [
       </div>
     </BaseCard>
 
+    <!-- 🔐 Reset Password Modal -->
+    <Teleport to="body">
+      <div v-if="showResetModal" 
+           class="fixed inset-0 z-[9998] flex items-center justify-center"
+           style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);"
+      >
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-modal-in">
+          <!-- Header -->
+          <div class="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-5 text-white flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🔑</span>
+              <div>
+                <h2 class="text-lg font-bold">Reset Password</h2>
+                <p class="text-amber-100 text-sm">for {{ resetTarget.name }}</p>
+              </div>
+            </div>
+            <button @click="closeResetModal" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+          </div>
+
+          <!-- Body -->
+          <form @submit.prevent="submitResetPassword" class="p-6 space-y-4">
+            <!-- Error Banner -->
+            <div v-if="resetError" class="bg-red-50 border border-red-300 rounded-lg p-3 text-sm text-red-700 flex items-start gap-2">
+              <span class="shrink-0">❌</span>
+              <span>{{ resetError }}</span>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              This will reset <b>{{ resetTarget.name }}'s</b> password. They will be <b>logged out immediately</b> and forced to change it on next login.
+            </div>
+
+            <!-- New Password -->
+            <div>
+              <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5">New Password</label>
+              <div class="relative">
+                <input 
+                  v-model="resetForm.password" 
+                  :type="showResetPass ? 'text' : 'password'"
+                  class="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none bg-gray-50 focus:bg-white transition-colors"
+                  placeholder="Enter new password"
+                  autocomplete="new-password"
+                />
+                <button type="button" @click="showResetPass = !showResetPass" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
+                  {{ showResetPass ? '🙈' : '👁️' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Password Rules -->
+            <div class="bg-gray-50 rounded-lg p-3 space-y-1.5 border">
+              <p class="text-xs font-bold text-gray-500 uppercase mb-1">Password Requirements</p>
+              <div class="grid grid-cols-2 gap-1">
+                <div :class="resetPassRules.minLength ? 'text-green-600' : 'text-gray-400'" class="text-xs flex items-center gap-1.5 transition-colors">
+                  <span>{{ resetPassRules.minLength ? '✅' : '⬜' }}</span> 10+ characters
+                </div>
+                <div :class="resetPassRules.hasUpper ? 'text-green-600' : 'text-gray-400'" class="text-xs flex items-center gap-1.5 transition-colors">
+                  <span>{{ resetPassRules.hasUpper ? '✅' : '⬜' }}</span> Uppercase (A-Z)
+                </div>
+                <div :class="resetPassRules.hasLower ? 'text-green-600' : 'text-gray-400'" class="text-xs flex items-center gap-1.5 transition-colors">
+                  <span>{{ resetPassRules.hasLower ? '✅' : '⬜' }}</span> Lowercase (a-z)
+                </div>
+                <div :class="resetPassRules.hasNumber ? 'text-green-600' : 'text-gray-400'" class="text-xs flex items-center gap-1.5 transition-colors">
+                  <span>{{ resetPassRules.hasNumber ? '✅' : '⬜' }}</span> Number (0-9)
+                </div>
+                <div :class="resetPassRules.hasSpecial ? 'text-green-600' : 'text-gray-400'" class="text-xs flex items-center gap-1.5 transition-colors">
+                  <span>{{ resetPassRules.hasSpecial ? '✅' : '⬜' }}</span> Special (!@#$)
+                </div>
+              </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+              <button 
+                type="button"
+                @click="closeResetModal"
+                class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                :disabled="isResetting || !allResetRulesPassed"
+                class="flex-1 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition-colors shadow-md"
+              >
+                {{ isResetting ? '⏳ Resetting...' : '🔑 Reset Password' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
+
+<style scoped>
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-modal-in {
+  animation: modalIn 0.3s ease-out;
+}
+</style>

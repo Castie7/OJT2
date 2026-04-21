@@ -36,20 +36,27 @@ class AuthController extends BaseController
                 $retryAfter = $throttler->getTokenTime(); // Usually returns time of the bucket replenish
                 // Calculate simple remaining time for error message (rough estimate based on config)
                 // For a more precise wait time, getTokenTime can be used if configured specifically, 
-                // but just responding with the configured lockout is standard practice.
                  return $this->response
                     ->setStatusCode(429)
                     ->setJSON([
                     'status' => 'error',
                     'message' => "Too many failed attempts. Please try again later.",
-                    'retry_after' => $lockoutSecs,
-                    'csrf_token' => csrf_hash()
+                    'retry_after' => $lockoutSecs
                 ]);
             }
 
             $json = $this->request->getJSON();
-            $email = $json->email ?? '';
-            $password = $json->password ?? '';
+            if (!$json || !is_object($json)) {
+                return $this->fail('Invalid JSON payload', 400);
+            }
+
+            $email = isset($json->email) && is_string($json->email) ? trim($json->email) : '';
+            $password = isset($json->password) && is_string($json->password) ? $json->password : '';
+
+            // 🛑 SENIOR FIX: Security Validation & Bcrypt DoS Protection
+            if (empty($email) || empty($password) || strlen($password) > 72 || strlen($email) > 255) {
+                return $this->failUnauthorized("Invalid email or password.");
+            }
 
             $user = $this->authService->login($email, $password);
 
@@ -70,7 +77,7 @@ class AuthController extends BaseController
                         'email' => $user->email,
                         'role' => $user->role
                     ],
-                    'csrf_token' => csrf_hash()
+                    'must_change_password' => (bool) ($user->must_change_password ?? false)
                 ]);
             }
             else {
@@ -81,7 +88,7 @@ class AuthController extends BaseController
         }
         catch (\Throwable $e) {
             log_message('critical', '[Login Error] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-            return $this->failServerError($e->getMessage());
+            return $this->failServerError("An internal server error occurred. Please try again later.");
         }
     }
 
@@ -90,20 +97,28 @@ class AuthController extends BaseController
     // ------------------------------------------------------------------
     public function verify()
     {
+        // 🔒 Call this explicitly to force CodeIgniter to generate the secure
+        // CSRF Token and attach it to the browser's Set-Cookie header automatically.
+        csrf_hash();
+
         $sessionData = $this->authService->verifySession();
 
         if (!$sessionData) {
             return $this->response->setJSON([
                 'status' => 'guest',
-                'message' => 'User is not logged in',
-                'csrf_token' => csrf_hash()
+                'message' => 'User is not logged in'
             ]);
         }
+
+        // Check if user must change their password (survives page reloads)
+        $userModel = new \App\Models\UserModel();
+        $dbUser = $userModel->find($sessionData['id']);
+        $mustChange = $dbUser ? (bool) ($dbUser->must_change_password ?? false) : false;
 
         return $this->response->setJSON([
             'status' => 'success',
             'user' => $sessionData,
-            'csrf_token' => csrf_hash()
+            'must_change_password' => $mustChange
         ]);
     }
 
@@ -131,21 +146,28 @@ class AuthController extends BaseController
     public function updateProfile()
     {
         $json = $this->request->getJSON();
-        if (!$json || !isset($json->user_id)) {
+        if (!$json || !is_object($json) || !isset($json->user_id) || !is_numeric($json->user_id)) {
             return $this->failUnauthorized('Invalid request');
         }
 
         try {
-            // Get current user from session (handled inside service or passed here?)
-            // Service expects arguments. Best to passthrough session data from Controller context
-            // since Service shouldn't strictly depend on global session if we want to be pure, 
-            // but for now relying on Helper usage in Service is fine for CI4.
-            // Actually, I passed `currentUserId` to `updateProfile` in AuthService.
-
             $currentUserId = session()->get('id');
             $currentUserRole = session()->get('role');
 
-            $updatedUser = $this->authService->updateProfile($json->user_id, $json, $currentUserId, $currentUserRole);
+            // 🛑 SENIOR FIX: Strong Type Constraints to prevent Type Confusion
+            $safeData = new \stdClass();
+            if (isset($json->name) && is_string($json->name)) $safeData->name = trim($json->name);
+            if (isset($json->email) && is_string($json->email)) $safeData->email = trim($json->email);
+            if (isset($json->current_password) && is_string($json->current_password)) $safeData->current_password = $json->current_password;
+            if (isset($json->new_password) && is_string($json->new_password)) $safeData->new_password = $json->new_password;
+
+            // Bcrypt DoS Protection
+            if ((isset($safeData->new_password) && strlen($safeData->new_password) > 72) || 
+                (isset($safeData->current_password) && strlen($safeData->current_password) > 72)) {
+                return $this->fail('Password too long', 400);
+            }
+
+            $updatedUser = $this->authService->updateProfile((int)$json->user_id, $safeData, $currentUserId, $currentUserRole);
 
             // LOG ACTIVITY
             log_activity($currentUserId, session()->get('name'), $currentUserRole, 'UPDATE_PROFILE', "Updated profile for user ID: {$json->user_id}");
@@ -162,7 +184,13 @@ class AuthController extends BaseController
             ]);
 
         }
-        catch (\Exception $e) {
+        catch (\Throwable $e) {
+            log_message('error', '[Update Profile Error] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            
+            // 🛑 SENIOR FIX: Never leak raw System Errors or TypeErrors
+            if ($e instanceof \Error) {
+                return $this->failServerError('An internal server error occurred.');
+            }
             return $this->fail($e->getMessage(), $e->getCode() ?: 400);
         }
     }
@@ -178,16 +206,29 @@ class AuthController extends BaseController
 
         $json = $this->request->getJSON();
 
-        if (!$json) {
-            return $this->fail('No data provided', 400);
+        if (!$json || !is_object($json)) {
+            return $this->fail('Invalid JSON payload', 400);
         }
 
         try {
-            if (!isset($json->role) || !in_array($json->role, ['user', 'admin'], true)) {
-                $json->role = 'user';
+            $safeData = new \stdClass();
+            $safeData->name = isset($json->name) && is_string($json->name) ? trim($json->name) : '';
+            $safeData->email = isset($json->email) && is_string($json->email) ? trim($json->email) : '';
+            $safeData->password = isset($json->password) && is_string($json->password) ? $json->password : '';
+            
+            if (empty($safeData->name) || empty($safeData->email) || empty($safeData->password)) {
+                return $this->fail('Missing required fields', 400);
+            }
+            if (strlen($safeData->password) > 72 || strlen($safeData->email) > 255) {
+                return $this->fail('Invalid payload length', 400);
             }
 
-            $this->authService->register($json);
+            $safeData->role = 'user';
+            if (isset($json->role) && is_string($json->role) && in_array($json->role, ['user', 'admin'], true)) {
+                $safeData->role = $json->role;
+            }
+
+            $this->authService->register($safeData);
 
             $adminId = session()->get('id');
             $adminName = session()->get('name');
@@ -201,13 +242,17 @@ class AuthController extends BaseController
             ]);
         }
         catch (\Throwable $e) {
-            log_message('error', '[Register] Error: ' . $e->getMessage());
+            log_message('error', '[Register Error] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+
+            if ($e instanceof \Error) {
+                return $this->failServerError('An internal server error occurred.');
+            }
 
             // Handle specific codes if needed
             if ($e->getCode() == 409) {
                 return $this->failResourceExists($e->getMessage());
             }
-            return $this->failServerError($e->getMessage());
+            return $this->failServerError('An internal server error occurred.');
         }
     }
 }

@@ -26,10 +26,9 @@ class ResearchController extends BaseController
     // --- PDF STREAMING ---
     public function viewPdf($id = null)
     {
+        // Option B implementation: guests may view approved PDFs. getUser() returns null for unauthenticated
+        // requests. requireResearchAccess() permits guest access to approved research; non-approved requires ownership or admin.
         $user = $this->getUser();
-        if (!$user) {
-            return $this->failUnauthorized('Unauthorized Access. Please login.');
-        }
 
         $researchId = (int) $id;
         try {
@@ -90,14 +89,18 @@ class ResearchController extends BaseController
      * may only be accessed by the item's owner or an admin.
      * @param mixed $research  The research entity/object returned by getResearch().
      */
-    private function requireResearchAccess($research, $user)
+    private function requireResearchAccess($research, $user): ?\CodeIgniter\HTTP\ResponseInterface
     {
         if (!$research) {
             return $this->failNotFound('Research not found.');
         }
 
+        // Guard against model returning array vs entity object to prevent fatals
+        $status     = is_object($research) ? $research->status      : ($research['status'] ?? null);
+        $uploadedBy = is_object($research) ? $research->uploaded_by : ($research['uploaded_by'] ?? null);
+
         // Approved research is publicly accessible (subject to caller's auth check).
-        if ($research->status === 'approved') {
+        if ($status === 'approved') {
             return null;
         }
 
@@ -106,7 +109,7 @@ class ResearchController extends BaseController
             return $this->failUnauthorized('Unauthorized Access. Please login.');
         }
 
-        if ($user->role === 'admin' || (int) $research->uploaded_by === (int) $user->id) {
+        if ($user->role === 'admin' || (int) $uploadedBy === (int) $user->id) {
             return null;
         }
 
@@ -556,7 +559,7 @@ class ResearchController extends BaseController
             log_message('error', '[Research Update] ' . $e->getMessage());
             if ($e->getCode() == 403)
                 return $this->failForbidden();
-            return $this->failServerError('Server Error: ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred. Please try again later.');
         }
     }
 
@@ -732,7 +735,7 @@ class ResearchController extends BaseController
         }
         catch (\Throwable $e) {
             log_message('error', '[Bulk Access Level] ' . $e->getMessage());
-            return $this->failServerError('Server Error: ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred. Please try again later.');
         }
     }
 
@@ -863,7 +866,7 @@ class ResearchController extends BaseController
         }
         catch (\Throwable $e) {
             log_message('error', '[Research CSV Import] ' . $e->getMessage());
-            return $this->failServerError('Server Error: ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred. Please try again later.');
         }
     }
 
@@ -896,7 +899,7 @@ class ResearchController extends BaseController
         }
         catch (\Throwable $e) {
             log_message('error', '[Import Single] ' . $e->getMessage());
-            return $this->failServerError('Server Error: ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred. Please try again later.');
         }
     }
 
@@ -998,7 +1001,7 @@ class ResearchController extends BaseController
         }
         catch (\Throwable $e) {
             log_message('error', '[Bulk Upload] ' . $e->getMessage());
-            return $this->failServerError('Server Error: ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred. Please try again later.');
         }
     }
 
@@ -1008,8 +1011,9 @@ class ResearchController extends BaseController
      */
     public function previewBulkPdfs()
     {
-        $user = $this->request->user;
-        if (!$user) return $this->failUnauthorized('Not logged in.');
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized('Access Denied');
+        if ($user->role !== 'admin') return $this->failForbidden('Access Denied');
 
         $reqData = $this->request->getJSON(true);
         $files = $reqData['files'] ?? [];
@@ -1026,7 +1030,7 @@ class ResearchController extends BaseController
             ]);
         } catch (\Throwable $e) {
             log_message('error', '[Preview Bulk PDF] ' . $e->getMessage());
-            return $this->failServerError('Server Error: ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred. Please try again later.');
         }
     }
 
@@ -1035,8 +1039,9 @@ class ResearchController extends BaseController
      */
     public function previewCsv()
     {
-        $user = $this->request->user;
-        if (!$user) return $this->failUnauthorized('Not logged in.');
+        $user = $this->validateUser();
+        if (!$user) return $this->failUnauthorized('Access Denied');
+        if ($user->role !== 'admin') return $this->failForbidden('Access Denied');
 
         $reqData = $this->request->getJSON(true);
         $rows = $reqData['rows'] ?? [];
@@ -1053,7 +1058,7 @@ class ResearchController extends BaseController
             ]);
         } catch (\Throwable $e) {
             log_message('error', '[Preview CSV] ' . $e->getMessage());
-            return $this->failServerError('Server Error: ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred. Please try again later.');
         }
     }
 }

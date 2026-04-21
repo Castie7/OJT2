@@ -59,12 +59,7 @@ const handleUserUpdate = (updatedUser: User) => {
 onMounted(() => {
     // console.log(approvalRef.value) 
 })
-// Actually, using it in onMounted might trigger 'onMounted' unused if I don't import it?
-// I imported it above.
-// But better:
-// const { approvalRef } = ...
-// just enable it.
-// Or effectively use it.
+
 const triggerApproval = () => {
     if (approvalRef.value) {
         // do nothing

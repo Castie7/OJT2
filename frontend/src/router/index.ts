@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useToast } from '../composables/useToast'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -145,9 +146,27 @@ router.beforeEach(async (to, _from, next) => {
     // Check role requirements
     const requiredRoles = to.meta.requiresRole as string[] | undefined
     if (requiredRoles && requiredRoles.length > 0) {
+      const { showToast } = useToast()
+
+      // 1. Initial Local State Check
       if (!authStore.userRole || !requiredRoles.includes(authStore.userRole)) {
-        // Unauthorized
-        next('/') // or 403 page
+        showToast("Access Denied", "error")
+        next('/')
+        return
+      }
+
+      // 2. Security Enhancement: Prevent Vue DevTools Spoofing
+      // If the route is an admin route, enforce strict verification with the backend's source of truth.
+      try {
+        await authStore.init(true)
+        if (!authStore.userRole || !requiredRoles.includes(authStore.userRole)) {
+          showToast("Access Denied: Action Logged For Security Review.", "error")
+          next('/')
+          return
+        }
+      } catch (err) {
+        showToast("Authentication Check Failed", "error")
+        next('/')
         return
       }
     }

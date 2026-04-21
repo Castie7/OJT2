@@ -43,8 +43,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Initialization Action (Replaces App.vue onMounted logic)
-  const init = async () => {
-    if (isInitialized.value) return
+  const init = async (force: boolean = false) => {
+    if (isInitialized.value && !force) return
 
     try {
       // In a real app, you might check if we have a token first, but since it's HttpOnly cookie + CSRF,

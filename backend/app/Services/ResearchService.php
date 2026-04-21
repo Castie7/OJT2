@@ -1813,45 +1813,64 @@ class ResearchService extends BaseService
      */
     public function previewCsvDuplicates(array $rows)
     {
+        // Step 1: Collect all titles in one pass
+        $titles = [];
+        foreach ($rows as $row) {
+            $t = trim($row['Title'] ?? '');
+            if ($t !== '') {
+                $titles[] = $t;
+            }
+        }
+
+        if (empty($titles)) {
+            return array_fill(0, count($rows), ['status' => 'new']);
+        }
+
+        // Step 2: ONE query using whereIn()
+        $existingRecords = $this->db->table('researches')
+            ->select('researches.id, researches.title, researches.author, researches.file_path')
+            ->join('research_details', 'researches.id = research_details.research_id', 'left')
+            ->whereIn('researches.title', $titles)
+            ->get()->getResult();
+
+        // Step 3: Index by title for O(1) lookup
+        $existingMap = [];
+        foreach ($existingRecords as $record) {
+            $existingMap[strtolower($record->title)][] = $record;
+        }
+
+        // Step 4: Classify each row
         $results = [];
         foreach ($rows as $idx => $rawData) {
-            $title = trim($rawData['Title'] ?? '');
+            $title  = trim($rawData['Title'] ?? '');
             $author = trim($rawData['Author'] ?? $rawData['Authors'] ?? '');
-            $isbn = trim($rawData['ISBN/ISSN'] ?? $rawData['ISSN'] ?? $rawData['ISBN'] ?? '');
-            $edition = trim($rawData['Edition'] ?? $rawData['Publication'] ?? '');
 
-            if (empty($title)) {
+            if ($title === '') {
                 $results[$idx] = ['status' => 'new'];
                 continue;
             }
 
-            $builder = $this->db->table('researches');
-            $builder->join('research_details', 'researches.id = research_details.research_id', 'left');
-            $builder->where('researches.title', $title);
-            if (!empty($author)) {
-                $builder->where('researches.author', $author);
-            }
-            if (!empty($edition)) {
-                $builder->where('research_details.edition', $edition);
-            } else {
-                $builder->groupStart()
-                    ->where('research_details.edition', '')
-                    ->orWhere('research_details.edition', null)
-                    ->groupEnd();
-            }
-
-            $existing = $builder->select('researches.*')->get()->getRow();
-
-            if ($existing) {
-                if (!empty($existing->file_path)) {
-                    $results[$idx] = ['status' => 'duplicate_with_pdf', 'title' => $existing->title];
-                } else {
-                    $results[$idx] = ['status' => 'duplicate_no_pdf', 'title' => $existing->title];
-                }
-            } else {
+            $matches = $existingMap[strtolower($title)] ?? [];
+            if (empty($matches)) {
                 $results[$idx] = ['status' => 'new'];
+                continue;
+            }
+
+            // Filter by author if provided
+            if ($author !== '') {
+                $authorMatch = array_filter($matches, fn($r) => strtolower($r->author) === strtolower($author));
+                $match = !empty($authorMatch) ? array_values($authorMatch)[0] : $matches[0];
+            } else {
+                $match = $matches[0];
+            }
+
+            if (!empty($match->file_path)) {
+                $results[$idx] = ['status' => 'duplicate_with_pdf', 'title' => $match->title];
+            } else {
+                $results[$idx] = ['status' => 'duplicate_no_pdf', 'title' => $match->title];
             }
         }
+
         return $results;
     }
 
@@ -2097,7 +2116,7 @@ class ResearchService extends BaseService
         // --- Step 7: Encrypt and attach ---
         $newName    = $file->getRandomName();
         $targetPath = WRITEPATH . 'uploads/research';
-        if (!is_dir($targetPath)) mkdir($targetPath, 0777, true);
+        if (!is_dir($targetPath)) mkdir($targetPath, 0750, true);
         $finalPath  = $targetPath . DIRECTORY_SEPARATOR . $newName;
 
         $enc       = new \App\Services\EncryptionService();

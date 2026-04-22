@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useSubmittedResearches } from '../../../composables/useSubmittedResearches' 
+import { usePdfViewer } from '../../../composables/usePdfViewer'
 
 import { useAuthStore } from '../../../stores/auth'
 
@@ -18,6 +19,7 @@ const isArchived = computed(() => props.statusFilter === 'archived')
 // 1. Define Emit for the parent to catch
 const emit = defineEmits<{
   (e: 'edit', item: any): void
+  (e: 'easy-resubmit', item: any): void
   (e: 'view', item: any): void
 }>()
 
@@ -40,6 +42,17 @@ const {
   getArchiveDaysLeft,
   formatSimpleDate
 } = useSubmittedResearches(props)
+
+const { pdfBlobUrl, isPdfLoading, pdfError, loadPdf, clearPdf } = usePdfViewer()
+
+// Watch for selected research to dynamically load securely via Blob
+watch(() => selectedResearch.value, (newVal) => {
+  if (newVal && newVal.id) {
+    loadPdf(newVal.id)
+  } else {
+    clearPdf()
+  }
+})
 
 // --- Handle Notification Click ---
 const openNotification = async (researchId: number) => {
@@ -177,11 +190,20 @@ void isSendingComment
                       v-if="!isArchived" 
                       @click.stop="emit('edit', item)" 
                       class="p-2 rounded-full text-amber-500 hover:bg-amber-50 transition-colors"
-                      title="Edit"
+                      title="Full Edit"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
+                    </button>
+
+                    <button 
+                      v-if="!isArchived && item.status === 'rejected'"
+                      @click.stop="emit('easy-resubmit', item)"
+                      class="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors shadow-sm ml-1"
+                      title="Quick Resubmit"
+                    >
+                      Resubmit
                     </button>
 
                     <button 
@@ -315,11 +337,22 @@ void isSendingComment
                 <h2 class="font-bold text-lg line-clamp-1">{{ selectedResearch.title }}</h2>
                 <button @click="selectedResearch=null" class="text-white/70 hover:text-white transition w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 font-bold">&times;</button>
             </div>
-            <div class="flex-1 bg-gray-100 p-4 relative">
+            <div class="flex-1 bg-gray-100 p-4 relative flex flex-col items-center justify-center">
+                <div v-if="isPdfLoading" class="flex flex-col items-center justify-center text-gray-500 space-y-4">
+                  <div class="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span class="font-medium animate-pulse">Decrypting and loading document securely...</span>
+                </div>
+                
+                <div v-else-if="pdfError" class="text-red-500 font-bold p-6 bg-red-50 rounded-xl text-center border border-red-200">
+                  <div class="text-4xl mb-2">🔒</div>
+                  {{ pdfError }}
+                </div>
+
                 <iframe 
-                  :src="`${getBaseUrl()}/research/view-pdf/${selectedResearch.id}`" 
+                  v-else-if="pdfBlobUrl"
+                  :src="pdfBlobUrl" 
                   class="w-full h-full border-none bg-white rounded-lg shadow-sm"
-                  title="PDF Viewer"
+                  title="Secure PDF Viewer"
                 ></iframe>
             </div>
         </div>

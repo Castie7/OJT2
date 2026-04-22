@@ -5,12 +5,14 @@ import { useToast } from '../../../composables/useToast'
 // ✅ USE THE DYNAMIC URL
 import { getBaseUrl } from '../../../services/api'
 import { sanitizeUrl } from '../../../utils/formatters'
+import { watch } from 'vue'
+import { usePdfViewer } from '../../../composables/usePdfViewer'
 
-// Ideally, import your shared 'Research' interface here. 
-// For now, I'm using 'any', but you should replace it with your actual type.
-defineProps<{
-  research: any | null 
-}>()
+// // Ideally, import your shared 'Research' interface here. 
+// // For now, I'm using 'any', but you should replace it with your actual type.
+// defineProps<{
+//   research: any | null 
+// }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -43,6 +45,20 @@ const formatDate = (date: any) => {
 
 const { showToast } = useToast()
 const pdfContainer = ref<HTMLElement | null>(null)
+
+const { pdfBlobUrl, isPdfLoading, pdfError, loadPdf, clearPdf } = usePdfViewer()
+
+const propsDef = defineProps<{
+  research: any | null 
+}>()
+
+watch(() => propsDef.research, (newVal) => {
+  if (newVal && newVal.id) {
+    loadPdf(newVal.id)
+  } else {
+    clearPdf()
+  }
+}, { immediate: true })
 
 const toggleFullscreen = () => {
   if (!pdfContainer.value) return
@@ -112,11 +128,22 @@ const toggleFullscreen = () => {
                       </button>
                    </div>
                    
-                   <div ref="pdfContainer" class="w-full bg-black rounded overflow-hidden shadow-lg h-[500px]">
+                   <div ref="pdfContainer" class="w-full bg-black rounded overflow-hidden shadow-lg h-[500px] flex flex-col items-center justify-center relative">
+                      <div v-if="isPdfLoading" class="flex flex-col items-center justify-center text-gray-500 space-y-4 h-full bg-gray-100 w-full absolute inset-0 z-10">
+                        <div class="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span class="font-medium animate-pulse">Decrypting and loading document securely...</span>
+                      </div>
+                      
+                      <div v-else-if="pdfError" class="text-red-500 font-bold p-6 bg-red-50 rounded-xl text-center border border-red-200 h-full w-full flex flex-col items-center justify-center absolute inset-0 z-10">
+                        <div class="text-4xl mb-2">🔒</div>
+                        {{ pdfError }}
+                      </div>
+
                       <iframe 
-                        :src="`${getBaseUrl()}/research/view-pdf/${research.id}`" 
+                        v-else-if="pdfBlobUrl"
+                        :src="pdfBlobUrl" 
                         class="w-full h-full border-none bg-white" 
-                        title="PDF Preview">
+                        title="Secure PDF Preview">
                       </iframe>
                    </div>
                 </div>

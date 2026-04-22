@@ -21,11 +21,13 @@ const authStore = useAuthStore()
 const { 
   activeTab, 
   isModalOpen, 
+  isEasyResubmitModalOpen,
   isSubmitting, 
   form, 
   errors,
   openSubmitModal, 
   openEditModal,
+  openEasyResubmitModal,
   submitResearch,
   handleFileChange
 } = useMyWorkspace()
@@ -193,6 +195,7 @@ const conditionOptions = [
             :currentUser="authStore.currentUser" 
             :statusFilter="activeTab" 
             @edit="openEditModal"
+            @easy-resubmit="openEasyResubmitModal"
             @view="handleViewResearch"
         />
     </BaseCard>
@@ -278,6 +281,18 @@ const conditionOptions = [
                  <BaseInput v-model="form.link" type="url" label="External Link" placeholder="https://..." />
               </div>
 
+              <!-- RESUBMISSION FEEDBACK (Only for rejected items) -->
+              <div v-if="activeTab === 'rejected' && form.id" class="bg-amber-50 p-5 rounded-xl border border-amber-200 shadow-sm mt-6">
+                 <label class="block text-sm font-bold text-amber-800 uppercase mb-2">Resubmission Remarks</label>
+                 <p class="text-xs text-amber-700 mb-3">Explain what you have fixed or changed based on the Admin's feedback.</p>
+                 <textarea 
+                   v-model="form.resubmit_remarks" 
+                   class="w-full border border-amber-300 p-3 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-sm resize-none bg-white"
+                   rows="3"
+                   placeholder="e.g., I have corrected the missing pages in the PDF."
+                 ></textarea>
+              </div>
+
               <!-- File Upload -->
               <div class="bg-emerald-50 p-6 rounded-xl border border-dashed border-emerald-300 text-center hover:bg-emerald-100/50 transition-colors">
                  <label class="block text-sm font-bold text-emerald-800 uppercase mb-2">
@@ -312,6 +327,76 @@ const conditionOptions = [
                   {{ isSubmitting ? 'Saving...' : (form.id ? 'Update Item' : 'Submit Item') }}
               </BaseButton>
           </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Modal: Easy Resubmit -->
+    <Transition name="fade">
+      <div v-if="isEasyResubmitModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl transform transition-all flex flex-col animate-pop" @click.stop>
+          
+          <div class="bg-amber-500 text-white p-4 flex justify-between items-center shrink-0 rounded-t-2xl">
+              <h2 class="font-bold text-lg flex items-center gap-2">
+                  <span>⚡</span> Quick Resubmit
+              </h2>
+              <button @click="isEasyResubmitModalOpen = false" class="text-white/70 hover:text-white transition bg-white/20 hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold">&times;</button>
+          </div>
+          
+          <div class="p-6 bg-amber-50">
+            <h3 class="font-bold text-gray-800 text-lg mb-2 line-clamp-1">{{ form.title }}</h3>
+            <p class="text-xs text-amber-700 mb-4">You are about to resubmit this rejected item without changing its metadata. Only fill this out if you've resolved the admin's remarks.</p>
+            
+            <form @submit.prevent="handleSubmit" class="space-y-4">
+              
+              <!-- RESUBMISSION FEEDBACK -->
+              <div>
+                 <label class="block text-sm font-bold text-amber-900 uppercase mb-2">Resubmission Remarks <span class="text-red-500">*</span></label>
+                 <textarea 
+                   v-model="form.resubmit_remarks" 
+                   class="w-full border border-amber-300 p-3 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-sm resize-none bg-white shadow-sm"
+                   rows="4"
+                   placeholder="Briefly explain what you fixed (e.g., 'Re-uploaded missing pages', 'Corrected typos')."
+                   required
+                 ></textarea>
+              </div>
+
+              <!-- OPTIONAL FILE REPLACEMENT -->
+              <div class="bg-white p-4 rounded-xl border border-dashed border-amber-300 transition-colors">
+                 <label class="block text-sm font-bold text-amber-800 uppercase mb-2">
+                    Replace File (Optional)
+                 </label>
+                 <input 
+                    type="file" 
+                    @change="handleFileChange" 
+                    accept=".pdf, .jpg, .jpeg, .png" 
+                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-600 file:text-white hover:file:bg-amber-700 cursor-pointer"
+                 />
+                 <p class="text-xs text-amber-600 mt-2">Accepted formats: PDF, JPG, PNG. Leave blank to keep existing file.</p>
+              </div>
+
+            </form>
+          </div>
+
+          <div class="bg-white p-4 border-t border-gray-100 flex justify-end gap-3 shrink-0 rounded-b-2xl">
+              <BaseButton 
+                @click="isEasyResubmitModalOpen = false" 
+                variant="ghost"
+              >
+                Cancel
+              </BaseButton>
+
+              <button 
+                @click="handleSubmit" 
+                :disabled="isSubmitting || !form.resubmit_remarks.trim()" 
+                class="px-5 py-2 font-bold rounded-lg shadow-md transition-all min-w-[120px]"
+                :class="(isSubmitting || !form.resubmit_remarks.trim()) ? 'bg-amber-300 text-white cursor-not-allowed' : 'bg-amber-500 hover:bg-amber-600 text-white hover:shadow-lg'"
+              >
+                  <span v-if="isSubmitting" class="animate-spin inline-block mr-2">⏳</span>
+                  {{ isSubmitting ? 'Resubmitting...' : 'Confirm Resubmit' }}
+              </button>
+          </div>
+
         </div>
       </div>
     </Transition>

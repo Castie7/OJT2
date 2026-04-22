@@ -53,12 +53,37 @@ class ResearchController extends BaseController
                 return $this->failNotFound('Encrypted file not found on disk.');
             }
 
-            $this->response
-                ->setHeader('Content-Type', 'application/pdf')
-                ->setHeader('Content-Disposition', 'inline; filename="' . addcslashes($research->title . '.pdf', '"\\') . '"')
-                ->setHeader('Cache-Control', 'private, max-age=3600')
-                ->sendHeaders();
+            $isXhr = $this->request->getGet('xhr') == '1';
 
+            // ---------------------------------------------------------------
+            // CRITICAL: Use native PHP header() calls instead of CI4's
+            // Response object. Because we call exit; after streaming, CI4's
+            // after-filters (including CORS) never run, and CI4's internal
+            // header buffer may not flush. Native header() goes directly to
+            // Apache/the SAPI, guaranteeing they reach the browser.
+            // ---------------------------------------------------------------
+
+            // 1. CORS headers — required for cross-origin XHR from localhost:5173
+            $origin = $this->request->getHeaderLine('Origin');
+            if ($origin) {
+                header('Access-Control-Allow-Origin: ' . $origin);
+                header('Access-Control-Allow-Credentials: true');
+            }
+
+            // 2. Content headers — differ based on XHR vs direct iframe
+            if ($isXhr) {
+                // XHR Blob fetch: disguise as binary stream so IDM ignores it
+                header('Content-Type: application/octet-stream');
+                header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            } else {
+                // Direct iframe access (legacy fallback)
+                $safeTitle = addcslashes($research->title . '.pdf', '"\\');
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: inline; filename="' . $safeTitle . '"');
+                header('Cache-Control: private, max-age=3600');
+            }
+
+            // 3. Stream the decrypted file directly to the output buffer
             $encryptionService = new \App\Services\EncryptionService();
             $encryptionService->streamDecryptToOutput($filePath);
             exit;

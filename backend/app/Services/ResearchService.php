@@ -1524,6 +1524,12 @@ class ResearchService extends BaseService
             'crop_variation' => $data['crop_variation'],
         ];
 
+        // If a researcher is updating a rejected item, put it back to pending
+        if ($item->status === 'rejected' && $userRole !== 'admin') {
+            $mainUpdate['status'] = 'pending';
+            $mainUpdate['rejected_at'] = null; // Clear rejection date
+        }
+
         if ($this->hasAccessLevelColumn() && $userRole === 'admin' && array_key_exists('access_level', $data)) {
             $mainUpdate['access_level'] = $this->normalizeAccessLevel((string) $data['access_level']);
         }
@@ -1570,6 +1576,37 @@ class ResearchService extends BaseService
         else {
             $detailsData['research_id'] = $id;
             $this->detailsModel->insert($detailsData);
+        }
+
+        // Provide feedback loop back to admin during resubmission
+        if ($item->status === 'rejected' && $userRole !== 'admin') {
+            if (!empty($data['resubmit_remarks']) && trim($data['resubmit_remarks']) !== '') {
+                // Get the user's name
+                $user = $this->userModel->find($userId);
+                $userName = $user ? $user->name : 'Researcher';
+                
+                $this->commentModel->insert([
+                    'research_id' => $id,
+                    'user_id' => $userId,
+                    'user_name' => $userName,
+                    'role' => $userRole,
+                    'comment' => "Resubmission Note: " . trim($data['resubmit_remarks']),
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            }
+
+            // Notify Admins about the resubmission
+            $admins = $this->userModel->where('role', 'admin')->findAll();
+            foreach ($admins as $admin) {
+                $this->notifModel->insert([
+                    'user_id' => $admin->id,
+                    'sender_id' => $userId,
+                    'research_id' => $id,
+                    'message' => "Item Resubmitted: " . $mainUpdate['title'],
+                    'is_read' => 0,
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            }
         }
 
         $this->db->transComplete();

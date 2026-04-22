@@ -269,7 +269,18 @@ void isSendingComment
         <div class="bg-white rounded-2xl p-6 text-center w-full max-w-sm shadow-2xl transform transition-all">
           <div class="mb-4 text-5xl">{{ confirmModal.action === 'reject' ? '🗑️' : (confirmModal.action === 'restore' ? '♻️' : '✅') }}</div>
           <h3 class="text-xl font-bold text-gray-900 mb-2">{{ confirmModal.title }}</h3>
-          <p class="text-gray-500 text-sm mb-6">{{ confirmModal.subtext }}</p>
+          <p class="text-gray-500 text-sm mb-4">{{ confirmModal.subtext }}</p>
+
+          <div v-if="confirmModal.action === 'reject'" class="mb-6 text-left">
+             <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Remarks / Reason <span class="text-red-500">*</span></label>
+             <textarea 
+               v-model="confirmModal.remark" 
+               placeholder="Why are you rejecting this submission?"
+               class="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm resize-none bg-gray-50 focus:bg-white transition-colors"
+               rows="3"
+             ></textarea>
+          </div>
+
           <div class="flex gap-3 justify-center">
             <button @click="confirmModal.show=false" class="px-5 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition" :disabled="confirmModal.isProcessing">Cancel</button>
             <button 

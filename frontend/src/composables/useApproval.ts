@@ -28,20 +28,17 @@ export function useApproval() {
 
   // --- HELPERS ---
 
-  // (Removed getHeaders() because api.ts handles it automatically)
-
   const formatDate = (dateString?: any) => {
     if (!dateString) return 'No Date'
 
     let dateVal = dateString
-    // Handle { date: "...", timezone: ... } object from backend
     if (typeof dateString === 'object' && dateString.date) {
       dateVal = dateString.date
     }
 
     try {
       const d = new Date(dateVal)
-      if (isNaN(d.getTime())) return dateVal // Fallback to raw string if invalid
+      if (isNaN(d.getTime())) return dateVal
 
       return d.toLocaleDateString('en-US', {
         year: 'numeric',
@@ -92,6 +89,7 @@ export function useApproval() {
     action: '' as 'approve' | 'reject' | 'restore',
     title: '',
     subtext: '',
+    remark: '', // Required for rejection
     isProcessing: false
   })
 
@@ -105,7 +103,7 @@ export function useApproval() {
       subtext = 'This will publish the research. Visibility follows the item access setting.'
     } else if (action === 'reject') {
       title = 'Reject Submission?'
-      subtext = 'This will move the research to the Rejected Bin.'
+      subtext = 'Please provide a remark/reason for rejection. This will move the research to the Rejected Bin.'
     } else {
       title = 'Restore to Pending?'
       subtext = 'This will move the research back to the Pending list for review.'
@@ -117,6 +115,7 @@ export function useApproval() {
       action,
       title,
       subtext,
+      remark: '', // reset reason
       isProcessing: false
     }
   }
@@ -125,13 +124,30 @@ export function useApproval() {
   const executeAction = async () => {
     if (!confirmModal.value.id || confirmModal.value.isProcessing) return
 
+    // Enforce required remark on reject
+    if (confirmModal.value.action === 'reject' && !confirmModal.value.remark.trim()) {
+       showToast('A remark/reason is required when rejecting a submission.', 'warning')
+       return
+    }
+
     confirmModal.value.isProcessing = true
-    const { id, action } = confirmModal.value
+    const { id, action, remark } = confirmModal.value
 
     try {
       if (action === 'approve') {
         await researchService.approve(id)
       } else if (action === 'reject') {
+        // Step 1: Submit the remark as a comment from the Admin
+        if (authStore.currentUser && remark.trim()) {
+          await commentService.create({
+            research_id: id,
+            user_id: authStore.currentUser.id,
+            user_name: authStore.currentUser.name,
+            role: 'admin',
+            comment: remark.trim()
+          })
+        }
+        // Step 2: Reject the actual submission
         await researchService.reject(id)
       } else if (action === 'restore') {
         await researchService.restore(id)

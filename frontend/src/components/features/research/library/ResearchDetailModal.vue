@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { Research } from '../../../../types'
 import { formatDate, getCropImage, sanitizeUrl } from '../../../../utils/formatters'
 import { getBaseUrl } from '../../../../services/api'
 import { useToast } from '../../../../composables/useToast'
+import { usePdfViewer } from '../../../../composables/usePdfViewer'
 
 const props = defineProps<{
     research: Research
@@ -16,6 +17,16 @@ const emit = defineEmits<{
 
 const { showToast } = useToast()
 const pdfContainer = ref<HTMLElement | null>(null)
+
+const { pdfBlobUrl, isPdfLoading, pdfError, loadPdf, clearPdf } = usePdfViewer()
+
+watch(() => props.research, (newVal) => {
+  if (newVal && newVal.id) {
+    loadPdf(newVal.id)
+  } else {
+    clearPdf()
+  }
+}, { immediate: true })
 
 const toggleFullscreen = () => {
   if (!pdfContainer.value) return
@@ -102,11 +113,22 @@ const toggleFullscreen = () => {
                                 </button>
                             </div>
                             
-                            <div v-if="research.file_path" ref="pdfContainer" class="w-full bg-gray-800 rounded-lg overflow-hidden shadow-lg h-[500px] border border-gray-200">
+                            <div v-if="research.file_path" ref="pdfContainer" class="w-full bg-gray-900 rounded-lg overflow-hidden shadow-lg h-[500px] border border-gray-200 relative flex flex-col items-center justify-center">
+                                <div v-if="isPdfLoading" class="flex flex-col items-center justify-center text-gray-400 space-y-4 h-full bg-gray-900 w-full absolute inset-0 z-10">
+                                  <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                  <span class="font-medium animate-pulse">Decrypting and loading document securely...</span>
+                                </div>
+                                
+                                <div v-else-if="pdfError" class="text-red-400 font-bold p-6 bg-red-900/20 text-center h-full w-full flex flex-col items-center justify-center absolute inset-0 z-10">
+                                  <div class="text-4xl mb-2">🔒</div>
+                                  {{ pdfError }}
+                                </div>
+
                                 <iframe 
-                                    :src="`${getBaseUrl()}/research/view-pdf/${research.id}`" 
+                                    v-else-if="pdfBlobUrl"
+                                    :src="pdfBlobUrl" 
                                     class="w-full h-full border-none bg-white" 
-                                    title="PDF Preview">
+                                    title="Secure PDF Preview">
                                 </iframe>
                             </div>
 

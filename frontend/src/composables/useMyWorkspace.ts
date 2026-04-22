@@ -9,6 +9,7 @@ export function useMyWorkspace() {
 
   const activeTab = ref<'pending' | 'approved' | 'rejected' | 'archived'>('pending')
   const isModalOpen = ref(false)
+  const isEasyResubmitModalOpen = ref(false)
   const isSubmitting = ref(false)
   const isLoading = ref(false)
   const myResearches = ref<Research[]>([])
@@ -44,7 +45,8 @@ export function useMyWorkspace() {
     shelf_location: '',
     item_condition: 'Good',
     link: '',
-    pdf_file: null as File | null
+    pdf_file: null as File | null,
+    resubmit_remarks: ''
   })
 
   // --- ACTIONS ---
@@ -142,7 +144,7 @@ export function useMyWorkspace() {
       publication_date: '', edition: '', publisher: '',
       physical_description: '', isbn_issn: '', subjects: '',
       shelf_location: '', item_condition: 'Good', link: '',
-      pdf_file: null
+      pdf_file: null, resubmit_remarks: ''
     })
     isModalOpen.value = true
   }
@@ -167,9 +169,16 @@ export function useMyWorkspace() {
       shelf_location: item.shelf_location || '',
       item_condition: item.item_condition || 'Good',
       link: item.link || '',
-      pdf_file: null
+      pdf_file: null,
+      resubmit_remarks: ''
     })
     isModalOpen.value = true
+  }
+
+  const openEasyResubmitModal = (item: Research) => {
+    openEditModal(item)
+    isModalOpen.value = false // hide the big modal
+    isEasyResubmitModalOpen.value = true // show the small modal
   }
 
   const handleFileChange = (e: Event) => {
@@ -218,6 +227,11 @@ export function useMyWorkspace() {
     formData.append('shelf_location', form.shelf_location)
     formData.append('item_condition', form.item_condition)
     formData.append('link', form.link)
+    
+    // Pass resubmission remarks if provided for a rejected item edit
+    if (form.resubmit_remarks && form.resubmit_remarks.trim() !== '') {
+      formData.append('resubmit_remarks', form.resubmit_remarks.trim())
+    }
 
     if (form.pdf_file) formData.append('pdf_file', form.pdf_file)
 
@@ -230,6 +244,7 @@ export function useMyWorkspace() {
 
       showToast(form.id ? "Success! Research Updated." : "Success! Research Submitted.", "success")
       isModalOpen.value = false
+      isEasyResubmitModalOpen.value = false
       return true // Indicate success
 
     } catch (error: any) {
@@ -260,12 +275,14 @@ export function useMyWorkspace() {
     myResearches,
     isLoading,
     isModalOpen,
+    isEasyResubmitModalOpen,
     isSubmitting,
     form,
     errors,
     fetchMyResearches,
     openSubmitModal,
     openEditModal,
+    openEasyResubmitModal,
     submitResearch,
     handleFileChange
   }

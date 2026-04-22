@@ -2,7 +2,8 @@
 import { useMasterlist } from '../../../composables/useMasterlist'
 import { getBaseUrl } from '../../../services/api'
 import { sanitizeUrl } from '../../../utils/formatters'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { usePdfViewer } from '../../../composables/usePdfViewer'
 import BaseButton from '../../ui/BaseButton.vue'
 import BaseCard from '../../ui/BaseCard.vue'
 import BaseInput from '../../ui/BaseInput.vue'
@@ -31,6 +32,16 @@ const {
   selectedItem, viewDetails, closeDetails,
   approveResearch, rejectResearch
 } = useMasterlist()
+
+const { pdfBlobUrl, isPdfLoading, pdfError, loadPdf, clearPdf } = usePdfViewer()
+
+watch(() => selectedItem.value, (newVal) => {
+  if (newVal && newVal.id) {
+    loadPdf(newVal.id)
+  } else {
+    clearPdf()
+  }
+})
 
 const hasActiveFilters = computed(() => {
   return searchQuery.value !== '' || statusFilter.value !== 'ALL'
@@ -517,11 +528,22 @@ const accessOptions = [
                          </button>
                       </div>
                       
-                      <div ref="pdfContainer" class="w-full bg-gray-900 rounded-xl overflow-hidden shadow-lg h-[600px] border border-gray-200">
+                      <div ref="pdfContainer" class="w-full bg-gray-900 rounded-xl overflow-hidden shadow-lg h-[600px] border border-gray-200 relative flex flex-col items-center justify-center">
+                          <div v-if="isPdfLoading" class="flex flex-col items-center justify-center text-gray-400 space-y-4 h-full bg-gray-900 w-full absolute inset-0 z-10">
+                            <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span class="font-medium animate-pulse">Decrypting and loading document securely...</span>
+                          </div>
+                          
+                          <div v-else-if="pdfError" class="text-red-400 font-bold p-6 bg-red-900/20 text-center h-full w-full flex flex-col items-center justify-center absolute inset-0 z-10">
+                            <div class="text-4xl mb-2">🔒</div>
+                            {{ pdfError }}
+                          </div>
+
                           <iframe 
-                             :src="`${getBaseUrl()}/research/view-pdf/${selectedItem.id}`" 
+                             v-else-if="pdfBlobUrl"
+                             :src="pdfBlobUrl" 
                              class="w-full h-full border-none bg-white" 
-                             title="PDF Preview">
+                             title="Secure PDF Preview">
                           </iframe>
                       </div>
                    </div>

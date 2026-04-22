@@ -1,0 +1,16 @@
+Example Database
+ [ ] Model find all
+ [ ] Soft delete leaves row
+
+Example Session
+ [x] Session simple
+
+Health
+ [x] Is defined app path
+ [x] Base url has been set
+
+Login Config
+ [x] Cookie http only is true
+ [x] Security token randomize is false
+ [x] Csrf protection is cookie
+

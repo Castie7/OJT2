@@ -55,7 +55,7 @@ $routes->group('research', function ($routes) {
     $routes->get('user-stats/(:num)', 'ResearchController::userStats/$1', ['filter' => 'auth']);
     $routes->get('stats', 'ResearchController::stats');
     $routes->get('masterlist', 'ResearchController::masterlist', ['filter' => 'auth']);
-    $routes->get('view-pdf/(:num)', 'ResearchController::viewPdf/$1', ['filter' => 'auth']);
+    $routes->get('view-pdf/(:num)', 'ResearchController::viewPdf/$1');
 
     // Lists
     $routes->get('/', 'ResearchController::index');

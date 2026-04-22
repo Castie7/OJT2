@@ -1615,7 +1615,7 @@ class ResearchService extends BaseService
         return ['matched' => $matched, 'updated' => $updated];
     }
 
-    public function setStatus(int $id, string $status, int $adminId, string $messageTemplate)
+    public function setStatus(int $id, string $status, object $adminUser, string $messageTemplate, string $comment = '')
     {
         // For Approve/Reject/Archive
         $data = ['status' => $status];
@@ -1637,14 +1637,30 @@ class ResearchService extends BaseService
 
         $item = $this->researchModel->find($id);
         if ($item && $item->uploaded_by) {
+            $msg = sprintf($messageTemplate, $item->title);
+            if (!empty($comment)) {
+                $msg .= "\n\nRemarks: " . trim($comment);
+            }
+            
             $this->notifModel->insert([
                 'user_id' => $item->uploaded_by,
-                'sender_id' => $adminId,
+                'sender_id' => $adminUser->id,
                 'research_id' => $id,
-                'message' => sprintf($messageTemplate, $item->title),
+                'message' => $msg,
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s')
             ]);
+            
+            if (!empty($comment)) {
+                $this->db->table('research_comments')->insert([
+                    'research_id' => $id,
+                    'user_id' => $adminUser->id,
+                    'user_name' => $adminUser->name ?? 'Admin',
+                    'role' => $adminUser->role ?? 'admin',
+                    'comment' => "[$status] " . trim($comment),
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            }
         }
         $this->db->transComplete();
     }

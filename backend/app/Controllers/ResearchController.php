@@ -87,6 +87,7 @@ class ResearchController extends BaseController
     /*
      * Enforces the rule: non-approved research items (pending, rejected, archived)
      * may only be accessed by the item's owner or an admin.
+     * Approved items marked as 'private' require the user to be logged in.
      * @param mixed $research  The research entity/object returned by getResearch().
      */
     private function requireResearchAccess($research, $user): ?\CodeIgniter\HTTP\ResponseInterface
@@ -96,11 +97,21 @@ class ResearchController extends BaseController
         }
 
         // Guard against model returning array vs entity object to prevent fatals
-        $status     = is_object($research) ? $research->status      : ($research['status'] ?? null);
-        $uploadedBy = is_object($research) ? $research->uploaded_by : ($research['uploaded_by'] ?? null);
+        $status      = is_object($research) ? $research->status       : ($research['status'] ?? null);
+        $uploadedBy  = is_object($research) ? $research->uploaded_by  : ($research['uploaded_by'] ?? null);
+        $accessLevel = is_object($research) ? $research->access_level : ($research['access_level'] ?? 'public');
 
-        // Approved research is publicly accessible (subject to caller's auth check).
         if ($status === 'approved') {
+            // Approved and Public: Anyone can access
+            if ($accessLevel !== 'private') {
+                return null;
+            }
+            
+            // Approved but Private: Requires ANY logged-in user
+            if (!$user) {
+                return $this->failUnauthorized('Unauthorized Access: This document is private. Please login to view.');
+            }
+            
             return null;
         }
 
@@ -573,7 +584,10 @@ class ResearchController extends BaseController
         $item = $this->researchService->getResearch($id);
         $title = $item ? $item->title : "ID: $id";
 
-        $this->researchService->setStatus($id, 'approved', $user->id, "🎉 Your research '%s' has been APPROVED!");
+        $input = $this->request->getJSON();
+        $comment = $input->comment ?? $this->request->getPost('comment') ?? '';
+
+        $this->researchService->setStatus($id, 'approved', $user, "🎉 Your research '%s' has been APPROVED!", $comment);
 
         log_activity($user->id, $user->name, $user->role, 'APPROVE_RESEARCH', "Approved research: $title");
 
@@ -589,8 +603,11 @@ class ResearchController extends BaseController
 
         $item = $this->researchService->getResearch($id);
         $title = $item ? $item->title : "ID: $id";
+        
+        $input = $this->request->getJSON();
+        $comment = $input->comment ?? $this->request->getPost('comment') ?? '';
 
-        $this->researchService->setStatus($id, 'rejected', $user->id, "⚠️ Your research '%s' was returned for revision.");
+        $this->researchService->setStatus($id, 'rejected', $user, "⚠️ Your research '%s' was returned for revision.", $comment);
 
         log_activity($user->id, $user->name, $user->role, 'REJECT_RESEARCH', "Rejected research: $title");
 
@@ -617,7 +634,7 @@ class ResearchController extends BaseController
 
         $title = $item->title;
 
-        $this->researchService->setStatus($id, 'archived', $user->id, "Your research '%s' has been archived.");
+        $this->researchService->setStatus($id, 'archived', $user, "Your research '%s' has been archived.");
 
         log_activity($user->id, $user->name, $user->role, 'ARCHIVE_RESEARCH', "Archived research: $title");
 
@@ -644,7 +661,7 @@ class ResearchController extends BaseController
 
         $title = $item->title;
 
-        $this->researchService->setStatus($id, 'pending', $user->id, "Research '%s' restored.");
+        $this->researchService->setStatus($id, 'pending', $user, "Research '%s' restored.");
 
         log_activity($user->id, $user->name, $user->role, 'RESTORE_RESEARCH', "Restored research: $title");
 

@@ -175,8 +175,8 @@ export const researchService = {
   /**
    * Approve research submission (admin only)
    */
-  async approve(id: number): Promise<ApiResponse<void>> {
-    const response = await api.post<ApiResponse<void>>(`/research/${id}/approve`)
+  async approve(id: number, comment: string = ''): Promise<ApiResponse<void>> {
+    const response = await api.post<ApiResponse<void>>(`/research/${id}/approve`, { comment })
     apiCache.invalidate('research')
     return response.data
   },
@@ -184,8 +184,8 @@ export const researchService = {
   /**
    * Reject research submission (admin only)
    */
-  async reject(id: number): Promise<ApiResponse<void>> {
-    const response = await api.post<ApiResponse<void>>(`/research/${id}/reject`)
+  async reject(id: number, comment: string = ''): Promise<ApiResponse<void>> {
+    const response = await api.post<ApiResponse<void>>(`/research/${id}/reject`, { comment })
     apiCache.invalidate('research')
     return response.data
   },

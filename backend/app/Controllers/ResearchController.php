@@ -609,8 +609,12 @@ class ResearchController extends BaseController
         $item = $this->researchService->getResearch($id);
         $title = $item ? $item->title : "ID: $id";
 
-        $input = $this->request->getJSON();
-        $comment = $input->comment ?? $this->request->getPost('comment') ?? '';
+        try {
+            $input = $this->request->getJSON();
+            $comment = $input->comment ?? $this->request->getPost('comment') ?? '';
+        } catch (\Throwable $e) {
+            $comment = $this->request->getPost('comment') ?? '';
+        }
 
         $this->researchService->setStatus($id, 'approved', $user, "🎉 Your research '%s' has been APPROVED!", $comment);
 
@@ -629,8 +633,12 @@ class ResearchController extends BaseController
         $item = $this->researchService->getResearch($id);
         $title = $item ? $item->title : "ID: $id";
         
-        $input = $this->request->getJSON();
-        $comment = $input->comment ?? $this->request->getPost('comment') ?? '';
+        try {
+            $input = $this->request->getJSON();
+            $comment = $input->comment ?? $this->request->getPost('comment') ?? '';
+        } catch (\Throwable $e) {
+            $comment = $this->request->getPost('comment') ?? '';
+        }
 
         $this->researchService->setStatus($id, 'rejected', $user, "⚠️ Your research '%s' was returned for revision.", $comment);
 

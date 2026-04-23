@@ -63,12 +63,10 @@ class ResearchController extends BaseController
             // Apache/the SAPI, guaranteeing they reach the browser.
             // ---------------------------------------------------------------
 
-            // 1. CORS headers — required for cross-origin XHR from localhost:5173
-            $origin = $this->request->getHeaderLine('Origin');
-            if ($origin) {
-                header('Access-Control-Allow-Origin: ' . $origin);
-                header('Access-Control-Allow-Credentials: true');
-            }
+            // 1. CORS headers — required for cross-origin XHR from the legitimate frontend.
+            // We use a manual check because calling exit; (below) prevents the framework's 
+            // after-filters from running.
+            $this->applyManualCorsHeaders();
 
             // 2. Content headers — differ based on XHR vs direct iframe
             if ($isXhr) {
@@ -88,7 +86,8 @@ class ResearchController extends BaseController
             $encryptionService->streamDecryptToOutput($filePath);
             exit;
         } catch (\RuntimeException $e) {
-            return $this->fail($e->getMessage(), 400);
+            log_message('error', '[Research View PDF Runtime] ' . $e->getMessage());
+            return $this->fail('Failed to process file request.', 400);
         } catch (\Throwable $e) {
             log_message('error', '[Research View PDF] ' . $e->getMessage());
             return $this->failServerError('Failed to open file.');
@@ -150,6 +149,41 @@ class ResearchController extends BaseController
         }
 
         return $this->failForbidden('Access Denied: You do not have permission to access this resource.');
+    }
+
+    /**
+     * Hardened CORS Header injection for streaming responses.
+     * Re-implements the logic from App\Filters\Cors to ensure security 
+     * even when calling exit;
+     */
+    private function applyManualCorsHeaders(): void
+    {
+        $origin = $this->request->getHeaderLine('Origin');
+        if (empty($origin)) {
+            return;
+        }
+
+        $corsConfig = config('Cors');
+        $settings = $corsConfig->default ?? [];
+
+        // 1. Check strict whitelist
+        $allowed = in_array($origin, $settings['allowedOrigins'] ?? [], true);
+
+        // 2. Check regex patterns if not in strict list
+        if (!$allowed && !empty($settings['allowedOriginsPatterns'])) {
+            foreach ($settings['allowedOriginsPatterns'] as $pattern) {
+                if (preg_match('#' . $pattern . '#', $origin)) {
+                    $allowed = true;
+                    break;
+                }
+            }
+        }
+
+        // 3. Apply only if validated
+        if ($allowed) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Credentials: true');
+        }
     }
 
     private function isValidIsoDate(string $date): bool
@@ -781,7 +815,8 @@ class ResearchController extends BaseController
             ]);
         }
         catch (\RuntimeException $e) {
-            return $this->fail($e->getMessage(), 400);
+            log_message('error', '[Bulk Access Level Runtime] ' . $e->getMessage());
+            return $this->fail('Bulk update request failed.', 400);
         }
         catch (\Throwable $e) {
             log_message('error', '[Bulk Access Level] ' . $e->getMessage());

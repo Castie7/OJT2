@@ -35,7 +35,8 @@ class NotificationController extends ResourceController
             $data = $this->notifService->getUserNotifications($user->id);
             return $this->respond($data);
         } catch (\Exception $e) {
-            return $this->failServerError($e->getMessage());
+            log_message('error', '[Notification Index Error] ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred.');
         }
     }
 
@@ -50,7 +51,8 @@ class NotificationController extends ResourceController
             $this->notifService->markAsRead($user->id);
             return $this->respond(['success' => true]);
         } catch (\Exception $e) {
-            return $this->failServerError($e->getMessage());
+            log_message('error', '[Notification MarkAsRead Error] ' . $e->getMessage());
+            return $this->failServerError('An unexpected server error occurred.');
         }
     }
 }

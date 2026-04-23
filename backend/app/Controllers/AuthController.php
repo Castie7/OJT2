@@ -187,11 +187,7 @@ class AuthController extends BaseController
         catch (\Throwable $e) {
             log_message('error', '[Update Profile Error] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             
-            // 🛑 SENIOR FIX: Never leak raw System Errors or TypeErrors
-            if ($e instanceof \Error) {
-                return $this->failServerError('An internal server error occurred.');
-            }
-            return $this->fail($e->getMessage(), $e->getCode() ?: 400);
+            return $this->failServerError('An unexpected server error occurred. Please try again later.');
         }
     }
 

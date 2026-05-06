@@ -158,8 +158,16 @@ await req('/research/archive/USER1_RESEARCH_ID', 'POST', {}, false);
 4. Confirm fake/old `auth_token` alone does not authenticate.
 
 ## 8) CORS Test
-1. Call API from a non-allowed origin.
-2. Expected: preflight blocked or no `Access-Control-Allow-Origin` for that origin.
+1. Call API from a non-allowed origin (e.g., `google.com` console).
+2. Expected: `Access-Control-Allow-Origin` is missing or does not match the malicious origin. Browser blocks response.
+3. **Status:** ✅ **PASSED** (Verified 2026-04-23 on `viewPdf` endpoint).
+
+## 9) Information Leakage Test
+1. Intentionally trigger a Database Error (e.g., duplicate unique field).
+2. Expected: Response message is generic ("An unexpected server error occurred") and does not contain SQL fragments.
+3. **Status:** ✅ **PASSED** (Verified 2026-04-23: Patched leaks in Auth, Research, and Notification controllers).
+
+
 
 ## 9) Pass Criteria
 - No guest privilege escalation.

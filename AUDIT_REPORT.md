@@ -615,3 +615,50 @@ The service layer was successfully rewritten to use a single `whereIn('researche
 ---
 
 **Final Verdict:** The codebase adheres completely strictly to the @GEMINI.md Senior Standards (DRY, Security First, CI4 Best Practices). The PR is fully greenlit. Great work by the Main Agent.
+
+---
+---
+
+# 🔍 Senior Auditor Report — Session 2026-04-23
+
+**Auditor:** Antigravity (Senior Security & Logic Auditor)
+**Date:** 2026-04-23
+**Context:** Security hardening after fresh git pull.
+
+## ⚠️ New Discovery — 🔴 CRITICAL: CORS Data Exfiltration in `viewPdf`
+
+**Severity:** Critical — Private Data Exfiltration
+
+### The Vulnerability
+The `viewPdf` endpoint was found to manually inject CORS headers using native `header()` calls that blindly reflected the `Origin` header while allowing credentials:
+```php
+header('Access-Control-Allow-Origin: ' . $origin);
+header('Access-Control-Allow-Credentials: true');
+```
+This allowed any malicious website to read encrypted/private PDF content via XHR if a logged-in user visited the site.
+
+### The Fix (Applied)
+Implemented a hardened whitelist check (`applyManualCorsHeaders`) that validates the request `Origin` against the application's central `Config\Cors` whitelist before granting access. Non-whitelisted origins are now denied CORS headers, causing the browser to block the exfiltration attempt.
+
+**Status: ✅ RESOLVED & VERIFIED**
+
+---
+
+| F-8 | CORS Misconfiguration in `viewPdf` | 🔴 Critical | ✅ **Fixed & Verified** |
+| F-9 | Information Leakage (Raw Exceptions) | 🟡 Medium | ✅ **Fixed & Verified** |
+
+---
+
+## 🔍 Finding 9 — 🟡 MEDIUM: Information Leakage via Catch Blocks
+
+**Severity:** Medium — System Disclosure
+
+### The Vulnerability
+Several catch blocks across `AuthController`, `ResearchController`, and `NotificationController` were returning `$e->getMessage()` directly to the client. Because CodeIgniter's `DatabaseException` inherits from `Exception`, raw SQL errors (containing schema and query data) were leaked to the frontend upon query failure.
+
+### The Fix (Applied)
+Genericized all sensitive catch blocks to return `"An unexpected server error occurred."` while preserving the full stack trace and message in the system logs (`log_message('error', ...)`).
+
+**Status: ✅ RESOLVED**
+
+---

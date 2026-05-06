@@ -16,3 +16,4 @@ class DropUserStorageFilesTable extends Migration
         // Not implemented
     }
 }
+

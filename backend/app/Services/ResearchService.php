@@ -45,6 +45,9 @@ class ResearchService extends BaseService
                              research_details.item_condition, 
                              research_details.link';
 
+    // UI-safe public select string to prevent leaking file_path and uploaded_by IDs
+    private $publicSelectString = "researches.id, researches.title, researches.author, researches.crop_variation, researches.status, researches.view_count, researches.access_level, researches.created_at, researches.updated_at, IF(LENGTH(researches.file_path) > 0, 'secure_attached', NULL) AS file_path, research_details.knowledge_type, research_details.publication_date, research_details.edition, research_details.publisher, research_details.physical_description, research_details.isbn_issn, research_details.subjects, research_details.shelf_location, research_details.item_condition, research_details.link";
+
     public function __construct()
     {
         parent::__construct();
@@ -1204,7 +1207,7 @@ class ResearchService extends BaseService
         ?string $searchScope = null
     )
     {
-        $builder = $this->researchModel->select($this->selectString)
+        $builder = $this->researchModel->select($this->publicSelectString, false)
             ->join('research_details', 'researches.id = research_details.research_id', 'left')
             ->where('researches.status', 'approved');
 
@@ -1256,7 +1259,7 @@ class ResearchService extends BaseService
     {
         $safeLimit = max(1, min(50, $limit));
 
-        $builder = $this->researchModel->select($this->selectString)
+        $builder = $this->researchModel->select($this->publicSelectString, false)
             ->join('research_details', 'researches.id = research_details.research_id', 'left')
             ->where('researches.status', 'approved');
 
